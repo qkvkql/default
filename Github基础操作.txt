@@ -1,9 +1,12 @@
 Github基础操作
+参考：https://zhuanlan.zhihu.com/p/138305054
 
+********************1.********************
 git服务器端：
 新建Repository
 复制SSH code
 
+********************2.********************
 本地：
 对应git服务器某个Repository，在本地文件夹右键Git Bash Here
 
