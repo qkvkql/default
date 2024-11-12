@@ -1,0 +1,30 @@
+table{
+    border: 1px, solid, black;
+}
+#th0{
+    width: 40px;
+    height: 60px;
+}
+#th1{
+    width: 60px;
+}
+#th2{
+    width: 100px;
+}
+#th3{
+    width: 100px;
+}
+#th4{
+    width: 100px;
+}
+#th5, #th6, #th7, #th8{
+    width: 140px;
+}
+th{
+    border: 1px, solid, black;
+}
+td{
+    height: 32px;
+    border: 1px, solid, black;
+    text-align: center;
+}
