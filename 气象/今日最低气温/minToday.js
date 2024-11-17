@@ -28,8 +28,9 @@ let dateArr = dateAndTimeArr[0].split('-');
 let y = dateArr[0];
 let m = dateArr[1];
 let d = dateArr[2];
-let timeArr = dateAndTimeArr[1].split(':');
-let h = timeArr[0];
+let h = 12;
+//let timeArr = dateAndTimeArr[1].split(':');
+//let h = timeArr[0];
 
 function fillTable(){
     let tb = document.getElementById('tb');
