@@ -1,0 +1,4 @@
+问题：
+npm报错 cannot find modules
+解决方法：
+cmd进入node项目目录(js文件所在目录)，执行 npm install --save <module name>
