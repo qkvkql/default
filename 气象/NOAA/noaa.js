@@ -23,7 +23,7 @@ app.post("/",
 app.listen(3000, function(){console.log("server is running on port 3000");})
 
 let config = {
-    stationNumber: '51542', //站号n1，后面还有n2,n3
+    stationNumber: '31338', //站号n1，后面还有n2,n3
     sortFirst: 'low', //最低、最高
     target: 'min', //夜温、均温、昼温
     showNumber: 50, //显示多少个结果
@@ -201,3 +201,4 @@ function FN(n){
     }
     return result;
 }
+//判断两个yyyy-mm-dd格式的日期是否相邻，统计连续天数的时候有用！
