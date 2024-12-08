@@ -1,6 +1,26 @@
 //导入必要的包
 let fs = require('fs');
 let readMultipleFiles = require('read-multiple-files');
+const express = require("express");
+const bodyParser = require("body-parser");
+const ejs = require("ejs");
+
+//从html页面获取并操作数据
+const app = express(); //使用express module创建新的app
+app.set('view engine', 'ejs'); //决定使用ejs渲染模板
+app.set("views", __dirname); //设置.ejs html模板文件存放在哪个目录
+app.use(bodyParser.urlencoded({extended: true})); //准备工作
+//从哪个html页面获取
+app.get("/",function(req, res){res.sendFile(__dirname + "/index.html");});
+//获取什么，然后怎么操作
+app.post("/",
+    function(req, res){
+        let num1 = Number(req.body.num1);
+        let num2 = Number(req.body.num2);
+        let result = num1 + num2;
+        res.render('template', { addition: result });
+    });
+app.listen(3000, function(){console.log("server is running on port 3000");})
 
 let config = {
     stationNumber: '51542', //站号n1，后面还有n2,n3
@@ -50,7 +70,7 @@ readMultipleFiles(new Set(paths), 'utf8').subscribe({
     },
     complete() {
         let result = new Result();
-        result.showLowestList();
+        //result.showLowestList();
     }
 });
 
