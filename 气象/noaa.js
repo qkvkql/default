@@ -3,10 +3,10 @@ let fs = require('fs');
 let readMultipleFiles = require('read-multiple-files');
 
 let config = {
-    stationNumber: '51076', //站号n1，后面还有n2,n3
+    stationNumber: '51542', //站号n1，后面还有n2,n3
     sortFirst: 'low', //最低、最高
     target: 'min', //夜温、均温、昼温
-    showNumber: 10, //显示多少个结果
+    showNumber: 50, //显示多少个结果
     n2: '0',
     n3: '99999',
     noaaLocation: 'D:/NOAA Data/', //NOAA csv文件根目录
@@ -64,7 +64,10 @@ function Result(){
         let obj0 = arrOfCsv[0];
         let station0 = obj0.STATION;
         let name0 = obj0.NAME;
-        console.log('STATION: ' + station0 + ';\nNAME: ' + name0 + '\n');
+        let elevation0 = obj0.ELEVATION;
+        let latitude0 = obj0.LATITUDE;
+        let longitude0 = obj0.LONGITUDE;
+        console.log('站名: ' + name0 + ';\n站号: ' + station0 + '\n海拔：' + elevation0 + '\n纬度：' + latitude0 + '\n经度：' + longitude0 + '\n');
 
         for(let i = 0; i < config.showNumber; i++){
             let tempObj = arrOfCsv[i];
@@ -72,7 +75,7 @@ function Result(){
             let avg = TFC(tempObj.TEMP);
             let min = TFC(tempObj.MIN);
             let max = TFC(tempObj.MAX);
-            console.log(date + ':\nmin: ' + min + ';\tavg: ' + avg + ';\tmax: ' + max);
+            console.log(FN(i+1) + '\t' + date + '\tmin:' + min + ';\tavg:' + avg + ';\tmax:' + max);
         }
     }
     this.showLowestList = showLowestList;
@@ -157,4 +160,24 @@ function Csv(str){
 function TFC(fv){
     let cv = ((fv - 32) * (5/9)).toFixed(1);
     return cv;
+}
+//序号位数不够时前面补零
+function FN(n){
+    let showNumber = config.showNumber;
+    let result = '';
+    let preStr = '';
+    let zeroStr = '0';
+    let numberMax = Math.pow(10, showNumber.toString().length);
+    let w1 = n.toString().length;
+    let w2 = numberMax.toString().length;
+    if(w1 < w2){
+        let diff = w2 - w1;
+        for(let i = 0; i < diff; i++){
+            preStr += zeroStr;
+        }
+        result = preStr + n.toString();
+    }else{
+        result = n.toString();
+    }
+    return result;
 }
