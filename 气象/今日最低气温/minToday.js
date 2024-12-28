@@ -72,7 +72,7 @@ function fillTable(){
         //第4列：Ogimet逐日(UTC时间不同，结果也不同)
         let td3 = document.createElement('td');
         tr.appendChild(td3);
-        let btn1 = document.createElement('a');
+        let btn1 = document.createElement('button');
         //a1.setAttribute('href', getOgimetUrlD(i));
         btn1.innerText = 'Ogimet逐日';
         td3.appendChild(btn1);
@@ -81,16 +81,25 @@ function fillTable(){
         //第5列：Ogimet逐时(UTC时间不同，显示截止小时数也不同)
         let td4 = document.createElement('td');
         tr.appendChild(td4);
-        let btn2 = document.createElement('a');
+        let btn2 = document.createElement('button');
         //a2.setAttribute('href', getOgimetUrlH(i));
         btn2.innerText = 'Ogimet逐时';
+        btn2.setAttribute('tabindex', i + 1);
+        btn2.onfocus = () => {
+            btn2.style.color = '#ffffff';
+            btn2.style.backgroundColor = '#3a0ca3';
+        }
+        btn2.onblur = () => {
+            btn2.style.color = '#000000';
+            btn2.style.backgroundColor = '#4cc9f0';
+        }
         td4.appendChild(btn2);
         td4.onclick = () => {window.open(getOgimetUrlH(i), '_blank')};
 
         //第6列：Pogodailimat逐日。注意这个页面有预设时区，每日起始时间不一定是北京时间的00:00或02:00，虽然高低温逻辑是对的(相比ogimet的逐日页面)
         let td5 = document.createElement('td');
         tr.appendChild(td5);
-        let btn3 = document.createElement('a');
+        let btn3 = document.createElement('button');
         //a3.setAttribute('href', getPogodailimatUrlD(i));
         btn3.innerText = 'Pogodailimat逐日';
         td5.appendChild(btn3);
@@ -99,7 +108,7 @@ function fillTable(){
         //第7列：Pogodailimat逐时
         let td6 = document.createElement('td');
         tr.appendChild(td6);
-        let btn4 = document.createElement('a');
+        let btn4 = document.createElement('button');
         //a4.setAttribute('href', getPogodailimatUrlH(i));
         btn4.innerText = 'Pogodailimat逐时';
         td6.appendChild(btn4);
@@ -108,7 +117,7 @@ function fillTable(){
         //第8列：Pogodailimat气候
         let td7 = document.createElement('td');
         tr.appendChild(td7);
-        let btn5 = document.createElement('a');
+        let btn5 = document.createElement('button');
         //a5.setAttribute('href', getPogodailimatUrlClimate(i));
         btn5.innerText = 'Pogodailimat气候';
         td7.appendChild(btn5);
@@ -117,7 +126,7 @@ function fillTable(){
         //第9列：Pogodailimat月均
         let td8 = document.createElement('td');
         tr.appendChild(td8);
-        let btn6 = document.createElement('a');
+        let btn6 = document.createElement('button');
         //a6.setAttribute('href', getPogodailimatUrlMonthAvg(i));
         btn6.innerText = 'Pogodailimat月均';
         td8.appendChild(btn6);
@@ -129,18 +138,19 @@ function fillTable(){
 
 function setBtnStyle(btnArr){
     btnArr.forEach((e) => {
-        e.style.color = '#ffffff';
-        e.style.backgroundColor = '#3a0ca3';
-        e.style.padding = '8px';
+        e.style.color = '#000000';
+        e.style.backgroundColor = '#4cc9f0';
         e.addEventListener('mouseover', () => {
-            e.style.backgroundColor = '#7209b7';
+            e.style.color = '#ffffff';
+            e.style.backgroundColor = '#3a0ca3';
             e.style.cursor = 'pointer';
         });
         e.addEventListener('mousedown', () => {
             e.style.backgroundColor = '#f72585';
         });
         e.addEventListener('mouseleave', () => {
-            e.style.backgroundColor = '#3a0ca3';
+            e.style.color = '#000000';
+            e.style.backgroundColor = '#4cc9f0';
         });
     });
 }

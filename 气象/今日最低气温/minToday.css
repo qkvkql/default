@@ -43,3 +43,8 @@ td{
     border: 1px, solid, black;
     text-align: center;
 }
+
+button{
+    width: 98%;
+    height: 98%;
+}
