@@ -25,7 +25,8 @@ let stations = [
 	["阿勒泰",51076],
 	["乌鲁木齐",51463],
 	["巴音布鲁克",51542],
-	["呼和浩特",53463]
+	["呼和浩特",53463],
+    ["武汉",57494]
 ];
 
 let date = new Date().toISOString();
@@ -88,6 +89,9 @@ function fillTable(){
         btn2.onfocus = () => {
             btn2.style.color = '#ffffff';
             btn2.style.backgroundColor = '#3a0ca3';
+        }
+        btn2.onclick = () => {
+            btn2.style.backgroundColor = '#f72585';
         }
         btn2.onblur = () => {
             btn2.style.color = '#000000';
