@@ -30,6 +30,34 @@ let stations = [
 	["呼和浩特",53463],
     ["武汉",57494]
 ];
+let rp5Names = {
+    "30622": "Kachug",
+    "30636": "Barguzin",
+    "30673": "Mogocha",
+    "30781": "Uryupino",
+    "31329": "Ekimchan",
+    "31348": "Burukan",
+    "31478": "Sofiysk",
+    "31532": "Cekunda",
+    "31702": "Obluchye",
+    "36096": "Kyzyl",
+    "36259": "Kosh-Agach",
+    "36307": "Erzin",
+    "44203": "Rinchinlhumbe",
+    "44212": "Ulaangom",
+    "44221": "Gandan_Huryee",
+    "44224": "Tsetsen-Uul",
+    "44225": "Tosontsengel",
+    "44292": "Ulan_Bator",
+    "50136": "Xilinji",
+    "50434": "Tulihe",
+    "50527": "Zhengyang",
+    "51076": "Aletai",
+    "51463": "Urumqi",
+    "51542": "Baianbulak",
+    "53463": "Hohhot",
+    "57494": "Wuhan_(airport)"
+};
 
 let date = new Date().toISOString();
 let dateAndTimeArr = date.split('T');
@@ -76,7 +104,6 @@ function fillTable(){
         let td3 = document.createElement('td');
         tr.appendChild(td3);
         let btn1 = document.createElement('button');
-        //a1.setAttribute('href', getOgimetUrlD(i));
         btn1.innerText = 'Ogimet逐日';
         td3.appendChild(btn1);
         td3.onclick = () => {window.open(getOgimetUrlD(i), '_blank')};
@@ -85,7 +112,6 @@ function fillTable(){
         let td4 = document.createElement('td');
         tr.appendChild(td4);
         let btn2 = document.createElement('button');
-        //a2.setAttribute('href', getOgimetUrlH(i));
         btn2.innerText = 'Ogimet逐时';
         btn2.setAttribute('tabindex', i + 1);
         btn2.onfocus = () => {
@@ -106,7 +132,6 @@ function fillTable(){
         let td5 = document.createElement('td');
         tr.appendChild(td5);
         let btn3 = document.createElement('button');
-        //a3.setAttribute('href', getPogodailimatUrlD(i));
         btn3.innerText = 'Pogodailimat逐日';
         td5.appendChild(btn3);
         td5.onclick = () => {window.open(getPogodailimatUrlD(i), '_blank')};
@@ -115,7 +140,6 @@ function fillTable(){
         let td6 = document.createElement('td');
         tr.appendChild(td6);
         let btn4 = document.createElement('button');
-        //a4.setAttribute('href', getPogodailimatUrlH(i));
         btn4.innerText = 'Pogodailimat逐时';
         td6.appendChild(btn4);
         td6.onclick = () => {window.open(getPogodailimatUrlH(i), '_blank')};
@@ -124,7 +148,6 @@ function fillTable(){
         let td7 = document.createElement('td');
         tr.appendChild(td7);
         let btn5 = document.createElement('button');
-        //a5.setAttribute('href', getPogodailimatUrlClimate(i));
         btn5.innerText = 'Pogodailimat气候';
         td7.appendChild(btn5);
         td7.onclick = () => {window.open(getPogodailimatUrlClimate(i), '_blank')};
@@ -133,12 +156,19 @@ function fillTable(){
         let td8 = document.createElement('td');
         tr.appendChild(td8);
         let btn6 = document.createElement('button');
-        //a6.setAttribute('href', getPogodailimatUrlMonthAvg(i));
         btn6.innerText = 'Pogodailimat月均';
         td8.appendChild(btn6);
         td8.onclick = () => {window.open(getPogodailimatUrlMonthAvg(i), '_blank')};
 
-        setBtnStyle([btn1, btn2, btn3, btn4, btn5, btn6]);
+        //第10列：Pogodailimat月均
+        let td9 = document.createElement('td');
+        tr.appendChild(td9);
+        let btn7 = document.createElement('button');
+        btn7.innerText = 'rp5逐时';
+        td9.appendChild(btn7);
+        td9.onclick = () => {window.open(getRp5UrlH(i), '_blank')};
+
+        setBtnStyle([btn1, btn2, btn3, btn4, btn5, btn6, btn7]);
     }
 }
 
@@ -186,5 +216,9 @@ function getPogodailimatUrlClimate(c){
 }
 function getPogodailimatUrlMonthAvg(c){
     let url = "http://www.pogodaiklimat.ru/history/" + stations[c][1].toString() + ".htm";
+    return url;
+}
+function getRp5UrlH(c){
+    let url = "https://rp5.ru/Weather_archive_in_" + rp5Names[stations[c][1]];
     return url;
 }
