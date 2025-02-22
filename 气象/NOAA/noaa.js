@@ -25,7 +25,7 @@ app.listen(3000, function(){console.log("server is running on port 3000");})
 */
 
 const config = {
-    stationNumber: '44221', //站号n1，后面还有n2,n3
+    stationNumber: '54254', //站号n1，后面还有n2,n3
     sortFirst: 'low', //最低、最高( low or high )
     target: 'min', //夜温、均温、昼温( min, max or avg )
     showNumber: 20, //显示多少个结果
