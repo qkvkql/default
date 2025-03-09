@@ -25,23 +25,33 @@ app.listen(3000, function(){console.log("server is running on port 3000");})
 */
 
 const config = {
-    stationNumber: '31478', //站号n1，后面还有n2,n3
-    sortFirst: 'low', //最低、最高( low or high )
-    target: 'min', //夜温、均温、昼温( min, max or avg )
-    showNumber: 20, //显示多少个结果
+    stationNumber: '31338', //站号n1，后面还有n2,n3
+    order: 'asc', //asc(从小到大、从低到高，从早到晚), desc
+    item: 'min', //date, min, avg, max
+    showNumber: 10, //显示多少个结果
 
     month: {
-        ifShowAll: true,
+        ifSingleMonth: false,
         monthNumber: 1
     },
-    yearStart: '1991',
-    yearEnd: '2020',
 
     n2: '0',
     n3: '99999',
     noaaLocation: 'D:/NOAA Data/', //NOAA csv文件根目录
     yearStart: '1929', //起始年份，默认1929
-    yearEnd: '2025' //结束年份
+    yearEnd: '2025', //结束年份
+
+    options: [
+        'STATION',
+        'DATE',
+        'LATITUDE',
+        'LONGITUDE',
+        'ELEVATION',
+        'NAME',
+        'TEMP',
+        'MAX',
+        'MIN'
+    ]
 }
 
 //目标信息：站号、起止年份(最早开始年份：1929)
@@ -88,6 +98,7 @@ readMultipleFiles(new Set(paths), 'utf8').subscribe({
 
 //显示结果
 function Result(){
+    this.showLowestList = showLowestList;
     //极端低温
     function showLowestList(){
         let csv = new Csv(sourceStr);
@@ -96,21 +107,22 @@ function Result(){
         let obj0 = startArr[0];
         let station0 = obj0.STATION;
         let name0 = obj0.NAME;
-        let elevation0 = obj0.ELEVATION;
+        let elevation0 = obj0['ELEVATION(m)'];
         let latitude0 = obj0.LATITUDE;
         let longitude0 = obj0.LONGITUDE;
-        console.log('站名: ' + name0 + ';\n站号: ' + station0 + '\n海拔：' + elevation0 + '\n纬度：' + latitude0 + '\n经度：' + longitude0 + '\n');
+        console.log('\n站名: ' + name0 + ';\n站号: ' + config.stationNumber + '\n海拔：' + elevation0 + '\n纬度：' + latitude0 + '\n经度：' + longitude0 + '\n');
 
         for(let i = 0; i < config.showNumber; i++){
             let tempObj = startArr[i];
             let date = tempObj.DATE;
-            let avg = tempObj.TEMP === undefined ? undefined : (tempObj.TEMP).toFixed(1);
-            let min = tempObj.MIN === undefined ? undefined : (tempObj.MIN).toFixed(1);
-            let max = tempObj.MAX === undefined ? undefined : (tempObj.MAX).toFixed(1);
+            let min = tempObj.MIN === undefined ? undefined : (tempObj.MIN);
+            let avg = tempObj.AVG === undefined ? undefined : (tempObj.AVG);
+            let max = tempObj.MAX === undefined ? undefined : (tempObj.MAX);
             console.log(tools.FN(i+1, config.showNumber) + '\t' + date + '\tmin:' + min + ';\tavg:' + avg + ';\tmax:' + max);
         }
+        
+        //console.table(startArr);
     }
-    this.showLowestList = showLowestList;
 }
 
 //获取修正后的数组。检查、优化原始数据组，输出不含明显错误数据、用摄氏度表示气温、气温数据类型是数字的、正式开始用于统计的数组
@@ -118,35 +130,33 @@ function getStartArr(arr){
     let newArr = [];
     arr.forEach((v) => {
         let tools = new Tools();
-        let obj = v; //把对象v暂时赋值给obj
+        //let obj = v; //把对象v暂时赋值给obj
+        let obj = {};
+        obj['STATION'] = v['STATION'];
+        obj['DATE'] = v['DATE'];
+        obj['LATITUDE'] = v['LATITUDE'];
+        obj['LONGITUDE'] = v['LONGITUDE'];
+        obj['ELEVATION(m)'] = v['ELEVATION'];
+        obj['NAME'] = v['NAME'];
+        
         //判断气温是否在正常范围，然后转换成摄氏度
-        //均温
-        if(tools.isValidTempF(v.TEMP)){
-            let avg = tools.TFC(v.TEMP);
-            obj.TEMP = avg;
-        }else{
-            obj.TEMP = undefined;
-        }
         //低温
         if(tools.isValidTempF(v.MIN)){
-            let min = tools.TFC(v.MIN);
-            obj.MIN = min;
+            obj.MIN = tools.TFC(v.MIN).toFixed(1);
         }else{
             obj.MIN = undefined;
         }
+        //均温
+        if(tools.isValidTempF(v.TEMP)){
+            obj.AVG = tools.TFC(v.TEMP).toFixed(1);
+        }else{
+            obj.AVG = undefined;
+        }
         //高温
         if(tools.isValidTempF(v.MAX)){
-            let max = tools.TFC(v.MAX);
-            obj.MAX = max;
+            obj.MAX = tools.TFC(v.MAX).toFixed(1);
         }else{
             obj.MAX = undefined;
-        }
-        //露点温度
-        if(tools.isValidTempF(v.DEWP)){
-            let dewp = tools.TFC(v.DEWP);
-            obj.DEWP = dewp;
-        }else{
-            obj.DEWP = undefined;
         }
         //填装obj到新数组
         newArr.push(obj);
@@ -158,7 +168,14 @@ function getStartArr(arr){
 //CSV String to Array
 function Csv(str){
     let arrOfCsv = [];
-    let rowArr = str.split('\n');
+    let tempRowArr = str.split('\n');
+    let rowArr = [];
+    let regRowStr = /[\d\w]+/i; //行字符串必须有内容，不能只有引号
+    tempRowArr.forEach((v) => {
+        if(regRowStr.test(v)){
+            rowArr.push(v);
+        }
+    });
     let regExp = /(\"\,\")|(^\")|(\"$)/g;
 
     //标题行
@@ -181,12 +198,12 @@ function Csv(str){
     //获取csv行
     function getArrOfCsv(){
         rowArr.forEach((v) => {
-            let strOfRowCells = v.trim();
+            let strOfRows = v.trim();
             let arrayOfRowCells = [];
-            let tempArrOfRowCells = strOfRowCells.replace(regExp, '\t').split('\t');
-            tempArrOfRowCells.forEach((v) => {
-                if(v.length > 0){
-                    arrayOfRowCells.push(v.trim());
+            let tempArrOfRowCells = strOfRows.replace(regExp, '\t').split('\t');
+            tempArrOfRowCells.forEach((v1) => {
+                if(v1.length > 0){
+                    arrayOfRowCells.push(v1.trim());
                 }
             });
 
@@ -194,40 +211,50 @@ function Csv(str){
             let tempRegExp = new RegExp('-' + strOfMonthNumber + '-', 'i');
             //如果不是某个csv文件的标题行
             if(arrayOfRowCells[0] !== 'STATION'){
+                let lenOfRowArr = arrayOfRowCells.length;
                 let tempObj = {};
-                for(let i = 0; i < arrayOfRowCells.length; i++){
-                    if(config.month.ifShowAll === false){
-                        if(tempRegExp.test(arrayOfRowCells[1])){
+                if(config.month.ifSingleMonth){
+                    if(tempRegExp.test( arrayOfRowCells[1] )){
+                        for(let i=0; i<lenOfRowArr; i++){
                             tempObj[getArrOfTitles()[i]] = arrayOfRowCells[i];
                         }
-                    }else{
+                        arrOfCsv.push(tempObj);
+                    }
+                }else{
+                    for(let i=0; i<lenOfRowArr; i++){
                         tempObj[getArrOfTitles()[i]] = arrayOfRowCells[i];
                     }
+                    arrOfCsv.push(tempObj);
                 }
-                arrOfCsv.push(tempObj);
             }
         });
 
         //根据config设置决定排序方式
-        let ct = config.target;
-        let cs = config.sortFirst;
-        if(ct === 'min'){
-            if(cs === 'low'){
+        let ci = config.item;
+        let co = config.order;
+        if(ci === 'min'){
+            if(co === 'asc'){
                 arrOfCsv.sort((a, b) => a.MIN - b.MIN);
-            }else if(cs === 'high'){
+            }else if(co === 'desc'){
                 arrOfCsv.sort((a, b) => b.MIN - a.MIN);
             }
-        }else if(ct === 'avg'){
-            if(cs === 'low'){
+        }else if(ci === 'avg'){
+            if(co === 'asc'){
                 arrOfCsv.sort((a, b) => a.TEMP - b.TEMP);
-            }else if(cs === 'high'){
+            }else if(co === 'desc'){
                 arrOfCsv.sort((a, b) => b.TEMP - a.TEMP);
             }
-        }else if(ct === 'max'){
-            if(cs === 'low'){
+        }else if(ci === 'max'){
+            if(co === 'asc'){
                 arrOfCsv.sort((a, b) => a.MAX - b.MAX);
-            }else if(cs === 'high'){
+            }else if(co === 'desc'){
                 arrOfCsv.sort((a, b) => b.MAX - a.MAX);
+            }
+        }else if(ci === 'date'){
+            if(co === 'asc'){
+                arrOfCsv.sort((a, b) => Date.parse(a.DATE) - Date.parse(b.DATE));
+            }else if(co === 'desc'){
+                arrOfCsv.sort((a, b) => Date.parse(b.DATE) - Date.parse(a.DATE));
             }
         }
         return arrOfCsv;
