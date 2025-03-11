@@ -25,9 +25,9 @@ app.listen(3000, function(){console.log("server is running on port 3000");})
 */
 
 const config = {
-    stationNumber: '30473', //站号n1，后面还有n2,n3
+    stationNumber: '51076', //站号n1，后面还有n2,n3
 
-    yearStart: '1900', //起始年份，默认1929
+    yearStart: '1929', //起始年份，默认1929
     yearEnd: '', //结束年份，为空则是当前年份
     month: 0, //0 = 全年, 1 = 一月, ... , 12 = 十二月
     
@@ -111,7 +111,7 @@ function Result(){
     //极端低温
     function consoleResult(){
         let csv = new Csv(sourceStr);
-        let startArr = getArrOfSelectedColumns(csv.getSortedArrOfCsv().arr);
+        let startArr = csv.getSortedArrOfCsv().arr; //getArrOfSelectedColumns(csv.getSortedArrOfCsv().arr);
 
         let obj0 = startArr[0];
         //let station0 = obj0.STATION;
@@ -121,7 +121,7 @@ function Result(){
         let lon = obj0['LONGITUDE'];
         
         //这里整理一下年份console格式，都是简单细活，没啥技术含量
-        console.log('\n(' + y1 + '-' + y2 + ') | 共计 ' + fileCount + ' 年、' + csv.getSortedArrOfCsv().totalDaysBeforeSort + ' 天 有记录');
+        console.log('\n(' + y1 + '-' + y2 + ') | 共 ' + fileCount + ' 年、(筛)' + startArr.length + '/(总)' + csv.getSortedArrOfCsv().totalDaysBeforeSort + ' 天');
         let strA = ''; //输出年，多行str
         let cnt = 0; //计数
         arrOfRecordedYears.forEach((v) => {
@@ -134,9 +134,8 @@ function Result(){
             }
         });
         console.log(strA);
-        console.log('\n' + config.stationNumber +' | '+elev+'(m) | (' + lat + ', ' + lon + ')');
-        console.log(name);
-        console.log('共 ' + startArr.length + ' 条记录符合筛选条件\n');
+        console.log('\n站号 ' + config.stationNumber + ' | 站名 ' + name);
+        console.log('海拔 ' + elev + '(m) | 坐标 (' + lat + ', ' + lon + ')\n');
 
         for(let i = 0; i < config.showNumber; i++){
             let tempObj = startArr[i];
@@ -155,7 +154,7 @@ function Result(){
 }
 
 //选择需要的列比如气温相关列，舍弃不需要的列比如风速、降水等
-function getArrOfSelectedColumns(arr){
+/* function getArrOfSelectedColumns(arr){
     let newArr = [];
     arr.forEach((v) => {
         let obj = {};
@@ -166,7 +165,7 @@ function getArrOfSelectedColumns(arr){
         newArr.push(obj);
     });
     return newArr;
-}
+} */
 
 //获取原始数组。将读取的多个文件内容sourceStr放入数组sourceArr中
 //CSV String to Array
@@ -235,14 +234,25 @@ function Csv(str){
                 }
             }
         });
-        
+
+        //剔除不需要的列，保留需要的列，缩小对象数组体积，提高效率
+        let newArr = [];
         arrOfCsv.forEach((v) => {
+            let obj = {};
+            config.options.forEach((vo) => {
+                obj[vo] = v[vo];
+            });
+            newArr.push(obj);
+        });
+        
+        //检查气温相关项的值，是否为空、是否正常，并转换温度单位
+        newArr.forEach((v) => {
             v['MIN'] = tools.isValidTempF(v['MIN']) ? tools.TFC(v['MIN']).toFixed(1) : undefined;
             v['TEMP'] = tools.isValidTempF(v['TEMP']) ? tools.TFC(v['TEMP']).toFixed(1) : undefined;
             v['MAX'] = tools.isValidTempF(v['MAX']) ? tools.TFC(v['MAX']).toFixed(1) : undefined;
         });
 
-        //根据config设置决定排序方式
+        //根据config决定排序方式
         let ci = config.item;
         let co = config.order;
         let sortElements = [
@@ -250,25 +260,24 @@ function Csv(str){
             { 'condition': ci === 'avg', 'attrName': 'TEMP' },
             { 'condition': ci === 'max', 'attrName': 'MAX' }
         ];
-
+        //按气温相关列(低温、均温、高温)的值排序，正序或倒序
         sortElements.forEach((vs, is) => {
             if(vs['condition']){
-                arrOfCsv.sort((a, b) => {
+                newArr.sort((a, b) => {
                     return tools.sortUndefinedObj( a[`${sortElements[is]['attrName']}`], b[`${sortElements[is]['attrName']}`], config.order);
                 });    
             }
         });
-
-        //按记录日期顺序排序
+        //按记录日期顺序排序，需要先将日期转化为毫秒，再排序
         if(ci === 'date'){
             if(co === 'asc'){
-                arrOfCsv.sort((a, b) => Date.parse(a.DATE) - Date.parse(b.DATE));
+                newArr.sort((a, b) => Date.parse(a.DATE) - Date.parse(b.DATE));
             }else if(co === 'desc'){
-                arrOfCsv.sort((a, b) => Date.parse(b.DATE) - Date.parse(a.DATE));
+                newArr.sort((a, b) => Date.parse(b.DATE) - Date.parse(a.DATE));
             }
         }
         return {
-            'arr': arrOfCsv,
+            'arr': newArr,
             'totalDaysBeforeSort': totalDays
         };
     }
