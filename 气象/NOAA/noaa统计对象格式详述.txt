@@ -1,0 +1,166 @@
+	总计100多个细分属性
+某年某月： 共23个细分属性
+let statObjForYM = {
+	'1969-01': {
+		'dayCount': 27,
+		'dayCountForMin': 25,
+		'dayCountForAvg': 25,
+		'dayCountForMax': 25,
+		'minArr': [],
+		'avgArr': [],
+		'maxArr': [],
+		'min': undefined,
+		'minForAvg': undefined,
+		'minForMax': undefined,
+		'avgForMin': undefined,
+		'avg': undefined,
+		'avgForMax': undefined,
+		'maxForMin': undefined,
+		'maxForAvg': undefined,
+		'max': undefined,
+		'valid': {
+			'avgForMin': undefined,
+			'avg': undefined,
+			'avgForMax': undefined
+		}
+	}
+}
+
+某个月份： 共30个细分属性
+let statObjForOnlyMonth = {
+	'01': {
+		'dayCount': 9985,
+		'YearCount': 30,
+		'dayCountForMin': 25,
+		'dayCountForAvg': 25,
+		'dayCountForMax': 25,
+		'yearCountForMin': 25,
+		'yearCountForAvg': 25,
+		'yearCountForMax': 25,
+		'minArr': [],
+		'avgArr': [],
+		'maxArr': [],
+		'min': undefined,
+		'minForAvg': undefined,
+		'minForMax': undefined,
+		'avgForMin': undefined,
+		'avg': undefined,
+		'avgForMax': undefined,
+		'maxForMin': undefined,
+		'maxForAvg': undefined,
+		'max': undefined,
+		'valid': {
+			'dayCountForMin': 25,
+			'dayCountForAvg': 25,
+			'dayCountForMax': 25,
+			'yearCountForMin': 25,
+			'yearCountForAvg': 25,
+			'yearCountForMax': 25,
+			'avgForMin': undefined,
+			'avg': undefined,
+			'avgForMax': undefined
+		}
+	}
+}
+
+某年： 共30个细分属性
+let statObjForOnlyYear = {
+	'1969': {
+		'dayCount': 365,
+		'monthCount': 12,
+		'dayCountForMin': 25,
+		'dayCountForAvg': 25,
+		'dayCountForMax': 25,
+		'monthCountForMin': 12,
+		'monthCountForAvg': 11,
+		'monthCountForMax': 9,
+		'minArr': [],
+		'avgArr': [],
+		'maxArr': [],
+		'min': undefined,
+		'minForAvg': undefined,
+		'minForMax': undefined,
+		'avgForMin': undefined,
+		'avg': undefined,
+		'avgForMax': undefined,
+		'maxForMin': undefined,
+		'maxForAvg': undefined,
+		'max': undefined,
+		'valid': {
+			'dayCountForMin': 25,
+			'dayCountForAvg': 25,
+			'dayCountForMax': 25,
+			'monthCountForMin': 12, //必须=12才统计avgForMin
+			'monthCountForAvg': 11, //必须=12才统计avgForAvg
+			'monthCountForMax': 9, //必须=12才统计avgForMax
+			'avgForMin': undefined, //有效月数必须是12，否则undefined
+			'avg': undefined, //有效月数必须是12，否则undefined
+			'avgForMax': undefined //有效月数必须是12，否则undefined
+		}
+	}
+}
+
+某月某日： 共17个细分属性
+let statObjForMD = {
+	'01-20': {
+		'yearCount': 27,
+		'yearCountForMin': 25,
+		'yearCountForAvg': 25,
+		'yearCountForMax': 25,
+		'minArr': [],
+		'avgArr': [],
+		'maxArr': [],
+		'min': undefined,
+		'minForAvg': undefined,
+		'minForMax': undefined,
+		'avgForMin': undefined,
+		'avg': undefined,
+		'avgForMax': undefined,
+		'maxForMin': undefined,
+		'maxForAvg': undefined,
+		'max': undefined,
+		'before': {
+			'min': undefined,
+			'minForAvg': undefined,
+			'minForMax': undefined,
+			'avgForMin': undefined,
+			'avg': undefined,
+			'avgForMax': undefined,
+			'maxForMin': undefined,
+			'maxForAvg': undefined,
+			'max': undefined
+		},
+		'after': {
+			'min': undefined,
+			'minForAvg': undefined,
+			'minForMax': undefined,
+			'avgForMin': undefined,
+			'avg': undefined,
+			'avgForMax': undefined,
+			'maxForMin': undefined,
+			'maxForAvg': undefined,
+			'max': undefined
+		}
+	}
+}
+
+连续记录： 
+let statObjForConsec = {
+	'162': [
+		{
+			'dateStart': '1960-01-20',
+			'dateEnd': '1960-02-13'
+		},
+		{
+			'dateStart': '1965-01-20',
+			'dateEnd': '1965-02-13'
+		}
+	],
+	'159': [
+		{
+			'dateStart': '1960-01-20',
+			'dateEnd': '1960-02-13'
+		}
+	]
+	...
+}
