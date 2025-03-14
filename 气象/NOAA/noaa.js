@@ -7,15 +7,15 @@ const ejs = require("ejs");
 
 //配置对象，用于设置筛选条件
 const config = {
-    stationNumber: '50434', //站号n1，后面还有n2,n3
+    stationNumber: '31338', //站号n1，后面还有n2,n3
 
-    dateStart: '1929-01-01',
-    dateEnd: '2025-12-31',
+    dateStart: '1948-01-01',
+    dateEnd: '1958-12-31',
     month: 0, //0 = 全年, 1 = 一月, ... , 12 = 十二月
     
     order: 'asc', //asc(从小到大、从低到高，从早到晚), desc
     item: 'min', //date, min, avg, max
-    showNumber: 10, //显示多少个结果
+    showNumber: 30, //显示多少个结果
 
     monthValidCount: 20, //某个月的avg/min/max至少有20个正常记录，才算一个有效avg/min/max月,才会计算有参考价值的月度均值
     consec: { 
@@ -158,18 +158,36 @@ function consoleResult(){
 
     //console月均温相关项
     function consoleM(){
-        let ms = config.month === 0 ? '01' : tools.FN(config.month, 12);
-        console.log('\nMONTHLY: MONTH = ' + ms);
-        console.log(
-            'FOR ALL RECORDS:\navgOfMin:\t' + stat_M[ms].avgForMin  + ' (Y' + stat_M[ms].yearCountForMin + '|sum/' + stat_M[ms].dayCountForMin + ')  ',
-            'avg: ' + stat_M[ms].avg  + ' (Y' + stat_M[ms].yearCountForAvg + '|sum/' + stat_M[ms].dayCountForAvg + ')  ',
-            'avgOfMax: ' + stat_M[ms].avgForMax + ' (Y' + stat_M[ms].yearCountForMax + '|sum/' + stat_M[ms].dayCountForMax + ')'
-        );
-        console.log(
-            'FOR MONTHLY DAYS >= ' + config.monthValidCount + ':\navgOfMin:\t' + stat_M[ms].valid.avgForMin  + ' (Y' + stat_M[ms].valid.yearCountForMin + '|sum/' + stat_M[ms].valid.dayCountForMin + ')  ',
-            'avg: ' + stat_M[ms].valid.avg  + ' (Y' + stat_M[ms].valid.yearCountForAvg + '|sum/' + stat_M[ms].valid.dayCountForAvg + ')  ',
-            'avgOfMax: ' + stat_M[ms].valid.avgForMax + ' (Y' + stat_M[ms].valid.yearCountForMax + '|sum/' + stat_M[ms].valid.dayCountForMax + ')'
-        );
+        if(config.month > 0){
+            let ms = tools.FN(config.month, 12);
+            console.log('\nMONTHLY: MONTH = ' + ms);
+            console.log(
+                'FOR ALL RECORDS:\navgOfMin:\t' + stat_M[ms].avgForMin  + ' (Y' + stat_M[ms].yearCountForMin + '|sum/' + stat_M[ms].dayCountForMin + ')  ',
+                'avg: ' + stat_M[ms].avg  + ' (Y' + stat_M[ms].yearCountForAvg + '|sum/' + stat_M[ms].dayCountForAvg + ')  ',
+                'avgOfMax: ' + stat_M[ms].avgForMax + ' (Y' + stat_M[ms].yearCountForMax + '|sum/' + stat_M[ms].dayCountForMax + ')'
+            );
+            console.log(
+                'FOR MONTHLY DAYS >= ' + config.monthValidCount + ':\navgOfMin:\t' + stat_M[ms].valid.avgForMin  + ' (Y' + stat_M[ms].valid.yearCountForMin + '|sum/' + stat_M[ms].valid.dayCountForMin + ')  ',
+                'avg: ' + stat_M[ms].valid.avg  + ' (Y' + stat_M[ms].valid.yearCountForAvg + '|sum/' + stat_M[ms].valid.dayCountForAvg + ')  ',
+                'avgOfMax: ' + stat_M[ms].valid.avgForMax + ' (Y' + stat_M[ms].valid.yearCountForMax + '|sum/' + stat_M[ms].valid.dayCountForMax + ')'
+            );
+        }else{
+            //console.log(tools.getArrOfNumberMonthBegin(11));
+            tools.getArrOfNumberMonthBegin(11).forEach((vm1) => {
+                let ms = tools.FN(vm1, 12);
+                console.log('\nMONTHLY: MONTH = ' + ms);
+                console.log(
+                    'FOR ALL RECORDS:\navgOfMin:\t' + stat_M[ms].avgForMin  + ' (Y' + stat_M[ms].yearCountForMin + '|sum/' + stat_M[ms].dayCountForMin + ')  ',
+                    'avg: ' + stat_M[ms].avg  + ' (Y' + stat_M[ms].yearCountForAvg + '|sum/' + stat_M[ms].dayCountForAvg + ')  ',
+                    'avgOfMax: ' + stat_M[ms].avgForMax + ' (Y' + stat_M[ms].yearCountForMax + '|sum/' + stat_M[ms].dayCountForMax + ')'
+                );
+                console.log(
+                    'FOR MONTHLY DAYS >= ' + config.monthValidCount + ':\navgOfMin:\t' + stat_M[ms].valid.avgForMin  + ' (Y' + stat_M[ms].valid.yearCountForMin + '|sum/' + stat_M[ms].valid.dayCountForMin + ')  ',
+                    'avg: ' + stat_M[ms].valid.avg  + ' (Y' + stat_M[ms].valid.yearCountForAvg + '|sum/' + stat_M[ms].valid.dayCountForAvg + ')  ',
+                    'avgOfMax: ' + stat_M[ms].valid.avgForMax + ' (Y' + stat_M[ms].valid.yearCountForMax + '|sum/' + stat_M[ms].valid.dayCountForMax + ')'
+                );
+            });
+        }
     }
     //console AVG BY YM
     function consoleYM(){
@@ -177,10 +195,11 @@ function consoleResult(){
         tempYMArr.sort((a, b) => {
             return stat_YM[a]['avg'] - stat_YM[b]['avg'];
         });
-        console.log('SEPARATELY:');
-        tempYMArr.forEach((vym1) => {
+        console.log('\nEVERY MONTH:');
+        tempYMArr.forEach((vym1, index) => {
             console.log(
-                vym1 + ':   ' + stat_YM[vym1].avgForMin + ' (sum/' + stat_YM[vym1].dayCountForMin + ')  '
+                tools.FN(index + 1, tempYMArr.length) + '   '
+                + vym1 + '  ' + stat_YM[vym1].avgForMin + ' (sum/' + stat_YM[vym1].dayCountForMin + ')  '
                 + stat_YM[vym1].avg + ' (sum/' + stat_YM[vym1].dayCountForAvg + ')  '
                 + stat_YM[vym1].avgForMax + ' (sum/' + stat_YM[vym1].dayCountForMax + ')'
             );
@@ -581,6 +600,18 @@ function Csv(str){
 
 //所有需要的各类简单工具函数
 function Tools(){
+    //创建一个包含12个月份数字的数组，从特定月份开头，比如从11开头，11,12,1,2,3...
+    function getArrOfNumberMonthBegin(startN){
+        let tempNArr = [];
+        for(let i=1; i<=12; i++){
+            if(i > (12 - startN + 1)){
+                tempNArr.push(i - (12 - startN + 1));
+            }else{
+                tempNArr.push(i + startN - 1);
+            }
+        }
+        return tempNArr;
+    }
     //求均值
     function getAvgForNumberArr(arr){
         let sum = 0;
@@ -659,6 +690,7 @@ function Tools(){
         return cv;
     }
 
+    this.getArrOfNumberMonthBegin = getArrOfNumberMonthBegin,
     this.getAvgForNumberArr = getAvgForNumberArr;
     this.getDateDiff = getDateDiff;
     this.getCurrentDate = getCurrentDate;
