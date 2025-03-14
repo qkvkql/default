@@ -7,13 +7,11 @@ const ejs = require("ejs");
 
 //配置对象，用于设置筛选条件
 const config = {
-    stationNumber: '31338', //站号n1，后面还有n2,n3
+    stationNumber: '50434', //站号n1，后面还有n2,n3
 
-    dateStart: '1961-01-01',
-    dateEnd: '1990-12-31',
-    //yearStart: '1929', //起始年份，默认1929
-    //yearEnd: '', //结束年份，为空则是当前年份
-    month: 1, //0 = 全年, 1 = 一月, ... , 12 = 十二月
+    dateStart: '1929-01-01',
+    dateEnd: '2025-12-31',
+    month: 0, //0 = 全年, 1 = 一月, ... , 12 = 十二月
     
     order: 'asc', //asc(从小到大、从低到高，从早到晚), desc
     item: 'min', //date, min, avg, max
@@ -109,29 +107,39 @@ readMultipleFiles(new Set(paths), 'utf8').subscribe({
         sourceStr += result.contents;
     },
     complete(){
-        let result = new Result();
-        result.consoleResult();
+        let result = consoleResult();
+        result.station();
+        result.range();
+        result.M();
+        result.YM();
+        result.list();
     }
 });
 
-//显示结果
-function Result(){
-    this.consoleResult = consoleResult;
-    //console打印结果
-    function consoleResult(){
-        let csv = new Csv(sourceStr);
-        let startObj = csv.getSortedArrOfCsv();
+//console结果
+function consoleResult(){
+    let csv = new Csv(sourceStr);
+    let startObj = csv.getSortedArrOfCsv();
+    let stat_YM = startObj.stat_YM;
+    let stat_M = startObj.stat_M;
 
-        let obj0 = startObj.arr[0];
-        //let station0 = obj0.STATION;
-        let name = obj0['NAME'];
-        let elev = obj0['ELEVATION'];
-        let lat = obj0['LATITUDE'];
-        let lon = obj0['LONGITUDE'];
-        
-        //这里整理一下年份console格式，都是简单细活，没啥技术含量
+    let obj0 = startObj.arr[0];
+    //let station0 = obj0.STATION;
+    let name = obj0['NAME'];
+    let elev = obj0['ELEVATION'];
+    let lat = obj0['LATITUDE'];
+    let lon = obj0['LONGITUDE'];
+    
+    //站点信息
+    function consoleStation(){
+        console.log('\n' + config.stationNumber + ' | ' + name);
+        console.log(elev + '(m) | ( ' + lat + ', ' + lon + ' )');
+    }
+
+    //这里整理一下年份console格式，都是简单细活，没啥技术含量
+    function consoleRange(){
         console.log('\nDATE RANGE: [ ' + d1 + ', ' + d2 + ' ]');
-        console.log('YEAR(S) INVOLVED: ' + + fileCount);
+        console.log('YEARS RECORDED: ' + + fileCount);
         let strA = ''; //输出年，多行str
         let cnt = 0; //计数
         arrOfRecordedYears.forEach((v) => {
@@ -144,12 +152,44 @@ function Result(){
             }
         });
         console.log(strA);
-        console.log('DAY(S) RECORDED: ' + startObj.totalDaysBeforeSort);
-        console.log('DAY(S) SELECTED: ' + startObj.arr.length);
-        //站点信息
-        console.log('\n' + config.stationNumber + ' | ' + name);
-        console.log(elev + '(m) | ( ' + lat + ', ' + lon + ' )\n');
+        console.log('DAYS RECORDED: ' + startObj.totalDaysBeforeSort);
+        console.log('DAYS SELECTED: ' + startObj.arr.length);
+    }
 
+    //console月均温相关项
+    function consoleM(){
+        let ms = config.month === 0 ? '01' : tools.FN(config.month, 12);
+        console.log('\nMONTHLY: MONTH = ' + ms);
+        console.log(
+            'FOR ALL RECORDS:\navgOfMin:\t' + stat_M[ms].avgForMin  + ' (Y' + stat_M[ms].yearCountForMin + '|sum/' + stat_M[ms].dayCountForMin + ')  ',
+            'avg: ' + stat_M[ms].avg  + ' (Y' + stat_M[ms].yearCountForAvg + '|sum/' + stat_M[ms].dayCountForAvg + ')  ',
+            'avgOfMax: ' + stat_M[ms].avgForMax + ' (Y' + stat_M[ms].yearCountForMax + '|sum/' + stat_M[ms].dayCountForMax + ')'
+        );
+        console.log(
+            'FOR MONTHLY DAYS >= ' + config.monthValidCount + ':\navgOfMin:\t' + stat_M[ms].valid.avgForMin  + ' (Y' + stat_M[ms].valid.yearCountForMin + '|sum/' + stat_M[ms].valid.dayCountForMin + ')  ',
+            'avg: ' + stat_M[ms].valid.avg  + ' (Y' + stat_M[ms].valid.yearCountForAvg + '|sum/' + stat_M[ms].valid.dayCountForAvg + ')  ',
+            'avgOfMax: ' + stat_M[ms].valid.avgForMax + ' (Y' + stat_M[ms].valid.yearCountForMax + '|sum/' + stat_M[ms].valid.dayCountForMax + ')'
+        );
+    }
+    //console AVG BY YM
+    function consoleYM(){
+        let tempYMArr = Object.keys(stat_YM);
+        tempYMArr.sort((a, b) => {
+            return stat_YM[a]['avg'] - stat_YM[b]['avg'];
+        });
+        console.log('SEPARATELY:');
+        tempYMArr.forEach((vym1) => {
+            console.log(
+                vym1 + ':   ' + stat_YM[vym1].avgForMin + ' (sum/' + stat_YM[vym1].dayCountForMin + ')  '
+                + stat_YM[vym1].avg + ' (sum/' + stat_YM[vym1].dayCountForAvg + ')  '
+                + stat_YM[vym1].avgForMax + ' (sum/' + stat_YM[vym1].dayCountForMax + ')'
+            );
+        });
+    }
+
+    //逐日列出
+    function consoleList(){
+        console.log('\nDAILY LIST: SORT BY ' + config.item.toUpperCase() + ', ' + config.order.toUpperCase());
         for(let i = 0; i < config.showNumber; i++){
             if(!startObj.arr[i]){ break; }//如果筛选出的天数小于预定展示天数，直接结束循环
             let tempObj = startObj.arr[i];
@@ -160,10 +200,17 @@ function Result(){
             let avgAttr = tempObj['TEMP_ATTRIBUTES'] === undefined ? undefined : tempObj['TEMP_ATTRIBUTES'];
             console.log(tools.FN(i+1, config.showNumber) + '\t' + date + '\tmin: ' + min + '\tavg: ' + avg + '\tmax: ' + max + '\t\t avg = sum / ' + avgAttr);
         }
-        
-        if(config.consoleAll){
-            console.table(startObj.arr);
-        }
+    }
+
+    //console对象数组内的所有元素
+    if(config.consoleAll){ console.table(startObj.arr); }
+
+    return {
+        'station': consoleStation,
+        'range': consoleRange,
+        'M': consoleM,
+        'YM': consoleYM,
+        'list': consoleList
     }
 }
 
@@ -208,9 +255,6 @@ function Csv(str){
         let stat_M = {}; //某个月份，比如'01'
         let arrOfMonthStr = []; //月份字符数组，12个元素
         for(let i=1; i<=12; i++){ arrOfMonthStr.push(tools.FN(i, 12)); }
-        arrOfMonthStr.forEach((v) => {
-            stat_M[v] = {};
-        });
 
         let stat_Y = {}; //某年，比如'1969'
         let stat_MD = {}; //某月某日，比如'01-20'
@@ -279,9 +323,49 @@ function Csv(str){
         /************************ START START ************************/
         /************************ START START ************************/
         //临时存储对象
-        let vObj_YM = {}; //某年某月
-        let vObj_M = {}; //某个月份
-        let vObj_Y = {}; //某年
+        
+        //某年某月
+        let vObj_YM = {};
+        
+        //某个月份
+        arrOfMonthStr.forEach((v) => {
+            stat_M[v] = {};
+            stat_M[v].dayCount = 0;
+            stat_M[v].yearArr = [],
+            stat_M[v].yearCount = 0;
+            stat_M[v].dayCountForMin = 0;
+            stat_M[v].dayCountForAvg = 0;
+            stat_M[v].dayCountForMax = 0;
+            stat_M[v].minYearArr = [],
+            stat_M[v].avgYearArr = [],
+            stat_M[v].maxYearArr = [],
+            stat_M[v].yearCountForMin = 0;
+            stat_M[v].yearCountForAvg = 0;
+            stat_M[v].yearCountForMax = 0;
+            stat_M[v].minArr = [];
+            stat_M[v].avgArr = [];
+            stat_M[v].maxArr = [];
+            stat_M[v].valid = {
+                'minArr': [],
+                'avgArr': [],
+                'maxArr': [],
+                'dayCountForMin': 0,
+                'dayCountForAvg': 0,
+                'dayCountForMax': 0,
+                'minYearArr': [],
+                'avgYearArr': [],
+                'maxYearArr': [],
+                'yearCountForMin': 0,
+                'yearCountForAvg': 0,
+                'yearCountForMax': 0,
+                'avgForMin': undefined,
+                'avg': undefined,
+                'avgForMax': undefined
+            }
+        }); //给每个月份key装填value
+        
+        //某年
+        let vObj_Y = {};
         let vObj_MD = {}; //某月某日
         let vObj_consec = {}; //连续记录
         let consec_count = 0;
@@ -291,7 +375,6 @@ function Csv(str){
 
         newArr.forEach((v) => {
             let temp_YMD_Arr = v['DATE'].split('-');
-            
             //日期片段
             let temp_YM_Str = temp_YMD_Arr[0] + '-' + temp_YMD_Arr[1];
             let temp_M_Str = temp_YMD_Arr[1];
@@ -309,6 +392,9 @@ function Csv(str){
                 vObj_YM.avgArr = [];
                 vObj_YM.maxArr = [];
                 vObj_YM.valid = {
+                    'minValid': false,
+                    'avgValid': false,
+                    'maxValid': false,
                     'avgForMin': undefined,
                     'avg': undefined,
                     'avgForMax': undefined
@@ -322,7 +408,10 @@ function Csv(str){
                 vObj_YM.min = Math.min(...vObj_YM.minArr);
                 vObj_YM.avgForMin = tools.getAvgForNumberArr(vObj_YM.minArr);
                 vObj_YM.maxForMin = Math.max(...vObj_YM.minArr);
-                if(vObj_YM.minArr.length >= config.monthValidCount){vObj_YM.valid.avgForMin = tools.getAvgForNumberArr(vObj_YM.minArr)}
+                if(vObj_YM.minArr.length >= config.monthValidCount){
+                    vObj_YM.valid.minValid = true;
+                    vObj_YM.valid.avgForMin = tools.getAvgForNumberArr(vObj_YM.minArr);
+                }
             }
             if(v['TEMP'] !== undefined){
                 vObj_YM.avgArr.push( Number(v['TEMP']) );
@@ -330,7 +419,10 @@ function Csv(str){
                 vObj_YM.minForAvg = Math.min(...vObj_YM.avgArr);
                 vObj_YM.avg = tools.getAvgForNumberArr(vObj_YM.avgArr);
                 vObj_YM.maxForAvg = Math.max(...vObj_YM.avgArr);
-                if(vObj_YM.avgArr.length >= config.monthValidCount){vObj_YM.valid.avg = tools.getAvgForNumberArr(vObj_YM.avgArr)}
+                if(vObj_YM.avgArr.length >= config.monthValidCount){
+                    vObj_YM.valid.avgValid = true;
+                    vObj_YM.valid.avg = tools.getAvgForNumberArr(vObj_YM.avgArr);
+                }
             }
             if(v['MAX'] !== undefined){
                 vObj_YM.maxArr.push( Number(v['MAX']) );
@@ -338,12 +430,100 @@ function Csv(str){
                 vObj_YM.minForMax = Math.min(...vObj_YM.maxArr);
                 vObj_YM.avgForMax = tools.getAvgForNumberArr(vObj_YM.maxArr);
                 vObj_YM.max = Math.max(...vObj_YM.maxArr);
-                if(vObj_YM.maxArr.length >= config.monthValidCount){vObj_YM.valid.avgForMax = tools.getAvgForNumberArr(vObj_YM.maxArr)}
+                if(vObj_YM.maxArr.length >= config.monthValidCount){
+                    vObj_YM.valid.maxValid = true;
+                    vObj_YM.valid.avgForMax = tools.getAvgForNumberArr(vObj_YM.maxArr);
+                }
             }
             stat_YM[temp_YM_Str] = vObj_YM; //完成一个键值对
 
             //某个月份
-            if(!stat_M.hasOwnProperty(temp_M_Str)){ stat_M[temp_M_Str] = {}; }
+            if( !(arrOfMonthStr.includes(temp_M_Str)) ){console.log('月份Str错误！');} //确保月份Str不出错
+            stat_M[temp_M_Str].dayCount += 1;
+            if( !(stat_M[temp_M_Str].yearArr.includes(temp_Y_Str)) ){
+                stat_M[temp_M_Str].yearArr.push(temp_Y_Str);
+                stat_M[temp_M_Str].yearCount += 1;
+            }
+            if(v['MIN'] !== undefined){
+                stat_M[temp_M_Str].minArr.push( Number(v['MIN']) );
+                stat_M[temp_M_Str].dayCountForMin += 1;
+                if( !(stat_M[temp_M_Str].minYearArr.includes(temp_Y_Str)) ){
+                    stat_M[temp_M_Str].minYearArr.push(temp_Y_Str);
+                    stat_M[temp_M_Str].yearCountForMin += 1;
+                }
+                stat_M[temp_M_Str].min = Math.min(...stat_M[temp_M_Str].minArr);
+                stat_M[temp_M_Str].avgForMin = tools.getAvgForNumberArr(stat_M[temp_M_Str].minArr);
+                stat_M[temp_M_Str].maxForMin = Math.max(...stat_M[temp_M_Str].minArr);
+                if( stat_YM[temp_YM_Str].valid.minValid ){ //'valid': {} 部分，这里必须引入外部YM对象的属性来判断！！！这一部分是逻辑最复杂的
+                    if( !(stat_M[temp_M_Str].valid.minYearArr.includes(temp_Y_Str)) ){
+                        stat_M[temp_M_Str].valid.minYearArr.push(temp_Y_Str);
+                        stat_M[temp_M_Str].valid.yearCountForMin += 1;
+                    }
+                    if( stat_M[temp_M_Str].valid.yearCountForMin > 0 ){
+                        let tempArrM = [];
+                        stat_M[temp_M_Str].valid.minYearArr.forEach((vm1) => {
+                            if(stat_YM.hasOwnProperty(vm1 + '-' + temp_M_Str)){ tempArrM = tempArrM.concat(stat_YM[vm1 + '-' + temp_M_Str].minArr); }
+                        });
+                        stat_M[temp_M_Str].valid.minArr = tempArrM;
+                    }
+                    stat_M[temp_M_Str].valid.dayCountForMin = stat_M[temp_M_Str].valid.minArr.length;
+                    stat_M[temp_M_Str].valid.avgForMin = tools.getAvgForNumberArr(stat_M[temp_M_Str].valid.minArr);
+                }
+            }
+            if(v['TEMP'] !== undefined){
+                stat_M[temp_M_Str].avgArr.push( Number(v['TEMP']) );
+                stat_M[temp_M_Str].dayCountForAvg += 1;
+                if( !(stat_M[temp_M_Str].avgYearArr.includes(temp_Y_Str)) ){
+                    stat_M[temp_M_Str].avgYearArr.push(temp_Y_Str);
+                    stat_M[temp_M_Str].yearCountForAvg += 1;
+                }
+                stat_M[temp_M_Str].minForAvg = Math.min(...stat_M[temp_M_Str].avgArr);
+                stat_M[temp_M_Str].avg = tools.getAvgForNumberArr(stat_M[temp_M_Str].avgArr);
+                stat_M[temp_M_Str].maxForAvg = Math.max(...stat_M[temp_M_Str].avgArr);
+                if( stat_YM[temp_YM_Str].valid.avgValid ){ //'valid': {} 部分，这里必须引入外部YM对象的属性来判断！！！这一部分是逻辑最复杂的
+                    if( !(stat_M[temp_M_Str].valid.avgYearArr.includes(temp_Y_Str)) ){
+                        stat_M[temp_M_Str].valid.avgYearArr.push(temp_Y_Str);
+                        stat_M[temp_M_Str].valid.yearCountForAvg += 1;
+                    }
+                    if( stat_M[temp_M_Str].valid.yearCountForAvg > 0 ){
+                        let tempArrM = [];
+                        stat_M[temp_M_Str].valid.avgYearArr.forEach((vm1) => {
+                            //tempArrM = tempArrM.concat(stat_YM[vm1 + '-' + temp_M_Str].avgArr);
+                            if(stat_YM.hasOwnProperty(vm1 + '-' + temp_M_Str)){ tempArrM = tempArrM.concat(stat_YM[vm1 + '-' + temp_M_Str].avgArr); }
+                        });
+                        stat_M[temp_M_Str].valid.avgArr = tempArrM;
+                    }
+                    stat_M[temp_M_Str].valid.dayCountForAvg = stat_M[temp_M_Str].valid.avgArr.length;
+                    stat_M[temp_M_Str].valid.avg = tools.getAvgForNumberArr(stat_M[temp_M_Str].valid.avgArr);
+                }
+            }
+            if(v['MAX'] !== undefined){
+                stat_M[temp_M_Str].maxArr.push( Number(v['MAX']) );
+                stat_M[temp_M_Str].dayCountForMax += 1;
+                if( !(stat_M[temp_M_Str].maxYearArr.includes(temp_Y_Str)) ){
+                    stat_M[temp_M_Str].maxYearArr.push(temp_Y_Str);
+                    stat_M[temp_M_Str].yearCountForMax += 1;
+                }
+                stat_M[temp_M_Str].minForMax = Math.min(...stat_M[temp_M_Str].maxArr);
+                stat_M[temp_M_Str].avgForMax = tools.getAvgForNumberArr(stat_M[temp_M_Str].maxArr);
+                stat_M[temp_M_Str].max = Math.max(...stat_M[temp_M_Str].maxArr);
+                if( stat_YM[temp_YM_Str].valid.maxValid ){ //'valid': {} 部分，这里必须引入外部YM对象的属性来判断！！！这一部分是逻辑最复杂的
+                    if( !(stat_M[temp_M_Str].valid.maxYearArr.includes(temp_Y_Str)) ){
+                        stat_M[temp_M_Str].valid.maxYearArr.push(temp_Y_Str);
+                        stat_M[temp_M_Str].valid.yearCountForMax += 1;
+                    }
+                    if( stat_M[temp_M_Str].valid.yearCountForMax > 0 ){
+                        let tempArrM = [];
+                        stat_M[temp_M_Str].valid.maxYearArr.forEach((vm1) => {
+                            //tempArrM = tempArrM.concat(stat_YM[vm1 + '-' + temp_M_Str].maxArr);
+                            if(stat_YM.hasOwnProperty(vm1 + '-' + temp_M_Str)){ tempArrM = tempArrM.concat(stat_YM[vm1 + '-' + temp_M_Str].maxArr); }
+                        });
+                        stat_M[temp_M_Str].valid.maxArr = tempArrM;
+                    }
+                    stat_M[temp_M_Str].valid.dayCountForMax = stat_M[temp_M_Str].valid.maxArr.length;
+                    stat_M[temp_M_Str].valid.avgForMax = tools.getAvgForNumberArr(stat_M[temp_M_Str].valid.maxArr);
+                }
+            }
             
             //某年
             if(!stat_Y.hasOwnProperty(temp_Y_Str)){ stat_Y[temp_Y_Str] = {}; }
@@ -384,15 +564,12 @@ function Csv(str){
             }
         }
 
-        console.log(stat_YM);
-        /* let x = Object.keys(stat_YM);
-        x.sort((a, b) => {
-            return Date.parse(b) - Date.parse(a);
-        });
-        console.log(x); */
+        //console.log(stat_YM);
         /************************ 这个return返回所有数据，量超大 ************************/
         return {
             'arr': newArr,
+            'stat_YM': stat_YM,
+            'stat_M': stat_M,
             'totalDaysBeforeSort': totalDays
         };
     }

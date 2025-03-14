@@ -19,6 +19,9 @@ let statObjForYM = {
 		'maxForAvg': undefined,
 		'max': undefined,
 		'valid': {
+			'minValid': false,
+            'avgValid': false,
+            'maxValid': false,
 			'avgForMin': undefined,
 			'avg': undefined,
 			'avgForMax': undefined
@@ -26,20 +29,24 @@ let statObjForYM = {
 	}
 }
 
-某个月份： 共30个细分属性
+某个月份： 共33个细分属性
 let statObjForOnlyMonth = {
 	'01': {
 		'dayCount': 9985,
+		'yearArr': [],
 		'YearCount': 30,
-		'dayCountForMin': 25,
-		'dayCountForAvg': 25,
-		'dayCountForMax': 25,
-		'yearCountForMin': 25,
-		'yearCountForAvg': 25,
-		'yearCountForMax': 25,
 		'minArr': [],
 		'avgArr': [],
 		'maxArr': [],
+		'dayCountForMin': 25,
+		'dayCountForAvg': 25,
+		'dayCountForMax': 25,
+		'minYearArr': [],
+		'avgYearArr': [],
+		'maxYearArr': [],
+		'yearCountForMin': 25,
+		'yearCountForAvg': 25,
+		'yearCountForMax': 25,
 		'min': undefined,
 		'minForAvg': undefined,
 		'minForMax': undefined,
@@ -50,9 +57,15 @@ let statObjForOnlyMonth = {
 		'maxForAvg': undefined,
 		'max': undefined,
 		'valid': {
+			'minArr': [],
+			'avgArr': [],
+			'maxArr': [],
 			'dayCountForMin': 25,
 			'dayCountForAvg': 25,
 			'dayCountForMax': 25,
+			'minYearArr': [],
+			'avgYearArr': [],
+			'maxYearArr': [],
 			'yearCountForMin': 25,
 			'yearCountForAvg': 25,
 			'yearCountForMax': 25,
