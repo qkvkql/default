@@ -15,12 +15,13 @@ for(let i = 0; i < sheets.length; i++)
 }
 
 let config = {
-    'USAF': '30473',
+    'USAF': '31478',
     //筛选排序
-    'countryCode': '', //留空则不筛选国家
+    'countryCode': 'rs', //留空则不筛选国家
     'item': 'd', //针对哪个项排序, d = distance 或 e = elevation
     'order': 'asc', //排序方式
     'maxDistance': 500, //方圆多少km
+    'usafNoEnd0': 0, //是否忽略USAF结尾是0的记录，1是 0否
     'searchType': 0, //按什么搜索，0代表按站号搜索
     'coorArr': [35, 100], //如果是按坐标搜索(searchType = 1), 需要在这给出坐标
     'limited': '' //是否限定到只考察 xxxxx0-99999 站点，一般不要做限制, 如果非要限制，值为 'limited'
@@ -43,6 +44,9 @@ function consoleResult(){
     }
     if(config.countryCode.trim() !== ''){
         placeStr += countryText;
+    }
+    if(config.usafNoEnd0 === 1){
+        placeStr += '\nLast Digit of USAF ≠ 0';
     }
     console.log('\nAll Stations Nearby ' + placeStr);
     console.log('DISTANCE <= ' + config.maxDistance.toString() + 'km');
@@ -135,7 +139,11 @@ function getNearbyStations(searchType, stationNumber, coorArr, maxDistance, limi
     //筛选国家
     let countryCode = config.countryCode.trim().toUpperCase();
     if(countryCode !== ''){
-        resultArr = resultArr.filter((e1) => e1['COUNTRY'] === countryCode);
+        resultArr = resultArr.filter((e) => e['COUNTRY'] === countryCode);
+    }
+    //筛选USAF
+    if(config.usafNoEnd0 === 1){
+        resultArr = resultArr.filter((e) => e['USAF'].substring(5, 6) !== '0');
     }
     
     //注意多种排序的先后顺序

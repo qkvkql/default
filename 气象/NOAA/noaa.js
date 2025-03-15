@@ -8,9 +8,9 @@ const ejs = require("ejs");
 //配置对象，用于设置筛选条件
 const config = {
     stationNumber: {
-        'USAF': '30473',
+        USAF: '315320',
         //留空则默认为99999，长度小于5则前面自动补0
-        'WBAN': '99999'
+        WBAN: '99999'
     },
 
     dateStart: '1929-01-01',
@@ -18,8 +18,12 @@ const config = {
     month: 0, //0 = 全年, 1 = 一月, ... , 12 = 十二月
     
     order: 'asc', //asc(从小到大、从低到高，从早到晚), desc
-    item: 'min', //date, min, avg, max
-    showNumber: 30, //显示多少个结果
+    item: 'max', //date, min, avg, max
+    showNumber: 10, //显示多少个结果
+
+    M: {
+        showValid: 0 //0 not show, 1 show valid
+    },
 
     monthValidCount: 20, //某个月的avg/min/max至少有20个正常记录，才算一个有效avg/min/max月,才会计算有参考价值的月度均值
     consec: { 
@@ -152,38 +156,46 @@ function consoleResult(){
         });
         console.log(strA);
         console.log('DAYS RECORDED: ' + startObj.totalDaysBeforeSort);
-        console.log('DAYS SELECTED: ' + startObj.arr.length);
+        console.log('DAYS SELECTED: ' + startObj.arr.length + '\n');
     }
 
     //console月均温相关项
     function consoleM(){
         if(config.month > 0){
             let ms = tools.FN(config.month, 12);
-            console.log('\nMONTHLY: MONTH = ' + ms);
+            console.log('MONTHLY AVG OF CLIMATE:');
+            console.log('MONTH = ' + ms);
+            if(config.M.showValid > 0){ console.log('FOR ALL RECORDS:'); }
             console.log(
-                'FOR ALL RECORDS:\navgOfMin:\t' + stat_M[ms].avgForMin  + ' (Y' + stat_M[ms].yearCountForMin + '|sum/' + stat_M[ms].dayCountForMin + ')  ',
+                'avgOfMin:  ' + stat_M[ms].avgForMin  + ' (Y' + stat_M[ms].yearCountForMin + '|sum/' + stat_M[ms].dayCountForMin + ')  ',
                 'avg: ' + stat_M[ms].avg  + ' (Y' + stat_M[ms].yearCountForAvg + '|sum/' + stat_M[ms].dayCountForAvg + ')  ',
                 'avgOfMax: ' + stat_M[ms].avgForMax + ' (Y' + stat_M[ms].yearCountForMax + '|sum/' + stat_M[ms].dayCountForMax + ')'
             );
-            console.log(
-                'FOR MONTHLY DAYS >= ' + config.monthValidCount + ':\navgOfMin:\t' + stat_M[ms].valid.avgForMin  + ' (Y' + stat_M[ms].valid.yearCountForMin + '|sum/' + stat_M[ms].valid.dayCountForMin + ')  ',
-                'avg: ' + stat_M[ms].valid.avg  + ' (Y' + stat_M[ms].valid.yearCountForAvg + '|sum/' + stat_M[ms].valid.dayCountForAvg + ')  ',
-                'avgOfMax: ' + stat_M[ms].valid.avgForMax + ' (Y' + stat_M[ms].valid.yearCountForMax + '|sum/' + stat_M[ms].valid.dayCountForMax + ')'
-            );
-        }else{
-            tools.getArrOfNumberMonthBegin(11).forEach((vm1) => {
-                let ms = tools.FN(vm1, 12);
-                console.log('\nMONTHLY: MONTH = ' + ms);
+            if(config.M.showValid > 0){
                 console.log(
-                    'FOR ALL RECORDS:\navgOfMin:\t' + stat_M[ms].avgForMin  + ' (Y' + stat_M[ms].yearCountForMin + '|sum/' + stat_M[ms].dayCountForMin + ')  ',
-                    'avg: ' + stat_M[ms].avg  + ' (Y' + stat_M[ms].yearCountForAvg + '|sum/' + stat_M[ms].dayCountForAvg + ')  ',
-                    'avgOfMax: ' + stat_M[ms].avgForMax + ' (Y' + stat_M[ms].yearCountForMax + '|sum/' + stat_M[ms].dayCountForMax + ')'
-                );
-                console.log(
-                    'FOR MONTHLY DAYS >= ' + config.monthValidCount + ':\navgOfMin:\t' + stat_M[ms].valid.avgForMin  + ' (Y' + stat_M[ms].valid.yearCountForMin + '|sum/' + stat_M[ms].valid.dayCountForMin + ')  ',
+                    'FOR MONTHLY DAYS >= ' + config.monthValidCount + ':\navgOfMin:  ' + stat_M[ms].valid.avgForMin  + ' (Y' + stat_M[ms].valid.yearCountForMin + '|sum/' + stat_M[ms].valid.dayCountForMin + ')  ',
                     'avg: ' + stat_M[ms].valid.avg  + ' (Y' + stat_M[ms].valid.yearCountForAvg + '|sum/' + stat_M[ms].valid.dayCountForAvg + ')  ',
                     'avgOfMax: ' + stat_M[ms].valid.avgForMax + ' (Y' + stat_M[ms].valid.yearCountForMax + '|sum/' + stat_M[ms].valid.dayCountForMax + ')'
                 );
+            }
+        }else{
+            console.log('MONTHLY AVG OF CLIMATE:');
+            tools.getArrOfNumberMonthBegin(11).forEach((vm1) => {
+                let ms = tools.FN(vm1, 12);
+                console.log('MONTH = ' + ms);
+                if(config.M.showValid > 0){ console.log('FOR ALL RECORDS:'); }
+                console.log(
+                    'avgOfMin:  ' + stat_M[ms].avgForMin  + ' (Y' + stat_M[ms].yearCountForMin + '|sum/' + stat_M[ms].dayCountForMin + ')  ',
+                    'avg: ' + stat_M[ms].avg  + ' (Y' + stat_M[ms].yearCountForAvg + '|sum/' + stat_M[ms].dayCountForAvg + ')  ',
+                    'avgOfMax: ' + stat_M[ms].avgForMax + ' (Y' + stat_M[ms].yearCountForMax + '|sum/' + stat_M[ms].dayCountForMax + ')'
+                );
+                if(config.M.showValid > 0){
+                    console.log(
+                        'FOR MONTHLY DAYS >= ' + config.monthValidCount + ':\navgOfMin:  ' + stat_M[ms].valid.avgForMin  + ' (Y' + stat_M[ms].valid.yearCountForMin + '|sum/' + stat_M[ms].valid.dayCountForMin + ')  ',
+                        'avg: ' + stat_M[ms].valid.avg  + ' (Y' + stat_M[ms].valid.yearCountForAvg + '|sum/' + stat_M[ms].valid.dayCountForAvg + ')  ',
+                        'avgOfMax: ' + stat_M[ms].valid.avgForMax + ' (Y' + stat_M[ms].valid.yearCountForMax + '|sum/' + stat_M[ms].valid.dayCountForMax + ')'
+                    );
+                }
             });
         }
     }
@@ -194,14 +206,26 @@ function consoleResult(){
             return stat_YM[a]['avg'] - stat_YM[b]['avg'];
         });
         console.log('\nEVERY MONTH:');
-        tempYMArr.forEach((vym1, index) => {
+        for(let index=0; index<tempYMArr.length; index++){
+            let vym1 = tempYMArr[index];
+            if(index === config.showNumber){
+                break;
+            }
             console.log(
                 tools.FN(index + 1, tempYMArr.length) + '   '
                 + vym1 + '  ' + stat_YM[vym1].avgForMin + ' (sum/' + stat_YM[vym1].dayCountForMin + ')  '
                 + stat_YM[vym1].avg + ' (sum/' + stat_YM[vym1].dayCountForAvg + ')  '
                 + stat_YM[vym1].avgForMax + ' (sum/' + stat_YM[vym1].dayCountForMax + ')'
             );
-        });
+        }
+        /* tempYMArr.forEach((vym1, index) => {
+            console.log(
+                tools.FN(index + 1, tempYMArr.length) + '   '
+                + vym1 + '  ' + stat_YM[vym1].avgForMin + ' (sum/' + stat_YM[vym1].dayCountForMin + ')  '
+                + stat_YM[vym1].avg + ' (sum/' + stat_YM[vym1].dayCountForAvg + ')  '
+                + stat_YM[vym1].avgForMax + ' (sum/' + stat_YM[vym1].dayCountForMax + ')'
+            );
+        }); */
     }
 
     //逐日列出
