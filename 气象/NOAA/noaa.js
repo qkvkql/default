@@ -7,10 +7,14 @@ const ejs = require("ejs");
 
 //配置对象，用于设置筛选条件
 const config = {
-    stationNumber: '31338', //站号n1，后面还有n2,n3
+    stationNumber: {
+        'USAF': '30473',
+        //留空则默认为99999，长度小于5则前面自动补0
+        'WBAN': '99999'
+    },
 
-    dateStart: '1948-01-01',
-    dateEnd: '1958-12-31',
+    dateStart: '1929-01-01',
+    dateEnd: '2025-12-31',
     month: 0, //0 = 全年, 1 = 一月, ... , 12 = 十二月
     
     order: 'asc', //asc(从小到大、从低到高，从早到晚), desc
@@ -25,8 +29,6 @@ const config = {
     
     consoleAll: 0, //是否console所有筛选过、纳入考察的数组。0 = 否，1 = 是
 
-    n2: '0',
-    n3: '99999',
     noaaLocation: 'D:/NOAA Data/', //NOAA csv文件根目录
 
     options: [ //选择要考察哪些列，忽略其他不需要的列
@@ -65,15 +67,12 @@ app.post("/",
 app.listen(3000, function(){console.log("server is running on port 3000");})
 */
 
-//目标信息：站号、起止年份(最早开始年份：1929)
-let n1 = config.stationNumber; //data type: string
-let n2 = config.n2;
-let n3 = config.n3;
-let n = n1 + n2 + n3;
+//站号
+let csvFileName = tools.getStationNumber(config.stationNumber).csvFileName;
+let stationNumberToPrint = tools.getStationNumber(config.stationNumber).stationNumberToPrint;
 //起始日期
 let y1 = config.dateStart.split('-')[0];
 let d1 = config.dateStart;
-//let y1 = config.yearStart;
 //结束日期
 let y2 = config.dateEnd.split('-')[0].length === 4 ? config.dateEnd.split('-')[0] : tools.getCurrentDate().YEAR;
 let d2 = config.dateEnd.length === 10 ? config.dateEnd : tools.getCurrentDate().YMD;
@@ -85,7 +84,7 @@ let p3 = '/';
 let p5 = '.csv';
 for(let i = Number(y1); i <= Number(y2); i++){
     let path = '';
-    path = p1 + i.toString() + p3 + n + p5;
+    path = p1 + i.toString() + p3 + csvFileName + p5;
     prePaths.push(path);
 }
 let paths = [];
@@ -132,7 +131,7 @@ function consoleResult(){
     
     //站点信息
     function consoleStation(){
-        console.log('\n' + config.stationNumber + ' | ' + name);
+        console.log('\n' + stationNumberToPrint + ' | ' + name);
         console.log(elev + '(m) | ( ' + lat + ', ' + lon + ' )');
     }
 
@@ -172,7 +171,6 @@ function consoleResult(){
                 'avgOfMax: ' + stat_M[ms].valid.avgForMax + ' (Y' + stat_M[ms].valid.yearCountForMax + '|sum/' + stat_M[ms].valid.dayCountForMax + ')'
             );
         }else{
-            //console.log(tools.getArrOfNumberMonthBegin(11));
             tools.getArrOfNumberMonthBegin(11).forEach((vm1) => {
                 let ms = tools.FN(vm1, 12);
                 console.log('\nMONTHLY: MONTH = ' + ms);
@@ -264,7 +262,7 @@ function Csv(str){
     }
 
     //获取非标题行内容，忽略多行重复的标题str
-    //获取csv行，尽兴以下处理：检查异常值(空、错误值等)、转换温度单位(华氏转摄氏)、限制数值小数点后位数、还有最复杂的排序(根据设置)
+    //获取csv行，进行以下处理：检查异常值(空、错误值等)、转换温度单位(华氏转摄氏)、限制数值小数点后位数、还有最复杂的排序(根据设置)
     function getSortedArrOfCsv(){
         let totalDays = 0;
         
@@ -318,7 +316,6 @@ function Csv(str){
                 }
             }
         });
-
         //剔除不需要的列，保留需要的列，缩小对象数组体积，提高效率
         let newArr = [];
         arrOfCsv.forEach((v) => {
@@ -473,7 +470,7 @@ function Csv(str){
                 stat_M[temp_M_Str].min = Math.min(...stat_M[temp_M_Str].minArr);
                 stat_M[temp_M_Str].avgForMin = tools.getAvgForNumberArr(stat_M[temp_M_Str].minArr);
                 stat_M[temp_M_Str].maxForMin = Math.max(...stat_M[temp_M_Str].minArr);
-                if( stat_YM[temp_YM_Str].valid.minValid ){ //'valid': {} 部分，这里必须引入外部YM对象的属性来判断！！！这一部分是逻辑最复杂的
+                if( stat_YM[temp_YM_Str].valid.minValid ){ //'valid': {} 部分，这里必须引入外部YM对象的属性来判断！！！这一部分逻辑最复杂
                     if( !(stat_M[temp_M_Str].valid.minYearArr.includes(temp_Y_Str)) ){
                         stat_M[temp_M_Str].valid.minYearArr.push(temp_Y_Str);
                         stat_M[temp_M_Str].valid.yearCountForMin += 1;
@@ -499,7 +496,7 @@ function Csv(str){
                 stat_M[temp_M_Str].minForAvg = Math.min(...stat_M[temp_M_Str].avgArr);
                 stat_M[temp_M_Str].avg = tools.getAvgForNumberArr(stat_M[temp_M_Str].avgArr);
                 stat_M[temp_M_Str].maxForAvg = Math.max(...stat_M[temp_M_Str].avgArr);
-                if( stat_YM[temp_YM_Str].valid.avgValid ){ //'valid': {} 部分，这里必须引入外部YM对象的属性来判断！！！这一部分是逻辑最复杂的
+                if( stat_YM[temp_YM_Str].valid.avgValid ){ //'valid': {} 部分，这里必须引入外部YM对象的属性来判断！！！这一部分逻辑最复杂
                     if( !(stat_M[temp_M_Str].valid.avgYearArr.includes(temp_Y_Str)) ){
                         stat_M[temp_M_Str].valid.avgYearArr.push(temp_Y_Str);
                         stat_M[temp_M_Str].valid.yearCountForAvg += 1;
@@ -507,7 +504,6 @@ function Csv(str){
                     if( stat_M[temp_M_Str].valid.yearCountForAvg > 0 ){
                         let tempArrM = [];
                         stat_M[temp_M_Str].valid.avgYearArr.forEach((vm1) => {
-                            //tempArrM = tempArrM.concat(stat_YM[vm1 + '-' + temp_M_Str].avgArr);
                             if(stat_YM.hasOwnProperty(vm1 + '-' + temp_M_Str)){ tempArrM = tempArrM.concat(stat_YM[vm1 + '-' + temp_M_Str].avgArr); }
                         });
                         stat_M[temp_M_Str].valid.avgArr = tempArrM;
@@ -526,7 +522,7 @@ function Csv(str){
                 stat_M[temp_M_Str].minForMax = Math.min(...stat_M[temp_M_Str].maxArr);
                 stat_M[temp_M_Str].avgForMax = tools.getAvgForNumberArr(stat_M[temp_M_Str].maxArr);
                 stat_M[temp_M_Str].max = Math.max(...stat_M[temp_M_Str].maxArr);
-                if( stat_YM[temp_YM_Str].valid.maxValid ){ //'valid': {} 部分，这里必须引入外部YM对象的属性来判断！！！这一部分是逻辑最复杂的
+                if( stat_YM[temp_YM_Str].valid.maxValid ){ //'valid': {} 部分，这里必须引入外部YM对象的属性来判断！！！这一部分逻辑最复杂
                     if( !(stat_M[temp_M_Str].valid.maxYearArr.includes(temp_Y_Str)) ){
                         stat_M[temp_M_Str].valid.maxYearArr.push(temp_Y_Str);
                         stat_M[temp_M_Str].valid.yearCountForMax += 1;
@@ -534,7 +530,6 @@ function Csv(str){
                     if( stat_M[temp_M_Str].valid.yearCountForMax > 0 ){
                         let tempArrM = [];
                         stat_M[temp_M_Str].valid.maxYearArr.forEach((vm1) => {
-                            //tempArrM = tempArrM.concat(stat_YM[vm1 + '-' + temp_M_Str].maxArr);
                             if(stat_YM.hasOwnProperty(vm1 + '-' + temp_M_Str)){ tempArrM = tempArrM.concat(stat_YM[vm1 + '-' + temp_M_Str].maxArr); }
                         });
                         stat_M[temp_M_Str].valid.maxArr = tempArrM;
@@ -582,8 +577,6 @@ function Csv(str){
                 newArr.sort((a, b) => Date.parse(b.DATE) - Date.parse(a.DATE));
             }
         }
-
-        //console.log(stat_YM);
         /************************ 这个return返回所有数据，量超大 ************************/
         return {
             'arr': newArr,
@@ -690,6 +683,56 @@ function Tools(){
         return cv;
     }
 
+    //根据config stationNumber设置按特定规则返回站号
+    function getStationNumber(stationNumberObj){
+        let USAF = stationNumberObj.USAF.trim();
+        let originalWBAN = stationNumberObj.WBAN.trim();
+
+        //根据个性化输入得到格式化WBAN
+        let WBAN = '';
+        if(originalWBAN === ''){
+            WBAN = '99999';
+        }else{
+            let tempZeroStr = '0';
+            let finalZeroStr = '';
+            for(let i = 0; i < 5 - originalWBAN.length; i++){
+                finalZeroStr += tempZeroStr;
+            }
+            WBAN = finalZeroStr + originalWBAN;
+        }
+        
+        //声明return项
+        let csvFileName = '';
+        let stationNumberToPrint = ''; //WBAN='99999'一律忽略不打印
+        if(USAF.length === 5){
+            csvFileName = USAF + '0' + WBAN;
+            if(WBAN !== '99999'){
+                stationNumberToPrint = USAF + '-' + WBAN;
+            }else{
+                stationNumberToPrint = USAF;
+            }
+        }else if(USAF.length === 6){
+            csvFileName = USAF + WBAN;
+            if(USAF.substring(5, 6) !== '0'){
+                if(WBAN !== '99999'){
+                    stationNumberToPrint = USAF + '-' + WBAN;
+                }else{
+                    stationNumberToPrint = USAF;
+                }
+            }else{
+                if(WBAN !== '99999'){ //这种情况实际应该是不存在的。根据观察，USAF最后一位是0的，WBAN都是99999
+                    stationNumberToPrint = USAF + '-' + WBAN;
+                }else{
+                    stationNumberToPrint = USAF.substring(0, 5);
+                }
+            }
+        }
+        return {
+            'csvFileName': csvFileName,
+            'stationNumberToPrint': stationNumberToPrint
+        }
+    }
+
     this.getArrOfNumberMonthBegin = getArrOfNumberMonthBegin,
     this.getAvgForNumberArr = getAvgForNumberArr;
     this.getDateDiff = getDateDiff;
@@ -698,4 +741,5 @@ function Tools(){
     this.isValidTempF = isValidTempF;
     this.FN = FN;
     this.TFC = TFC;
+    this.getStationNumber = getStationNumber;
 }
