@@ -8,29 +8,33 @@ const ejs = require("ejs");
 //配置对象，用于设置筛选条件
 const config = {
     stationNumber: {
-        USAF: '57516',
+        USAF: '044360',
         //留空则默认为99999，长度小于5则前面自动补0
         WBAN: '99999'
     },
 
     dateStart: '1929-01-01',
-    dateEnd: '2025-12-31',
+    dateEnd: '2025-12-01',
     month: 0, //0 = 全年, 1 = 一月, ... , 12 = 十二月
     
-    order: 'desc', //asc(从小到大、从低到高，从早到晚), desc
-    item: 'max', //date, min, avg, max
-    consec: {
-        value: '40', //连续记录临界值
+    order: 'asc', //asc(从小到大、从低到高，从早到晚), desc
+    item: 'min', //date, min, avg, max
+    consecValue: '-40', //连续记录的临界值
+    showNumber: 5, //显示多少个结果
+    console: { //设置console打印哪些
+        station: 1,
+        M: 0,
+        YM: 0,
+        consec: 1,
+        list: 1,
+        yearRange: 1,
+        allRecords: 0
     },
-    showNumber: 10, //显示多少个结果
 
     M: {
         showValid: 0 //0 not show, 1 show valid
     },
-
-    monthValidCount: 20, //某个月的avg/min/max至少有20个正常记录，才算一个有效avg/min/max月,才会计算有参考价值的月度均值
-    
-    consoleAll: 0, //是否console所有筛选过、纳入考察的数组。0 = 否，1 = 是
+    monthValidCount: 25, //某个月的avg/min/max至少有20个正常记录，才算一个有效avg/min/max月,才会计算有参考价值的月度均值
 
     noaaLocation: 'D:/NOAA Data/', //NOAA csv文件根目录
 
@@ -130,13 +134,13 @@ readMultipleFiles(new Set(paths), 'utf8').subscribe({
     },
     complete(){
         let result = consoleResult();
-        result.station();
-        result.range();
-        result.M();
-        result.YM();
-        result.consec();
-        result.list();
-        result.allRecords();
+        if(config.console.station > 0){ result.station(); }
+        if(config.console.M > 0){ result.M(); }
+        if(config.console.YM > 0){ result.YM(); }
+        if(config.console.consec > 0){ result.consec(); }
+        if(config.console.list > 0){ result.list(); }
+        if(config.console.yearRange > 0){ result.yearRange(); } //这个适合放在最后面，年份字太多了，影响观看
+        if(config.console.allRecords > 0){ result.allRecords(); }
     }
 });
 
@@ -147,6 +151,7 @@ function consoleResult(){
     let stat_YM = startObj.stat_YM;
     let stat_M = startObj.stat_M;
     let stat_CONSEC = startObj.stat_CONSEC;
+    let totalThreshholdDays = startObj.totalThreshholdDays;
 
     let obj0 = startObj.arr[0];
     //let station0 = obj0.STATION;
@@ -158,12 +163,12 @@ function consoleResult(){
     //站点信息
     function consoleStation(){
         console.log('\n' + stationNumberToPrint + ' | ' + name);
-        console.log(elev + '(m) | ( ' + lat + ', ' + lon + ' )');
+        console.log(elev + '(m) | ( ' + lat + ', ' + lon + ' )\n');
     }
 
     //这里整理一下年份console格式，都是简单细活，没啥技术含量
     function consoleRange(){
-        console.log('\nDATE RANGE: [ ' + d1 + ', ' + d2 + ' ]');
+        console.log('DATE RANGE: [ ' + d1 + ', ' + d2 + ' ]');
         console.log('YEARS RECORDED: ' + + fileCount);
         let strA = ''; //输出年，多行str
         let cnt = 0; //计数
@@ -219,6 +224,7 @@ function consoleResult(){
                     );
                 }
             });
+            console.log('\n');
         }
     }
     //console AVG BY YM
@@ -227,7 +233,7 @@ function consoleResult(){
         tempYMArr.sort((a, b) => {
             return stat_YM[a]['avg'] - stat_YM[b]['avg'];
         });
-        console.log('\nEVERY MONTH:');
+        console.log('EVERY MONTH:');
         for(let index=0; index<tempYMArr.length; index++){
             let vym1 = tempYMArr[index];
             if(index === config.showNumber){
@@ -240,20 +246,26 @@ function consoleResult(){
                 + stat_YM[vym1].avgForMax + ' (sum/' + stat_YM[vym1].dayCountForMax + ')'
             );
         }
+        console.log('\n');
     }
 
     //console连续记录
     function consoleConsec(){
-        console.log('\nLONGEST CONSECUTIVE DAYS FOR ' + focusedAttr + ' ' + focusedOrderSymbolStr + ' ' + config.consec.value + ':');
+        console.log('LONGEST CONSECUTIVE DAYS FOR ' + focusedAttr + ' ' + focusedOrderSymbolStr + ' ' + config.consecValue + ':');
+        console.log('Total: ' + totalThreshholdDays);
         for(let i=0; i<stat_CONSEC.length; i++){
             if(i === config.showNumber){ break; } //限制console记录个数
-            console.log('( ' + stat_CONSEC[i].startDate + ' - ' + stat_CONSEC[i].endDate + ' )  TOTAL CONSECUTIVE DAYS: ' + stat_CONSEC[i].consecDays);
+            console.log(
+                tools.FN(i+1, stat_CONSEC.length) + '  ( ' + stat_CONSEC[i].startDate + ' - '
+                + stat_CONSEC[i].endDate + ' )  CONSECUTIVE DAYS: ' + stat_CONSEC[i].consecDays
+            );
         }
+        console.log('\n');
     }
 
     //逐日列出
     function consoleList(){
-        console.log('\nDAILY LIST: SORT BY ' + config.item.toUpperCase() + ', ' + config.order.toUpperCase());
+        console.log('DAILY LIST, SORT BY ' + config.item.toUpperCase() + ', ' + config.order.toUpperCase() + ':');
         for(let i = 0; i < config.showNumber; i++){
             if(!startObj.arr[i]){ break; }//如果筛选出的天数小于预定展示天数，直接结束循环
             let tempObj = startObj.arr[i];
@@ -264,22 +276,21 @@ function consoleResult(){
             let avgAttr = tempObj['TEMP_ATTRIBUTES'] === undefined ? undefined : tempObj['TEMP_ATTRIBUTES'];
             console.log(tools.FN(i+1, config.showNumber) + '\t' + date + '\tmin: ' + min + '\tavg: ' + avg + '\tmax: ' + max + '\t\t avg = sum / ' + avgAttr);
         }
+        console.log('\n');
     }
 
     //console对象数组内的所有元素
     //纠结了以下，这里还是应该按日期排序
     function consoleAllRecords(){
-        if(config.consoleAll){
-            startObj.arr.sort((a, b) => {
-                return Date.parse(a['DATE']) - Date.parse(b['DATE']);
-            });
-            console.table(startObj.arr);
-        }
+        startObj.arr.sort((a, b) => {
+            return Date.parse(a['DATE']) - Date.parse(b['DATE']);
+        });
+        console.table(startObj.arr);
     }
 
     return {
         'station': consoleStation,
-        'range': consoleRange,
+        'yearRange': consoleRange,
         'M': consoleM,
         'YM': consoleYM,
         'consec': consoleConsec,
@@ -322,6 +333,7 @@ function Csv(str){
     //获取csv行，进行以下处理：检查异常值(空、错误值等)、转换温度单位(华氏转摄氏)、限制数值小数点后位数、还有最复杂的排序(根据设置)
     function getSortedArrOfCsv(){
         let totalDays = 0;
+        let totalThreshholdDays = 0;
         
         //以下统计功能的对象详细格式参考.txt文档，这些对象总计100多个细分属性
         let stat_YM = {}; //某年某月，比如'1960-01'
@@ -610,9 +622,9 @@ function Csv(str){
             //确定大于或小于临界值
             let orderIf = false;
             if(co === 'asc'){
-                orderIf = (Number(v[focusedAttr]) <= Number(config.consec.value));
+                orderIf = (Number(v[focusedAttr]) <= Number(config.consecValue));
             }else{
-                orderIf = (Number(v[focusedAttr]) >= Number(config.consec.value));
+                orderIf = (Number(v[focusedAttr]) >= Number(config.consecValue));
             }
             if(i === 0){
                 if(orderIf){ //这里不需要额外考虑undefined??
@@ -635,7 +647,7 @@ function Csv(str){
                 }
             }else{ //index > 0
                 if(orderIf){ //当天满足阈值条件
-                    //console.log(consecLastDate, v['DATE']);
+                    totalThreshholdDays += 1; //统计满足阈值的所有天数
                     if( tools.getDateDiff( consecLastDate, v['DATE'] ) === 1){ //前一天也满足阈值条件
                         consecCount += 1;
                         stat_CONSEC[consecArrIndex].endDate = v['DATE'];
@@ -699,7 +711,8 @@ function Csv(str){
             'stat_YM': stat_YM,
             'stat_M': stat_M,
             'stat_CONSEC': stat_CONSEC,
-            'totalDaysBeforeSort': totalDays
+            'totalDaysBeforeSort': totalDays,
+            'totalThreshholdDays': totalThreshholdDays
         };
     }
 
