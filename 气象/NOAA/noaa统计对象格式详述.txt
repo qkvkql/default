@@ -158,22 +158,22 @@ let statObjForMD = {
 }
 
 连续记录： 
-let statObjForConsec = {
-	'162': [
-		{
-			'dateStart': '1960-01-20',
-			'dateEnd': '1960-02-13'
-		},
-		{
-			'dateStart': '1965-01-20',
-			'dateEnd': '1965-02-13'
-		}
-	],
-	'159': [
-		{
-			'dateStart': '1960-01-20',
-			'dateEnd': '1960-02-13'
-		}
-	]
+let stat_CONSEC = [
+	{
+		startDate: '1960-01-20',
+		endDate: '1960-01-22',
+		consecDays: 3,
+		minArr: [],
+		avgArr: [],
+		maxArr: []
+	},
+	{
+		startDate: '1960-01-20',
+		endDate: '1960-01-22',
+		consecDays: 3,
+		minArr: [],
+		avgArr: [],
+		maxArr: []
+	},
 	...
-}
+]

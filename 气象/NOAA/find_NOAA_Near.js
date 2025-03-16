@@ -15,7 +15,7 @@ for(let i = 0; i < sheets.length; i++)
 }
 
 let config = {
-    'USAF': '31478',
+    'USAF': '50434',
     //筛选排序
     'countryCode': 'rs', //留空则不筛选国家
     'item': 'd', //针对哪个项排序, d = distance 或 e = elevation

@@ -8,7 +8,7 @@ const ejs = require("ejs");
 //配置对象，用于设置筛选条件
 const config = {
     stationNumber: {
-        USAF: '315320',
+        USAF: '57516',
         //留空则默认为99999，长度小于5则前面自动补0
         WBAN: '99999'
     },
@@ -17,8 +17,11 @@ const config = {
     dateEnd: '2025-12-31',
     month: 0, //0 = 全年, 1 = 一月, ... , 12 = 十二月
     
-    order: 'asc', //asc(从小到大、从低到高，从早到晚), desc
+    order: 'desc', //asc(从小到大、从低到高，从早到晚), desc
     item: 'max', //date, min, avg, max
+    consec: {
+        value: '40', //连续记录临界值
+    },
     showNumber: 10, //显示多少个结果
 
     M: {
@@ -26,10 +29,6 @@ const config = {
     },
 
     monthValidCount: 20, //某个月的avg/min/max至少有20个正常记录，才算一个有效avg/min/max月,才会计算有参考价值的月度均值
-    consec: { 
-        direction: 0, //连续记录考察方向，0代表小于等于临界值，1代表大于等于临界值
-        temperature: '-30' //连续记录临界值
-    },
     
     consoleAll: 0, //是否console所有筛选过、纳入考察的数组。0 = 否，1 = 是
 
@@ -103,6 +102,26 @@ prePaths.forEach((v) => {
     }
 });
 
+/****** 以下部分在连续stat和排序中会用到 ******/
+//根据config决定关注哪一项
+let co = config.order;
+let ci = config.item;
+let itemsAttrRefer = [
+    { 'condition': ci.toLowerCase() === 'min'.toLowerCase(), 'attrName': 'MIN' },
+    { 'condition': ci.toLowerCase() === 'avg'.toLowerCase(), 'attrName': 'TEMP' },
+    { 'condition': ci.toLowerCase() === 'max'.toLowerCase(), 'attrName': 'MAX' }
+];
+//确定需要关注的那个属性MIN,TEMP或MAX
+let focusedAttr = 'MIN'; //如果config.item是date(日期),设置默认ATTR
+itemsAttrRefer.forEach((v) => { if(v.condition){ focusedAttr = v.attrName; } });
+let sortOrderRefer = [
+    {'order': 'asc'.toLowerCase(), 'symbol': '<='},
+    {'order': 'desc'.toLowerCase(), 'symbol': '>='}
+]
+let focusedOrderSymbolStr = '<=';
+sortOrderRefer.forEach((v) => { if( v.order === config.order.toLowerCase() ){ focusedOrderSymbolStr = v.symbol; } } );
+/****** 以上部分在连续stat和排序中会用到 ******/
+
 //批量异步依次读取csv文件内容
 let sourceStr = '';
 readMultipleFiles(new Set(paths), 'utf8').subscribe({
@@ -115,7 +134,9 @@ readMultipleFiles(new Set(paths), 'utf8').subscribe({
         result.range();
         result.M();
         result.YM();
+        result.consec();
         result.list();
+        result.allRecords();
     }
 });
 
@@ -125,6 +146,7 @@ function consoleResult(){
     let startObj = csv.getSortedArrOfCsv();
     let stat_YM = startObj.stat_YM;
     let stat_M = startObj.stat_M;
+    let stat_CONSEC = startObj.stat_CONSEC;
 
     let obj0 = startObj.arr[0];
     //let station0 = obj0.STATION;
@@ -218,14 +240,15 @@ function consoleResult(){
                 + stat_YM[vym1].avgForMax + ' (sum/' + stat_YM[vym1].dayCountForMax + ')'
             );
         }
-        /* tempYMArr.forEach((vym1, index) => {
-            console.log(
-                tools.FN(index + 1, tempYMArr.length) + '   '
-                + vym1 + '  ' + stat_YM[vym1].avgForMin + ' (sum/' + stat_YM[vym1].dayCountForMin + ')  '
-                + stat_YM[vym1].avg + ' (sum/' + stat_YM[vym1].dayCountForAvg + ')  '
-                + stat_YM[vym1].avgForMax + ' (sum/' + stat_YM[vym1].dayCountForMax + ')'
-            );
-        }); */
+    }
+
+    //console连续记录
+    function consoleConsec(){
+        console.log('\nLONGEST CONSECUTIVE DAYS FOR ' + focusedAttr + ' ' + focusedOrderSymbolStr + ' ' + config.consec.value + ':');
+        for(let i=0; i<stat_CONSEC.length; i++){
+            if(i === config.showNumber){ break; } //限制console记录个数
+            console.log('( ' + stat_CONSEC[i].startDate + ' - ' + stat_CONSEC[i].endDate + ' )  TOTAL CONSECUTIVE DAYS: ' + stat_CONSEC[i].consecDays);
+        }
     }
 
     //逐日列出
@@ -244,14 +267,24 @@ function consoleResult(){
     }
 
     //console对象数组内的所有元素
-    if(config.consoleAll){ console.table(startObj.arr); }
+    //纠结了以下，这里还是应该按日期排序
+    function consoleAllRecords(){
+        if(config.consoleAll){
+            startObj.arr.sort((a, b) => {
+                return Date.parse(a['DATE']) - Date.parse(b['DATE']);
+            });
+            console.table(startObj.arr);
+        }
+    }
 
     return {
         'station': consoleStation,
         'range': consoleRange,
         'M': consoleM,
         'YM': consoleYM,
-        'list': consoleList
+        'consec': consoleConsec,
+        'list': consoleList,
+        'allRecords': consoleAllRecords
     }
 }
 
@@ -299,7 +332,8 @@ function Csv(str){
 
         let stat_Y = {}; //某年，比如'1969'
         let stat_MD = {}; //某月某日，比如'01-20'
-        let stat_Consec = {}; //连续记录
+        
+        let stat_CONSEC = []; //连续记录
 
         rowArr.forEach((v) => {
             let strOfRows = v.trim();
@@ -356,6 +390,9 @@ function Csv(str){
             v['TEMP'] = tools.isValidTempF(v['TEMP']) ? tools.TFC(v['TEMP']).toFixed(1) : undefined;
             v['MAX'] = tools.isValidTempF(v['MAX']) ? tools.TFC(v['MAX']).toFixed(1) : undefined;
         });
+        /******************* 对统计连续很重要 *************/
+        //这里提前额外按日期从早到晚排序一次，确保日期顺序无误
+        newArr.sort((a, b) => Date.parse(a.DATE) - Date.parse(b.DATE));
 
 
         /************************ START START ************************/
@@ -407,13 +444,13 @@ function Csv(str){
         //某年
         let vObj_Y = {};
         let vObj_MD = {}; //某月某日
-        let vObj_consec = {}; //连续记录
-        let consec_count = 0;
-        let consec_isNewConsec = true;
-        let consec_dateStart = '';
-        let consec_dateEnd = '';
 
-        newArr.forEach((v) => {
+        //连续记录
+        let consecCount = 0;
+        let consecArrIndex = 0;
+        let consecLastDate = ''; //最近一个满足阈值条件的DATE
+
+        newArr.forEach((v, i) => {
             let temp_YMD_Arr = v['DATE'].split('-');
             //日期片段
             let temp_YM_Str = temp_YMD_Arr[0] + '-' + temp_YMD_Arr[1];
@@ -570,6 +607,65 @@ function Csv(str){
             if(!stat_MD.hasOwnProperty(temp_MD_Str)){ stat_MD[temp_MD_Str] = {}; }
             
             //连续记录
+            //确定大于或小于临界值
+            let orderIf = false;
+            if(co === 'asc'){
+                orderIf = (Number(v[focusedAttr]) <= Number(config.consec.value));
+            }else{
+                orderIf = (Number(v[focusedAttr]) >= Number(config.consec.value));
+            }
+            if(i === 0){
+                if(orderIf){ //这里不需要额外考虑undefined??
+                    consecCount += 1;
+                    //创建新对象
+                    let tempConsecObj = {};
+                    tempConsecObj.startDate = v['DATE'];
+                    tempConsecObj.endDate = v['DATE'];
+                    tempConsecObj.consecDays = consecCount;
+                    tempConsecObj.minArr = [];
+                    tempConsecObj.avgArr = [];
+                    tempConsecObj.maxArr = [];
+                    tempConsecObj.minArr.push(v['MIN']);
+                    tempConsecObj.avgArr.push(v['TEMP']);
+                    tempConsecObj.maxArr.push(v['MAX']);
+                    //添加tempObj到statArr
+                    stat_CONSEC.push(tempConsecObj);
+                    //最近一个满足阈值条件的DATE，新值最好放在段落最后面，因为前面判断要用旧值
+                    consecLastDate = v['DATE'];
+                }
+            }else{ //index > 0
+                if(orderIf){ //当天满足阈值条件
+                    //console.log(consecLastDate, v['DATE']);
+                    if( tools.getDateDiff( consecLastDate, v['DATE'] ) === 1){ //前一天也满足阈值条件
+                        consecCount += 1;
+                        stat_CONSEC[consecArrIndex].endDate = v['DATE'];
+                        stat_CONSEC[consecArrIndex].consecDays = consecCount;
+                        stat_CONSEC[consecArrIndex].minArr.push(v['MIN']);
+                        stat_CONSEC[consecArrIndex].avgArr.push(v['TEMP']);
+                        stat_CONSEC[consecArrIndex].maxArr.push(v['MAX']);
+                    }else{ //前一天不满足阈值条件
+                        consecCount = 1;
+                        //创建新对象
+                        let tempConsecObj = {};
+                        tempConsecObj.startDate = v['DATE'];
+                        tempConsecObj.endDate = v['DATE'];
+                        tempConsecObj.consecDays = consecCount;
+                        tempConsecObj.minArr = [];
+                        tempConsecObj.avgArr = [];
+                        tempConsecObj.maxArr = [];
+                        tempConsecObj.minArr.push(v['MIN']);
+                        tempConsecObj.avgArr.push(v['TEMP']);
+                        tempConsecObj.maxArr.push(v['MAX']);
+                        //添加tempObj到statArr
+                        stat_CONSEC.push(tempConsecObj);
+                        consecArrIndex = stat_CONSEC.length - 1;
+                    }
+                    //最近一个满足阈值条件的DATE，新值最好放在段落最后面，因为前面判断要用旧值
+                    consecLastDate = v['DATE'];
+                }else{
+                    consecCount = 0;
+                }
+            }
         });
         /************************ END END END ************************/
         /************************ END END END ************************/
@@ -577,19 +673,14 @@ function Csv(str){
         /************************ END END END ************************/
 
 
-        //根据config决定排序方式
-        let ci = config.item;
-        let co = config.order;
-        let sortElements = [
-            { 'condition': ci === 'min', 'attrName': 'MIN' },
-            { 'condition': ci === 'avg', 'attrName': 'TEMP' },
-            { 'condition': ci === 'max', 'attrName': 'MAX' }
-        ];
+        //单独给stat_CONSEC数组排序
+        stat_CONSEC.sort((a, b) => { return b.consecDays - a.consecDays; });
+
         //按气温相关列(低温、均温、高温)的值排序，正序或倒序
-        sortElements.forEach((vs, is) => {
+        itemsAttrRefer.forEach((vs, is) => {
             if(vs['condition']){
                 newArr.sort((a, b) => {
-                    return tools.sortUndefinedObj( a[`${sortElements[is]['attrName']}`], b[`${sortElements[is]['attrName']}`], config.order);
+                    return tools.sortUndefinedObj( a[`${itemsAttrRefer[is]['attrName']}`], b[`${itemsAttrRefer[is]['attrName']}`], config.order);
                 });    
             }
         });
@@ -601,11 +692,13 @@ function Csv(str){
                 newArr.sort((a, b) => Date.parse(b.DATE) - Date.parse(a.DATE));
             }
         }
+
         /************************ 这个return返回所有数据，量超大 ************************/
         return {
             'arr': newArr,
             'stat_YM': stat_YM,
             'stat_M': stat_M,
+            'stat_CONSEC': stat_CONSEC,
             'totalDaysBeforeSort': totalDays
         };
     }
@@ -640,6 +733,8 @@ function Tools(){
     }
     //获取2个日期相隔多少天
     function getDateDiff(dateStr1, dateStr2){
+        let regExp = /\d{4}\-\d{2}\-\d{2}/;
+        if(regExp.test(dateStr1) === false || regExp.test(dateStr2) === false){ return undefined; } //判断输入格式
         let date1 = new Date(dateStr1);
         let date2 = new Date(dateStr2);
         let diffOfMilliSeconds = date2.getTime() - date1.getTime();
