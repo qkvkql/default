@@ -15,15 +15,15 @@ for(let i = 0; i < sheets.length; i++)
 }
 
 let config = {
-    'USAF': '719620',
+    'USAF': '44221',
     //筛选排序
     'countryCode': 'us', //留空则不筛选国家
     'item': 'd', //针对哪个项排序, d = distance 或 e = elevation
     'order': 'asc', //排序方式
-    'maxDistance': 500, //方圆多少km
+    'maxDistance': 1300, //方圆多少km
     'usafNoEnd0': 0, //是否忽略USAF结尾是0的记录，1是 0否
-    'searchType': 0, //按什么搜索，0代表按站号搜索
-    'coorArr': [35.5, 23.6], //如果是按坐标搜索(searchType = 1), 需要在这给出坐标
+    'searchType': 1, //按什么搜索，0代表按站号搜索
+    'coorArr': [63.2, -143.3], //如果是按坐标搜索(searchType = 1), 需要在这给出坐标
     'limited': '' //是否限定到只考察 xxxxx0-99999 站点，一般不要做限制, 如果非要限制，值为 'limited'
 }
 //在这里修改参数
