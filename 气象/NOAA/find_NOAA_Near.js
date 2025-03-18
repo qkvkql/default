@@ -15,14 +15,19 @@ for(let i = 0; i < sheets.length; i++)
 }
 
 let config = {
-    'USAF': '44221',
+    'USAF': '24688',
     //筛选排序
-    'countryCode': 'us', //留空则不筛选国家
+    'countryCode': 'RS', //留空则不筛选国家
     'item': 'd', //针对哪个项排序, d = distance 或 e = elevation
     'order': 'asc', //排序方式
-    'maxDistance': 1300, //方圆多少km
+    'maxDistance': 4500, //方圆多少km
+    'filterByCoords': 1, //是否按经度区间筛选
+    'lat1': 60, //纬度范围：起始纬度
+    'lat2': 90, //纬度范围：终止纬度
+    'lon1': 60, //经度范围：起始经度
+    'lon2': 160, //经度范围：终止经度
     'usafNoEnd0': 0, //是否忽略USAF结尾是0的记录，1是 0否
-    'searchType': 1, //按什么搜索，0代表按站号搜索
+    'searchType': 0, //按什么搜索，0代表按站号搜索
     'coorArr': [63.2, -143.3], //如果是按坐标搜索(searchType = 1), 需要在这给出坐标
     'limited': '' //是否限定到只考察 xxxxx0-99999 站点，一般不要做限制, 如果非要限制，值为 'limited'
 }
@@ -135,7 +140,9 @@ function getNearbyStations(searchType, stationNumber, coorArr, maxDistance, limi
             'ELEV(m)': v['ELEV(M)'],
             'BEGIN': v['BEGIN'],
             'END': v['END'],
-            'DISTANCE(km)': haversineGreatCircleDistance(v['LAT'], v['LON'], currentLat, currentLon)
+            'DISTANCE(km)': haversineGreatCircleDistance(v['LAT'], v['LON'], currentLat, currentLon),
+            'LAT': v['LAT'],
+            'LON': v['LON']
         });
     });
 
@@ -156,11 +163,15 @@ function getNearbyStations(searchType, stationNumber, coorArr, maxDistance, limi
     if(countryCode !== ''){
         resultArr = resultArr.filter((e) => e['COUNTRY'] === countryCode);
     }
+    //筛选经纬度
+    if(config.filterByCoords === 1){
+        resultArr = resultArr.filter((e) => coordsMatched( e['LAT'], e['LON'], config.lat1, config.lat2, config.lon1, config.lon2 ));
+    }
     //筛选USAF
     if(config.usafNoEnd0 === 1){
         resultArr = resultArr.filter((e) => e['USAF'].substring(5, 6) !== '0');
     }
-    
+
     //注意多种排序的先后顺序
     if(config.item.toUpperCase() === 'd'.toUpperCase()){ //按距离排序
         resultArr.sort((a, b) => {
@@ -197,6 +208,10 @@ function getNearbyStations(searchType, stationNumber, coorArr, maxDistance, limi
 function upperStr0(str){
     let tempStr = str.toLowerCase();
     return tempStr.charAt(0).toUpperCase() + tempStr.slice(1);
+}
+//判断经纬度坐标是否符合限制或筛选条件
+function coordsMatched(sourceLat, sourceLon, lat1, lat2, lon1, lon2){
+    return ( Number(sourceLat) >= lat1 && Number(sourceLat) <= lat2 && Number(sourceLon) >= lon1 && Number(sourceLon) <= lon2 );
 }
 //生成特定长度的重复同一数字的字符串，比如生成长度为3的重复0的字符串 '000'
 function repeatedNumberStr(n, nStrLen){

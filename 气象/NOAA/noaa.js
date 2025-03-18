@@ -8,9 +8,9 @@ const ejs = require("ejs");
 //配置对象，用于设置筛选条件
 const config = {
     stationObj: {
-        USAF: '720382',
+        USAF: '701780',
         //留空则默认为99999，长度小于5则前面自动补0
-        WBAN: '00123'
+        WBAN: '26529'
     },
 
     dateStart: '1929-01-01',
@@ -18,23 +18,858 @@ const config = {
     month: 0, //0 = 全年, 1 = 一月, ... , 12 = 十二月。这个月份不能填错，不然报错都找不到错误
     
     order: 'asc', //asc(从小到大、从低到高，从早到晚), desc
-    item: 'avg', //date, min, avg, max
-    consecValue: '-30', //连续记录的临界值
-    showNumber: 10, //显示多少个结果
+    item: 'max', //date, min, avg, max
+    consecValue: '-20', //连续记录的临界值
+    showNumber: 20, //显示多少个结果
     console: { //设置console打印哪些
         station: 1,
         overview: 1,
         M: 0,
-        YM: 0,
+        YM: 1,
         consec: 0,
         list: 1,
-        yearRange: 1,
+        yearRange: 0,
         allRecords: 0
     },
 
     //获取邻站信息
-    multipleStation: 0, //是否切换到打印邻近站点模式
-    arrOfStations: [],
+    multipleStation: 1, //是否切换到打印邻近站点模式
+    arrOfStations: [{
+        "USAF": "202910",
+        "WBAN": "99999",
+        "DISTANCE": "2132.7"
+      },
+      {
+        "USAF": "249080",
+        "WBAN": "99999",
+        "DISTANCE": "2135.3"
+      },
+      {
+        "USAF": "202940",
+        "WBAN": "99999",
+        "DISTANCE": "2136.3"
+      },
+      {
+        "USAF": "203890",
+        "WBAN": "99999",
+        "DISTANCE": "2143.0"
+      },
+      {
+        "USAF": "248070",
+        "WBAN": "99999",
+        "DISTANCE": "2175.1"
+      },
+      {
+        "USAF": "203860",
+        "WBAN": "99999",
+        "DISTANCE": "2184.3"
+      },
+      {
+        "USAF": "209820",
+        "WBAN": "99999",
+        "DISTANCE": "2196.9"
+      },
+      {
+        "USAF": "236991",
+        "WBAN": "99999",
+        "DISTANCE": "2197.6"
+      },
+      {
+        "USAF": "200970",
+        "WBAN": "99999",
+        "DISTANCE": "2208.2"
+      },
+      {
+        "USAF": "202890",
+        "WBAN": "99999",
+        "DISTANCE": "2229.8"
+      },
+      {
+        "USAF": "201860",
+        "WBAN": "99999",
+        "DISTANCE": "2239.9"
+      },
+      {
+        "USAF": "203880",
+        "WBAN": "99999",
+        "DISTANCE": "2248.8"
+      },
+      {
+        "USAF": "236910",
+        "WBAN": "99999",
+        "DISTANCE": "2253.6"
+      },
+      {
+        "USAF": "204810",
+        "WBAN": "99999",
+        "DISTANCE": "2289.4"
+      },
+      {
+        "USAF": "233830",
+        "WBAN": "99999",
+        "DISTANCE": "2298.7"
+      },
+      {
+        "USAF": "206790",
+        "WBAN": "99999",
+        "DISTANCE": "2318.0"
+      },
+      {
+        "USAF": "235850",
+        "WBAN": "99999",
+        "DISTANCE": "2327.4"
+      },
+      {
+        "USAF": "239920",
+        "WBAN": "99999",
+        "DISTANCE": "2348.7"
+      },
+      {
+        "USAF": "238910",
+        "WBAN": "99999",
+        "DISTANCE": "2358.1"
+      },
+      {
+        "USAF": "209730",
+        "WBAN": "99999",
+        "DISTANCE": "2365.3"
+      },
+      {
+        "USAF": "235890",
+        "WBAN": "99999",
+        "DISTANCE": "2371.2"
+      },
+      {
+        "USAF": "204760",
+        "WBAN": "99999",
+        "DISTANCE": "2390.6"
+      },
+      {
+        "USAF": "202770",
+        "WBAN": "99999",
+        "DISTANCE": "2397.4"
+      },
+      {
+        "USAF": "237890",
+        "WBAN": "99999",
+        "DISTANCE": "2425.0"
+      },
+      {
+        "USAF": "200850",
+        "WBAN": "99999",
+        "DISTANCE": "2434.7"
+      },
+      {
+        "USAF": "200870",
+        "WBAN": "99999",
+        "DISTANCE": "2436.3"
+      },
+      {
+        "USAF": "230780",
+        "WBAN": "99999",
+        "DISTANCE": "2451.8"
+      },
+      {
+        "USAF": "205780",
+        "WBAN": "99999",
+        "DISTANCE": "2455.9"
+      },
+      {
+        "USAF": "230770",
+        "WBAN": "99999",
+        "DISTANCE": "2463.4"
+      },
+      {
+        "USAF": "234840",
+        "WBAN": "99999",
+        "DISTANCE": "2485.7"
+      },
+      {
+        "USAF": "238830",
+        "WBAN": "99999",
+        "DISTANCE": "2487.4"
+      },
+      {
+        "USAF": "319811",
+        "WBAN": "99999",
+        "DISTANCE": "2487.7"
+      },
+      {
+        "USAF": "206750",
+        "WBAN": "99999",
+        "DISTANCE": "2496.4"
+      },
+      {
+        "USAF": "231790",
+        "WBAN": "99999",
+        "DISTANCE": "2501.4"
+      },
+      {
+        "USAF": "233760",
+        "WBAN": "99999",
+        "DISTANCE": "2511.8"
+      },
+      {
+        "USAF": "237880",
+        "WBAN": "99999",
+        "DISTANCE": "2528.7"
+      },
+      {
+        "USAF": "230740",
+        "WBAN": "99999",
+        "DISTANCE": "2530.2"
+      },
+      {
+        "USAF": "239820",
+        "WBAN": "99999",
+        "DISTANCE": "2530.4"
+      },
+      {
+        "USAF": "231740",
+        "WBAN": "99999",
+        "DISTANCE": "2545.9"
+      },
+      {
+        "USAF": "204710",
+        "WBAN": "99999",
+        "DISTANCE": "2556.4"
+      },
+      {
+        "USAF": "234720",
+        "WBAN": "99999",
+        "DISTANCE": "2567.8"
+      },
+      {
+        "USAF": "384010",
+        "WBAN": "99999",
+        "DISTANCE": "2568.0"
+      },
+      {
+        "USAF": "232740",
+        "WBAN": "99999",
+        "DISTANCE": "2568.9"
+      },
+      {
+        "USAF": "233750",
+        "WBAN": "99999",
+        "DISTANCE": "2578.3"
+      },
+      {
+        "USAF": "202740",
+        "WBAN": "99999",
+        "DISTANCE": "2580.0"
+      },
+      {
+        "USAF": "239860",
+        "WBAN": "99999",
+        "DISTANCE": "2583.7"
+      },
+      {
+        "USAF": "230660",
+        "WBAN": "99999",
+        "DISTANCE": "2590.9"
+      },
+      {
+        "USAF": "234750",
+        "WBAN": "99999",
+        "DISTANCE": "2594.8"
+      },
+      {
+        "USAF": "209700",
+        "WBAN": "99999",
+        "DISTANCE": "2595.7"
+      },
+      {
+        "USAF": "208710",
+        "WBAN": "99999",
+        "DISTANCE": "2602.3"
+      },
+      {
+        "USAF": "209780",
+        "WBAN": "99999",
+        "DISTANCE": "2625.6"
+      },
+      {
+        "USAF": "234711",
+        "WBAN": "99999",
+        "DISTANCE": "2640.4"
+      },
+      {
+        "USAF": "235780",
+        "WBAN": "99999",
+        "DISTANCE": "2649.3"
+      },
+      {
+        "USAF": "206740",
+        "WBAN": "99999",
+        "DISTANCE": "2649.9"
+      },
+      {
+        "USAF": "238840",
+        "WBAN": "99999",
+        "DISTANCE": "2662.4"
+      },
+      {
+        "USAF": "237760",
+        "WBAN": "99999",
+        "DISTANCE": "2665.5"
+      },
+      {
+        "USAF": "200660",
+        "WBAN": "99999",
+        "DISTANCE": "2667.4"
+      },
+      {
+        "USAF": "236780",
+        "WBAN": "99999",
+        "DISTANCE": "2681.4"
+      },
+      {
+        "USAF": "207660",
+        "WBAN": "99999",
+        "DISTANCE": "2700.7"
+      },
+      {
+        "USAF": "200690",
+        "WBAN": "99999",
+        "DISTANCE": "2705.6"
+      },
+      {
+        "USAF": "239730",
+        "WBAN": "99999",
+        "DISTANCE": "2710.2"
+      },
+      {
+        "USAF": "233630",
+        "WBAN": "99999",
+        "DISTANCE": "2710.6"
+      },
+      {
+        "USAF": "234630",
+        "WBAN": "99999",
+        "DISTANCE": "2715.9"
+      },
+      {
+        "USAF": "239870",
+        "WBAN": "99999",
+        "DISTANCE": "2724.4"
+      },
+      {
+        "USAF": "233650",
+        "WBAN": "99999",
+        "DISTANCE": "2767.1"
+      },
+      {
+        "USAF": "209630",
+        "WBAN": "99999",
+        "DISTANCE": "2771.8"
+      },
+      {
+        "USAF": "206650",
+        "WBAN": "99999",
+        "DISTANCE": "2786.8"
+      },
+      {
+        "USAF": "237740",
+        "WBAN": "99999",
+        "DISTANCE": "2790.2"
+      },
+      {
+        "USAF": "233680",
+        "WBAN": "99999",
+        "DISTANCE": "2795.3"
+      },
+      {
+        "USAF": "234650",
+        "WBAN": "99999",
+        "DISTANCE": "2806.9"
+      },
+      {
+        "USAF": "239750",
+        "WBAN": "99999",
+        "DISTANCE": "2807.6"
+      },
+      {
+        "USAF": "208620",
+        "WBAN": "99999",
+        "DISTANCE": "2845.5"
+      },
+      {
+        "USAF": "232560",
+        "WBAN": "99999",
+        "DISTANCE": "2883.9"
+      },
+      {
+        "USAF": "230580",
+        "WBAN": "99999",
+        "DISTANCE": "2892.1"
+      },
+      {
+        "USAF": "236620",
+        "WBAN": "99999",
+        "DISTANCE": "2902.6"
+      },
+      {
+        "USAF": "203530",
+        "WBAN": "99999",
+        "DISTANCE": "2918.4"
+      },
+      {
+        "USAF": "209640",
+        "WBAN": "99999",
+        "DISTANCE": "2943.2"
+      },
+      {
+        "USAF": "234530",
+        "WBAN": "99999",
+        "DISTANCE": "2964.2"
+      },
+      {
+        "USAF": "207640",
+        "WBAN": "99999",
+        "DISTANCE": "2971.9"
+      },
+      {
+        "USAF": "206670",
+        "WBAN": "99999",
+        "DISTANCE": "2974.3"
+      },
+      {
+        "USAF": "208640",
+        "WBAN": "99999",
+        "DISTANCE": "2981.2"
+      },
+      {
+        "USAF": "209670",
+        "WBAN": "99999",
+        "DISTANCE": "3007.2"
+      },
+      {
+        "USAF": "239660",
+        "WBAN": "99999",
+        "DISTANCE": "3009.2"
+      },
+      {
+        "USAF": "238620",
+        "WBAN": "99999",
+        "DISTANCE": "3017.8"
+      },
+      {
+        "USAF": "233580",
+        "WBAN": "99999",
+        "DISTANCE": "3023.2"
+      },
+      {
+        "USAF": "207560",
+        "WBAN": "99999",
+        "DISTANCE": "3030.7"
+      },
+      {
+        "USAF": "353944",
+        "WBAN": "99999",
+        "DISTANCE": "3035.6"
+      },
+      {
+        "USAF": "231460",
+        "WBAN": "99999",
+        "DISTANCE": "3038.2"
+      },
+      {
+        "USAF": "235520",
+        "WBAN": "99999",
+        "DISTANCE": "3038.6"
+      },
+      {
+        "USAF": "235580",
+        "WBAN": "99999",
+        "DISTANCE": "3057.1"
+      },
+      {
+        "USAF": "203570",
+        "WBAN": "99999",
+        "DISTANCE": "3063.9"
+      },
+      {
+        "USAF": "236560",
+        "WBAN": "99999",
+        "DISTANCE": "3097.8"
+      },
+      {
+        "USAF": "232420",
+        "WBAN": "99999",
+        "DISTANCE": "3101.9"
+      },
+      {
+        "USAF": "208560",
+        "WBAN": "99999",
+        "DISTANCE": "3123.0"
+      },
+      {
+        "USAF": "234430",
+        "WBAN": "99999",
+        "DISTANCE": "3129.0"
+      },
+      {
+        "USAF": "238670",
+        "WBAN": "99999",
+        "DISTANCE": "3141.6"
+      },
+      {
+        "USAF": "233450",
+        "WBAN": "99999",
+        "DISTANCE": "3151.1"
+      },
+      {
+        "USAF": "237580",
+        "WBAN": "99999",
+        "DISTANCE": "3211.0"
+      },
+      {
+        "USAF": "232202",
+        "WBAN": "99999",
+        "DISTANCE": "3212.1"
+      },
+      {
+        "USAF": "239530",
+        "WBAN": "99999",
+        "DISTANCE": "3217.2"
+      },
+      {
+        "USAF": "234450",
+        "WBAN": "99999",
+        "DISTANCE": "3222.3"
+      },
+      {
+        "USAF": "233410",
+        "WBAN": "99999",
+        "DISTANCE": "3222.8"
+      },
+      {
+        "USAF": "238590",
+        "WBAN": "99999",
+        "DISTANCE": "3224.7"
+      },
+      {
+        "USAF": "230320",
+        "WBAN": "99999",
+        "DISTANCE": "3227.2"
+      },
+      {
+        "USAF": "236570",
+        "WBAN": "99999",
+        "DISTANCE": "3243.9"
+      },
+      {
+        "USAF": "238520",
+        "WBAN": "99999",
+        "DISTANCE": "3247.0"
+      },
+      {
+        "USAF": "239550",
+        "WBAN": "99999",
+        "DISTANCE": "3290.5"
+      },
+      {
+        "USAF": "233330",
+        "WBAN": "99999",
+        "DISTANCE": "3299.7"
+      },
+      {
+        "USAF": "230290",
+        "WBAN": "99999",
+        "DISTANCE": "3313.7"
+      },
+      {
+        "USAF": "234710",
+        "WBAN": "99999",
+        "DISTANCE": "3320.8"
+      },
+      {
+        "USAF": "239331",
+        "WBAN": "99999",
+        "DISTANCE": "3320.8"
+      },
+      {
+        "USAF": "235410",
+        "WBAN": "99999",
+        "DISTANCE": "3331.0"
+      },
+      {
+        "USAF": "237480",
+        "WBAN": "99999",
+        "DISTANCE": "3331.0"
+      },
+      {
+        "USAF": "232203",
+        "WBAN": "99999",
+        "DISTANCE": "3331.5"
+      },
+      {
+        "USAF": "233320",
+        "WBAN": "99999",
+        "DISTANCE": "3345.7"
+      },
+      {
+        "USAF": "233390",
+        "WBAN": "99999",
+        "DISTANCE": "3349.6"
+      },
+      {
+        "USAF": "233380",
+        "WBAN": "99999",
+        "DISTANCE": "3368.1"
+      },
+      {
+        "USAF": "238430",
+        "WBAN": "99999",
+        "DISTANCE": "3374.5"
+      },
+      {
+        "USAF": "237450",
+        "WBAN": "99999",
+        "DISTANCE": "3375.5"
+      },
+      {
+        "USAF": "236440",
+        "WBAN": "99999",
+        "DISTANCE": "3388.9"
+      },
+      {
+        "USAF": "232200",
+        "WBAN": "99999",
+        "DISTANCE": "3397.8"
+      },
+      {
+        "USAF": "232201",
+        "WBAN": "99999",
+        "DISTANCE": "3398.0"
+      },
+      {
+        "USAF": "233300",
+        "WBAN": "99999",
+        "DISTANCE": "3399.2"
+      },
+      {
+        "USAF": "230220",
+        "WBAN": "99999",
+        "DISTANCE": "3400.0"
+      },
+      {
+        "USAF": "233310",
+        "WBAN": "99999",
+        "DISTANCE": "3416.2"
+      },
+      {
+        "USAF": "237410",
+        "WBAN": "99999",
+        "DISTANCE": "3420.3"
+      },
+      {
+        "USAF": "230210",
+        "WBAN": "99999",
+        "DISTANCE": "3428.2"
+      },
+      {
+        "USAF": "238490",
+        "WBAN": "99999",
+        "DISTANCE": "3432.8"
+      },
+      {
+        "USAF": "230200",
+        "WBAN": "99999",
+        "DISTANCE": "3437.5"
+      },
+      {
+        "USAF": "232260",
+        "WBAN": "99999",
+        "DISTANCE": "3444.2"
+      },
+      {
+        "USAF": "236350",
+        "WBAN": "99999",
+        "DISTANCE": "3450.9"
+      },
+      {
+        "USAF": "239460",
+        "WBAN": "99999",
+        "DISTANCE": "3459.5"
+      },
+      {
+        "USAF": "230240",
+        "WBAN": "99999",
+        "DISTANCE": "3460.7"
+      },
+      {
+        "USAF": "231210",
+        "WBAN": "99999",
+        "DISTANCE": "3467.3"
+      },
+      {
+        "USAF": "234310",
+        "WBAN": "99999",
+        "DISTANCE": "3467.8"
+      },
+      {
+        "USAF": "238480",
+        "WBAN": "99999",
+        "DISTANCE": "3476.9"
+      },
+      {
+        "USAF": "234230",
+        "WBAN": "99999",
+        "DISTANCE": "3502.7"
+      },
+      {
+        "USAF": "238470",
+        "WBAN": "99999",
+        "DISTANCE": "3527.4"
+      },
+      {
+        "USAF": "238410",
+        "WBAN": "99999",
+        "DISTANCE": "3529.0"
+      },
+      {
+        "USAF": "234260",
+        "WBAN": "99999",
+        "DISTANCE": "3535.7"
+      },
+      {
+        "USAF": "235310",
+        "WBAN": "99999",
+        "DISTANCE": "3538.6"
+      },
+      {
+        "USAF": "233220",
+        "WBAN": "99999",
+        "DISTANCE": "3547.2"
+      },
+      {
+        "USAF": "236320",
+        "WBAN": "99999",
+        "DISTANCE": "3566.5"
+      },
+      {
+        "USAF": "239470",
+        "WBAN": "99999",
+        "DISTANCE": "3600.6"
+      },
+      {
+        "USAF": "236310",
+        "WBAN": "99999",
+        "DISTANCE": "3619.3"
+      },
+      {
+        "USAF": "233240",
+        "WBAN": "99999",
+        "DISTANCE": "3626.1"
+      },
+      {
+        "USAF": "239330",
+        "WBAN": "99999",
+        "DISTANCE": "3641.0"
+      },
+      {
+        "USAF": "238380",
+        "WBAN": "99999",
+        "DISTANCE": "3659.1"
+      },
+      {
+        "USAF": "237340",
+        "WBAN": "99999",
+        "DISTANCE": "3675.0"
+      },
+      {
+        "USAF": "237370",
+        "WBAN": "99999",
+        "DISTANCE": "3686.9"
+      },
+      {
+        "USAF": "236290",
+        "WBAN": "99999",
+        "DISTANCE": "3689.6"
+      },
+      {
+        "USAF": "237230",
+        "WBAN": "99999",
+        "DISTANCE": "3691.9"
+      },
+      {
+        "USAF": "239390",
+        "WBAN": "99999",
+        "DISTANCE": "3693.0"
+      },
+      {
+        "USAF": "236280",
+        "WBAN": "99999",
+        "DISTANCE": "3735.5"
+      },
+      {
+        "USAF": "236250",
+        "WBAN": "99999",
+        "DISTANCE": "3755.0"
+      },
+      {
+        "USAF": "238230",
+        "WBAN": "99999",
+        "DISTANCE": "3756.0"
+      },
+      {
+        "USAF": "235270",
+        "WBAN": "99999",
+        "DISTANCE": "3760.4"
+      },
+      {
+        "USAF": "237290",
+        "WBAN": "99999",
+        "DISTANCE": "3778.4"
+      },
+      {
+        "USAF": "239230",
+        "WBAN": "99999",
+        "DISTANCE": "3830.5"
+      },
+      {
+        "USAF": "238290",
+        "WBAN": "99999",
+        "DISTANCE": "3857.3"
+      },
+      {
+        "USAF": "237240",
+        "WBAN": "99999",
+        "DISTANCE": "3887.2"
+      },
+      {
+        "USAF": "238200",
+        "WBAN": "99999",
+        "DISTANCE": "3888.7"
+      },
+      {
+        "USAF": "239290",
+        "WBAN": "99999",
+        "DISTANCE": "3898.1"
+      },
+      {
+        "USAF": "239250",
+        "WBAN": "99999",
+        "DISTANCE": "3937.9"
+      },
+      {
+        "USAF": "238270",
+        "WBAN": "99999",
+        "DISTANCE": "3984.2"
+      },
+      {
+        "USAF": "239210",
+        "WBAN": "99999",
+        "DISTANCE": "4029.0"
+      },
+      {
+        "USAF": "239270",
+        "WBAN": "99999",
+        "DISTANCE": "4086.0"
+      }
+    ],
     M: {
         showValid: 0 //0 not show, 1 show valid
     },
@@ -363,7 +1198,7 @@ function consoleDetails(){
         let tempRegExp = /[a-zA-Z]/i;
         if(tempRegExp.test(lon.toString())){ //如果错误解析某站点csv
             failedToParseCount += 1;
-            console.log(stationNumberToPrint + ' | ' + 'FAILED TO PARSE THE STATION');
+            console.log('FAILED TO PARSE STATION: ' + stationNumberToPrint);
         }else{ //正确解析某站点csv
             normalStationCount += 1;
             let tempObj = {};
@@ -371,20 +1206,29 @@ function consoleDetails(){
             tempObj['STATION NUMBER'] = stationNumberToPrint;
 
             //自定义属性，给输出对象的属性起名字(key)
+            /* //极端低温
             let tempAttr1 = 'MIN';
             let tempAttr2 = 'TOTAL';
             let tempAttr3 = 'MIN DATE';
-            //自定义属性，取决于需要查什么数据，一共3个，再往下几行代码还有1个
             tempObj[tempAttr1] = overview.MIN.min;
             tempObj[tempAttr2] = overview.MIN.total;
+            tempObj[tempAttr3] = overview.MIN.minDate; */
+            
+            //最大连续日数
+            if(stat_CONSEC.length === 0){ return } //这里必须提前判断数组是否为空，否则后面会报错
+            let tempAttr1 = 'MAX CONSEC';
+            let tempAttr2 = 'START';
+            let tempAttr3 = 'END';
+            let tempAttr4 = 'TOTAL';
+            tempObj[tempAttr1] = stat_CONSEC[0].consecDays;
+            tempObj[tempAttr2] = stat_CONSEC[0].startDate;
+            tempObj[tempAttr3] = stat_CONSEC[0].endDate;
+            tempObj[tempAttr4] = totalThreshholdDays;
 
             //基本属性
             tempObj['ELEV(m)'] = elev;
             tempObj.LATITUDE = lat;
             tempObj.LONGITUDE = lon;
-            
-            //自定义属性，发生日期有多个，所以放在最后
-            tempObj[tempAttr3] = overview.MIN.minDate;
             
             //填装对象到数组
             resultArrForStations.push(tempObj);
@@ -396,7 +1240,7 @@ function consoleDetails(){
                 console.log('SUCCEED TO RETRIEVE: ' + normalStationCount + '\n');
 
                 //给结果数组排序
-                resultArrForStations.sort((a, b) => { return a[tempAttr1] - b[tempAttr1]; });
+                resultArrForStations.sort((a, b) => { return b[tempAttr1] - a[tempAttr1]; });
 
                 //打印结果
                 console.table(resultArrForStations);
