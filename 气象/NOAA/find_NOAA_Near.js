@@ -15,47 +15,59 @@ for(let i = 0; i < sheets.length; i++)
 }
 
 let config = {
-    'USAF': '24688',
+    USAF: '24688',
     //筛选排序
-    'countryCode': 'RS', //留空则不筛选国家
-    'item': 'd', //针对哪个项排序, d = distance 或 e = elevation
-    'order': 'asc', //排序方式
-    'maxDistance': 4500, //方圆多少km
-    'filterByCoords': 1, //是否按经度区间筛选
-    'lat1': 60, //纬度范围：起始纬度
-    'lat2': 90, //纬度范围：终止纬度
-    'lon1': 60, //经度范围：起始经度
-    'lon2': 160, //经度范围：终止经度
-    'usafNoEnd0': 0, //是否忽略USAF结尾是0的记录，1是 0否
-    'searchType': 0, //按什么搜索，0代表按站号搜索
-    'coorArr': [63.2, -143.3], //如果是按坐标搜索(searchType = 1), 需要在这给出坐标
-    'limited': '' //是否限定到只考察 xxxxx0-99999 站点，一般不要做限制, 如果非要限制，值为 'limited'
+    sort: {
+        item: 'd', //针对哪个项排序, d = distance 或 e = elevation
+        order: 'asc' //排序方式
+    },
+    filters: {
+        maxDistance: 8000, //方圆多少km
+        
+        countryCode: 'rs', //留空则不筛选国家
+
+        byElev: 0, //是否筛选海拔
+        elev1: -500, //海拔低值
+        elev2: 500, //海拔高值
+        
+        byCoordsRange: 1, ////是否筛选经纬度
+        lat1: 60, //纬度范围：起始纬度
+        lat2: 90, //纬度范围：终止纬度
+        lon1: 80, //经度范围：起始经度
+        lon2: 180 //经度范围：终止经度
+    },
+
+    searchType: 0, //按什么搜索，0代表按站号搜索
+    coorArr: [22, 78], //如果是按坐标搜索(searchType = 1), 需要在这给出坐标
+
+    usafNoEnd0: 0, //是否忽略USAF结尾是0的记录，1是 0否
+    limited: '' //是否限定到只考察 xxxxx0-99999 站点，一般不要做限制, 如果非要限制，值为 'limited'
 }
 //在这里修改参数
 //5个参数：搜索类型(0=站号, 1=坐标) | 站号 | 坐标数组(纬度, 经度) | 最大坐标距离(只显示坐标距离小于此数的附近站点) | 严格模式
-let result = getNearbyStations(config.searchType, config.USAF, config.coorArr, config.maxDistance, config.limited);
+let result = getNearbyStations(config.searchType, config.USAF, config.coorArr, config.filters.maxDistance, config.limited);
 //打印结果
 consoleResult();
 function consoleResult(){
     let placeStr;
-    let countryText = ' in ' + config.countryCode.trim().toUpperCase();
+    let countryText = ' in ' + config.filters.countryCode.trim().toUpperCase();
     let itemDistanceStr = 'Distance';
     let itemElevationStr = 'Elevation';
-    let itemStr = config.item.toUpperCase() === 'd'.toUpperCase() ? itemDistanceStr : itemElevationStr;
+    let itemStr = config.sort.item.toUpperCase() === 'd'.toUpperCase() ? itemDistanceStr : itemElevationStr;
     if(config.searchType === 0){
         placeStr = config.USAF;
     }else if(config.searchType === 1){
         placeStr = '( ' + config.coorArr[0].toString() + ', ' + config.coorArr[1].toString() + ' )';
     }
-    if(config.countryCode.trim() !== ''){
+    if(config.filters.countryCode.trim() !== ''){
         placeStr += countryText;
     }
     if(config.usafNoEnd0 === 1){
         placeStr += '\nLast Digit of USAF ≠ 0';
     }
     console.log('\nAll Stations Nearby ' + placeStr);
-    console.log('DISTANCE <= ' + config.maxDistance.toString() + 'km');
-    console.log('SORTED BY ' + itemStr + ' ' + config.order.toUpperCase());
+    console.log('DISTANCE <= ' + config.filters.maxDistance.toString() + 'km');
+    console.log('SORTED BY ' + itemStr + ' ' + config.sort.order.toUpperCase());
     console.log('TOTAL: ' + result.total + '\n')
     console.table(result.resultArr);
 
@@ -157,31 +169,34 @@ function getNearbyStations(searchType, stationNumber, coorArr, maxDistance, limi
         return len1 < 5 ? repeatedNumberStr(0, 5 - len1) + str1 : str1;
     }
 
+    //筛选距离，这个是必须的
     let resultArr = newArr.filter((e) => e['DISTANCE(km)'] <= maxDistance);
-    //筛选国家
-    let countryCode = config.countryCode.trim().toUpperCase();
-    if(countryCode !== ''){
-        resultArr = resultArr.filter((e) => e['COUNTRY'] === countryCode);
-    }
-    //筛选经纬度
-    if(config.filterByCoords === 1){
-        resultArr = resultArr.filter((e) => coordsMatched( e['LAT'], e['LON'], config.lat1, config.lat2, config.lon1, config.lon2 ));
-    }
-    //筛选USAF
-    if(config.usafNoEnd0 === 1){
-        resultArr = resultArr.filter((e) => e['USAF'].substring(5, 6) !== '0');
+    //筛选国家, 留空则不筛选
+    let countryCode = config.filters.countryCode.trim().toUpperCase();
+    if(countryCode !== ''){ resultArr = resultArr.filter((e) => e['COUNTRY'] === countryCode.trim()); }
+
+    //筛选海拔
+    if(config.filters.byElev > 0){
+        resultArr = resultArr.filter( (e) => Number(e['ELEV(m)']) >= config.filters.elev1 && Number(e['ELEV(m)']) <= config.filters.elev2 );
     }
 
+    //筛选经纬度
+    if(config.filters.byCoordsRange > 0){
+        resultArr = resultArr.filter((e) => coordsMatched( e['LAT'], e['LON'], config.filters.lat1, config.filters.lat2, config.filters.lon1, config.filters.lon2 ));
+    }
+    //筛选USAF, 一般不筛选
+    if(config.usafNoEnd0 > 0){ resultArr = resultArr.filter((e) => e['USAF'].substring(5, 6) !== '0'); }
+
     //注意多种排序的先后顺序
-    if(config.item.toUpperCase() === 'd'.toUpperCase()){ //按距离排序
+    if(config.sort.item.toUpperCase() === 'd'.toUpperCase()){ //按距离排序
         resultArr.sort((a, b) => {
-            if(config.order === 'asc'){
+            if(config.sort.order === 'asc'){
                 return a['DISTANCE(km)'] - b['DISTANCE(km)'];
             }else{
                 return b['DISTANCE(km)'] - a['DISTANCE(km)'];
             }
         });
-    }else if(config.item.toUpperCase() === 'e'.toUpperCase()){ //按海拔排序
+    }else if(config.sort.item.toUpperCase() === 'e'.toUpperCase()){ //按海拔排序
         resultArr.sort((a, b) => {
             if(a['ELEV(m)'] === undefined && b['ELEV(m)'] === undefined){
                 return 0;
@@ -190,7 +205,7 @@ function getNearbyStations(searchType, stationNumber, coorArr, maxDistance, limi
             }else if(a['ELEV(m)'] === undefined){
                 return 1;
             }else{
-                if(config.order === 'asc'){
+                if(config.sort.order === 'asc'){
                     return a['ELEV(m)'] - b['ELEV(m)'];
                 }else{
                     return b['ELEV(m)'] - a['ELEV(m)'];
