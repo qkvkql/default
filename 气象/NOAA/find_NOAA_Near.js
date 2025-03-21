@@ -15,30 +15,30 @@ for(let i = 0; i < sheets.length; i++)
 }
 
 let config = {
-    USAF: '24688',
+    USAF: '31338',
+    searchType: 0, //按什么搜索，0代表按站号搜索
+    coorArr: [39, 34], //如果是按坐标搜索(searchType = 1), 需要在这给出坐标
+    filters: {
+        byCoordsRange: 0, ////是否筛选经纬度
+        byElev: 0, //是否筛选海拔
+
+        maxDistance: 300, //方圆多少km
+        
+        countryCode: '', //留空则不筛选国家
+
+        elev1: -500, //海拔低值
+        elev2: 500, //海拔高值
+        
+        lat1: 55, //纬度范围：起始纬度
+        lat2: 90, //纬度范围：终止纬度
+        lon1: 0, //经度范围：起始经度
+        lon2: 60 //经度范围：终止经度
+    },
     //筛选排序
     sort: {
         item: 'd', //针对哪个项排序, d = distance 或 e = elevation
         order: 'asc' //排序方式
     },
-    filters: {
-        maxDistance: 8000, //方圆多少km
-        
-        countryCode: 'rs', //留空则不筛选国家
-
-        byElev: 0, //是否筛选海拔
-        elev1: -500, //海拔低值
-        elev2: 500, //海拔高值
-        
-        byCoordsRange: 1, ////是否筛选经纬度
-        lat1: 60, //纬度范围：起始纬度
-        lat2: 90, //纬度范围：终止纬度
-        lon1: 80, //经度范围：起始经度
-        lon2: 180 //经度范围：终止经度
-    },
-
-    searchType: 0, //按什么搜索，0代表按站号搜索
-    coorArr: [22, 78], //如果是按坐标搜索(searchType = 1), 需要在这给出坐标
 
     usafNoEnd0: 0, //是否忽略USAF结尾是0的记录，1是 0否
     limited: '' //是否限定到只考察 xxxxx0-99999 站点，一般不要做限制, 如果非要限制，值为 'limited'
@@ -75,13 +75,13 @@ function consoleResult(){
     let arrOfStationNumber = [];
     result.resultArr.forEach((v) => {
         let tempObj = {
+            NAME: '',
             USAF: '',
-            WBAN: '',
-            DISTANCE: ''
+            WBAN: ''
         };
+        tempObj.NAME = v.NAME;
         tempObj.USAF = v.USAF;
         tempObj.WBAN = v.WBAN;
-        tempObj.DISTANCE = v['DISTANCE(km)'];
         arrOfStationNumber.push(tempObj);
     });
     console.log(JSON.stringify(arrOfStationNumber));
