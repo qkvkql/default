@@ -8,25 +8,26 @@ const ejs = require("ejs");
 //配置对象，用于设置筛选条件
 const config = {
     stationObj: {
-        USAF: '44203',
+        USAF: '36096',
         //留空则默认为99999，长度小于5则前面自动补0
         WBAN: '99999'
     },
 
     dateStart: '1929-01-01',
     dateEnd: '2025-12-31',
-    month: 1, //0 = 全年, 1 = 一月, ... , 12 = 十二月。这个月份不能填错，不然报错都找不到错误
+    month: 0, //0 = 全年, 1 = 一月, ... , 12 = 十二月。这个月份不能填错，不然报错都找不到错误
     
-    multipleStation: 0, //是否切换到打印邻近站点模式
+    multipleStation: 1, //是否切换到打印邻近站点模式
     order: 'asc', //asc(从小到大、从低到高，从早到晚), desc
     item: 'min', //date, min, avg, max
     consecValue: '-40', //连续记录的临界值
-    showNumber: 10, //显示多少个结果
+    showNumber: 5, //显示多少个结果
     console: { //设置console打印哪些
         station: 1,
         overview: 1,
         M: 1,
         YM: 1,
+        winter: 1,
         consec: 1,
         list: 1,
         yearRange: 1,
@@ -36,9 +37,20 @@ const config = {
     //获取邻站信息
     //决定console哪一类信息
     //00=最低夜温(最低气温),01=夜温平均,02=最高夜温; 10=最低均温,11=均温,12=最高均温; 20=最低昼温,21=昼温平均,22=最高昼温(最高气温)
-    //30=月份低温平均,31=月份均温,32=月份高温平均; 40=极端单月低温平均,41=极端单月均温,42极端单月高温平均; 50=最长连续记录
-    multipleTarget: '00',
-    arrOfStations: [{"NAME":"KIRSEHIR","USAF":"171600","WBAN":"99999"},{"NAME":"KAPADOKYA","USAF":"171940","WBAN":"99999"},{"NAME":"KAPADOKYA","USAF":"170671","WBAN":"99999"},{"NAME":"AKSARAY","USAF":"171920","WBAN":"99999"},{"NAME":"NEVSEHIR","USAF":"171930","WBAN":"99999"},{"NAME":"CIHANBEYLI","USAF":"171910","WBAN":"99999"},{"NAME":"KIRIKKALE","USAF":"171350","WBAN":"99999"},{"NAME":"YOZGAT","USAF":"171400","WBAN":"99999"},{"NAME":"NIGDE","USAF":"172500","WBAN":"99999"},{"NAME":"ERKILET","USAF":"171950","WBAN":"99999"},{"NAME":"KAYSERI BOLGE","USAF":"171960","WBAN":"99999"},{"NAME":"ANKARA/CENTRAL","USAF":"171300","WBAN":"99999"},{"NAME":"GUVERCINLIK","USAF":"171310","WBAN":"99999"},{"NAME":"GUVERCINLIK","USAF":"171295","WBAN":"99999"},{"NAME":"ESENBOGA","USAF":"171280","WBAN":"99999"},{"NAME":"ETIMESGUT","USAF":"171290","WBAN":"99999"},{"NAME":"EREGLI/KONYA","USAF":"172480","WBAN":"99999"},{"NAME":"KONYA","USAF":"172440","WBAN":"99999"},{"NAME":"AKINCI","USAF":"171270","WBAN":"99999"},{"NAME":"MURTED (TUR-AFB)","USAF":"171273","WBAN":"99999"},{"NAME":"GEMEREK","USAF":"171620","WBAN":"99999"},{"NAME":"CANKIRI","USAF":"170800","WBAN":"99999"},{"NAME":"CORUM","USAF":"170840","WBAN":"99999"},{"NAME":"KARAMAN","USAF":"172460","WBAN":"99999"},{"NAME":"SIVRIHISAR","USAF":"171185","WBAN":"99999"},{"NAME":"AKSEHIR","USAF":"172390","WBAN":"99999"},{"NAME":"MERZIFON","USAF":"170820","WBAN":"99999"},{"NAME":"AMASYA","USAF":"170850","WBAN":"99999"},{"NAME":"MERSIN","USAF":"173400","WBAN":"99999"},{"NAME":"ADANA CIVIL","USAF":"173505","WBAN":"99999"},{"NAME":"ADANA","USAF":"173520","WBAN":"99999"},{"NAME":"ADANA/BOLGE","USAF":"173510","WBAN":"99999"},{"NAME":"INCIRLIK AB","USAF":"173500","WBAN":"33308"},{"NAME":"INCIRLIK AB","USAF":"173500","WBAN":"99999"},{"NAME":"KASTAMONU","USAF":"170740","WBAN":"99999"},{"NAME":"SIVAS","USAF":"170900","WBAN":"99999"},{"NAME":"KARABUK","USAF":"170780","WBAN":"99999"},{"NAME":"SIVAS (CIV/MIL)","USAF":"170905","WBAN":"99999"},{"NAME":"BOLU","USAF":"170700","WBAN":"99999"},{"NAME":"OSMANIYE","USAF":"173550","WBAN":"99999"},{"NAME":"SILIFKE","USAF":"173300","WBAN":"99999"},{"NAME":"AFYON","USAF":"171900","WBAN":"99999"},{"NAME":"AFYON (MIL)","USAF":"171905","WBAN":"99999"},{"NAME":"AFYONKARAHISAR","USAF":"171890","WBAN":"99999"},{"NAME":"KAHRAMANMARAS","USAF":"172550","WBAN":"99999"},{"NAME":"ESKISEHIR","USAF":"171240","WBAN":"99999"},{"NAME":"ANADOLU","USAF":"172006","WBAN":"99999"},{"NAME":"DUZCE","USAF":"170720","WBAN":"99999"},{"NAME":"SAMSUN","USAF":"170300","WBAN":"99999"},{"NAME":"SAMSUN\\MEYDAN","USAF":"170290","WBAN":"99999"},{"NAME":"ALANYA","USAF":"173100","WBAN":"99999"},{"NAME":"BARTIN","USAF":"170200","WBAN":"99999"},{"NAME":"ISPARTA","USAF":"172400","WBAN":"99999"},{"NAME":"ISKENDERUN","USAF":"173700","WBAN":"99999"},{"NAME":"CARSAMBA","USAF":"170673","WBAN":"99999"},{"NAME":"INEBOLU","USAF":"170240","WBAN":"99999"},{"NAME":"CARSAMBA","USAF":"170310","WBAN":"99999"},{"NAME":"ANTALYA/GAZIPASA","USAF":"170674","WBAN":"99999"},{"NAME":"ANAMUR","USAF":"173200","WBAN":"99999"},{"NAME":"SULEYMAN DEMIREL","USAF":"172410","WBAN":"99999"},{"NAME":"KUTAHYA(TAFB)","USAF":"171170","WBAN":"99999"},{"NAME":"KUTAHYA","USAF":"171550","WBAN":"99999"},{"NAME":"SINOP","USAF":"170260","WBAN":"99999"},{"NAME":"BURDUR","USAF":"172380","WBAN":"99999"},{"NAME":"HATAY","USAF":"173725","WBAN":"99999"},{"NAME":"ERHAC","USAF":"172000","WBAN":"99999"},{"NAME":"ADAPAZARI","USAF":"170690","WBAN":"99999"},{"NAME":"ANTALYA","USAF":"173000","WBAN":"99999"},{"NAME":"HATAY-ANTAKYA","USAF":"173720","WBAN":"99999"},{"NAME":"BILECIK","USAF":"171200","WBAN":"99999"},{"NAME":"KILIS","USAF":"172620","WBAN":"99999"},{"NAME":"ANTALYA-BOLGE","USAF":"173020","WBAN":"99999"},{"NAME":"TULGA","USAF":"171970","WBAN":"99999"},{"NAME":"OGUZELI","USAF":"172600","WBAN":"99999"},{"NAME":"MALATYA/BOLGE","USAF":"171990","WBAN":"99999"},{"NAME":"TOPEL","USAF":"172005","WBAN":"99999"},{"NAME":"CARDAK","USAF":"172375","WBAN":"99999"},{"NAME":"ADIYAMAN","USAF":"172650","WBAN":"99999"},{"NAME":"ORDU","USAF":"170330","WBAN":"99999"},{"NAME":"GOLCUK/DUMLUPINAR","USAF":"170670","WBAN":"99999"},{"NAME":"IZMIT","USAF":"170661","WBAN":"99999"},{"NAME":"YENISEHIR","USAF":"171180","WBAN":"99999"},{"NAME":"YENISEHIR","USAF":"170672","WBAN":"99999"},{"NAME":"CENGIZTOPEL","USAF":"170680","WBAN":"99999"},{"NAME":"GIRESUN","USAF":"170340","WBAN":"99999"},{"NAME":"BURSA","USAF":"171160","WBAN":"99999"},{"NAME":"YALOVA","USAF":"171190","WBAN":"99999"},{"NAME":"DENIZLI","USAF":"172370","WBAN":"99999"},{"NAME":"SABIHA GOKCEN","USAF":"170630","WBAN":"99999"},{"NAME":"FINIKE","USAF":"173750","WBAN":"99999"},{"NAME":"GAP/SANLIURFA","USAF":"172710","WBAN":"99999"},{"NAME":"ELAZIG","USAF":"172020","WBAN":"99999"},{"NAME":"SAMANDIRA","USAF":"170223","WBAN":"99999"},{"NAME":"ISTANBUL/GOZTEPE","USAF":"170620","WBAN":"99999"},{"NAME":"ISTANBUL BOLGE (KARTAL)","USAF":"170640","WBAN":"99999"},{"NAME":"SANLIURFA","USAF":"172700","WBAN":"99999"},{"NAME":"TUNCELI","USAF":"171650","WBAN":"99999"},{"NAME":"ERZINCAN","USAF":"170920","WBAN":"99999"},{"NAME":"SARIYER","USAF":"170610","WBAN":"99999"},{"NAME":"KUMKOY","USAF":"170590","WBAN":"99999"},{"NAME":"ATATURK","USAF":"170600","WBAN":"99999"},{"NAME":"KAS","USAF":"173800","WBAN":"99999"},{"NAME":"GUMUSHANE","USAF":"170880","WBAN":"99999"},{"NAME":"FETHIYE","USAF":"172960","WBAN":"99999"},{"NAME":"DALAMAN","USAF":"172950","WBAN":"99999"},{"NAME":"DALAMAN/MUGLA","USAF":"172345","WBAN":"99999"},{"NAME":"DALAMAN/MUGLA","USAF":"172953","WBAN":"99999"},{"NAME":"BALIKESIR","USAF":"171500","WBAN":"99999"},{"NAME":"MUGLA","USAF":"172920","WBAN":"99999"},{"NAME":"AKHISAR","USAF":"171840","WBAN":"99999"},{"NAME":"AKHISAR (TUR-AFB) &","USAF":"171983","WBAN":"99999"},{"NAME":"BANDIRMA","USAF":"171150","WBAN":"99999"},{"NAME":"TRABZON","USAF":"170380","WBAN":"99999"},{"NAME":"AYDIN","USAF":"172340","WBAN":"99999"},{"NAME":"BAYBURT","USAF":"170890","WBAN":"99999"},{"NAME":"DIYARBAKIR","USAF":"172800","WBAN":"99999"},{"NAME":"MARMARIS","USAF":"172980","WBAN":"99999"},{"NAME":"BINGOL","USAF":"172030","WBAN":"99999"},{"NAME":"CORLU","USAF":"170575","WBAN":"99999"},{"NAME":"CORLU","USAF":"170540","WBAN":"99999"},{"NAME":"MANISA","USAF":"171860","WBAN":"99999"},{"NAME":"MANISA / SANAYI AIRPORT","USAF":"171865","WBAN":"99999"},{"NAME":"MILAS BODRUM","USAF":"172734","WBAN":"99999"},{"NAME":"MILAS BODRUM","USAF":"172910","WBAN":"99999"},{"NAME":"IMSIK","USAF":"172900","WBAN":"99999"},{"NAME":"TEKIRDAG","USAF":"170560","WBAN":"99999"},{"NAME":"IZMIR/GUZELYALI","USAF":"172200","WBAN":"99999"},{"NAME":"GAZIEMIR","USAF":"172191","WBAN":"99999"},{"NAME":"RIZE","USAF":"170400","WBAN":"99999"},{"NAME":"ADNAN MENDERES","USAF":"172190","WBAN":"99999"},{"NAME":"KUSADASI","USAF":"172320","WBAN":"99999"},{"NAME":"EDREMIT KORFEZ","USAF":"171450","WBAN":"99999"},{"NAME":"CIGLI","USAF":"172180","WBAN":"99999"},{"NAME":"KAKLIC","USAF":"172189","WBAN":"99999"},{"NAME":"DATCA","USAF":"172970","WBAN":"99999"},{"NAME":"DIKILI","USAF":"171800","WBAN":"99999"},{"NAME":"MARDIN","USAF":"172750","WBAN":"99999"},{"NAME":"ERZURUM","USAF":"170960","WBAN":"99999"},{"NAME":"AYVALIK","USAF":"171750","WBAN":"99999"},{"NAME":"BATMAN (TUR-AFB)","USAF":"172805","WBAN":"99999"},{"NAME":"BATMAN","USAF":"172820","WBAN":"99999"},{"NAME":"ERZURUM (CIV/MIL)","USAF":"170965","WBAN":"99999"},{"NAME":"ERZURUM BOLGE","USAF":"170950","WBAN":"99999"},{"NAME":"KIRKLARELI","USAF":"170520","WBAN":"99999"},{"NAME":"MUS","USAF":"172040","WBAN":"99999"},{"NAME":"CANAKKALE","USAF":"171120","WBAN":"99999"},{"NAME":"MUS","USAF":"172043","WBAN":"99999"},{"NAME":"CESME","USAF":"172210","WBAN":"99999"},{"NAME":"HOPA","USAF":"170420","WBAN":"99999"},{"NAME":"BOZCAADA","USAF":"171110","WBAN":"99999"},{"NAME":"SIIRT","USAF":"170981","WBAN":"99999"},{"NAME":"EDIRNE","USAF":"170500","WBAN":"99999"},{"NAME":"SIIRT","USAF":"172100","WBAN":"99999"},{"NAME":"GOKCEADA","USAF":"171100","WBAN":"99999"},{"NAME":"ARTVIN","USAF":"170450","WBAN":"99999"},{"NAME":"TATVAN","USAF":"172050","WBAN":"99999"},{"NAME":"ARDAHAN","USAF":"170460","WBAN":"99999"},{"NAME":"AGRI","USAF":"170990","WBAN":"99999"},{"NAME":"KARS","USAF":"170980","WBAN":"99999"},{"NAME":"VAN","USAF":"171700","WBAN":"99999"},{"NAME":"IGDIR AIRPORT","USAF":"171001","WBAN":"99999"},{"NAME":"HAKKARI","USAF":"172850","WBAN":"99999"},{"NAME":"IGDIR","USAF":"171000","WBAN":"99999"}],
+    //30=月份低温平均,31=月份均温,32=月份高温平均; 40=极端单月低温平均,41=极端单月均温,42极端单月高温平均; 50=单个冬季最多阈值天数
+    //60=最长连续记录; 70=年平均气温(用overview)
+    multipleTarget: '50',
+    arrOfStations: [{"NAME":"SELEMDZA","USAF":"313380","WBAN":"99999"},{"NAME":"EKIMCAN","USAF":"313290","WBAN":"99999"},{"NAME":"SEVLI","USAF":"313250","WBAN":"99999"},{"NAME":"BOLODEK","USAF":"313310","WBAN":"99999"},{"NAME":"SOFIJSKIJ PRIISK","USAF":"314780","WBAN":"99999"},{"NAME":"BURUKAN","USAF":"313480","WBAN":"99999"},{"NAME":"UDSKOE","USAF":"312850","WBAN":"99999"},{"NAME":"STOJBA","USAF":"313920","WBAN":"99999"},{"NAME":"VESELAJA GORKA","USAF":"314180","WBAN":"99999"},{"NAME":"TOROM","USAF":"312880","WBAN":"99999"},{"NAME":"UST'-UMAL'TA","USAF":"314740","WBAN":"99999"},{"NAME":"IM POLINY OSIPENKO","USAF":"314160","WBAN":"99999"},{"NAME":"SREDNYAYA IPPATA","USAF":"314750","WBAN":"99999"},{"NAME":"CUMIKAN","USAF":"312860","WBAN":"99999"},{"NAME":"SELEMDZINSKOE","USAF":"313940","WBAN":"99999"},{"NAME":"HULARIN","USAF":"314840","WBAN":"99999"},{"NAME":"DUKI","USAF":"314820","WBAN":"99999"},{"NAME":"TUGUR","USAF":"313460","WBAN":"99999"},{"NAME":"BYSSA","USAF":"313970","WBAN":"99999"},{"NAME":"CEGDOMYN","USAF":"314690","WBAN":"99999"},{"NAME":"GUGA","USAF":"314210","WBAN":"99999"},{"NAME":"JANA","USAF":"312350","WBAN":"99999"},{"NAME":"DUGDA","USAF":"313180","WBAN":"99999"},{"NAME":"LEVAJA KOSMUN","USAF":"315410","WBAN":"99999"},{"NAME":"IRUMKA-IN-KHABAROV","USAF":"315450","WBAN":"99999"},{"NAME":"CEKUNDA","USAF":"315320","WBAN":"99999"},{"NAME":"NORSK","USAF":"313880","WBAN":"99999"},{"NAME":"GORIN","USAF":"314890","WBAN":"99999"},{"NAME":"VERKHOVYE GORINA","USAF":"315520","WBAN":"99999"},{"NAME":"LOKSAK","USAF":"312630","WBAN":"99999"},{"NAME":"OSTROV BELICHIY","USAF":"311830","WBAN":"99999"},{"NAME":"BOL'SHOJ SHANTAR","USAF":"311740","WBAN":"99999"},{"NAME":"VERHNJAJA TOM","USAF":"314590","WBAN":"99999"},{"NAME":"BICHI-IN-KHABAROV","USAF":"314920","WBAN":"99999"},{"NAME":"BAKTOR","USAF":"314970","WBAN":"99999"},{"NAME":"UDINSKOJE","USAF":"314230","WBAN":"99999"},{"NAME":"CAPE UKOY","USAF":"311730","WBAN":"99999"},{"NAME":"GAR","USAF":"313840","WBAN":"99999"},{"NAME":"OGORON","USAF":"313110","WBAN":"99999"},{"NAME":"VERHOVJE URMI","USAF":"315480","WBAN":"99999"},{"NAME":"DEP-DOLBIR","USAF":"313060","WBAN":"99999"},{"NAME":"OKTJABR'SKIJ PRIISK","USAF":"313730","WBAN":"99999"},{"NAME":"KOMSOMOLSK-NA-AMURE","USAF":"315610","WBAN":"99999"},{"NAME":"KUR","USAF":"316320","WBAN":"99999"},{"NAME":"SOMNITELNIJ-PRIISK","USAF":"314370","WBAN":"99999"},{"NAME":"OSTROV REYNEK SW","USAF":"313610","WBAN":"99999"},{"NAME":"SEKTAGLI","USAF":"315340","WBAN":"99999"},{"NAME":"SUTUR","USAF":"315380","WBAN":"99999"},{"NAME":"BOMNAK","USAF":"312530","WBAN":"99999"},{"NAME":"AMURSK","USAF":"315500","WBAN":"99999"},{"NAME":"NIZNETAMBOVSKOE","USAF":"315620","WBAN":"99999"},{"NAME":"KULCI","USAF":"313640","WBAN":"99999"},{"NAME":"BOLON","USAF":"316510","WBAN":"99999"},{"NAME":"MAZANOVO","USAF":"314430","WBAN":"99999"},{"NAME":"TOKO","USAF":"311370","WBAN":"99999"},{"NAME":"SUHANOVKA","USAF":"315040","WBAN":"99999"},{"NAME":"NERAN","USAF":"316360","WBAN":"99999"},{"NAME":"ALEKSANDRA","USAF":"313620","WBAN":"99999"},{"NAME":"VOSKRESENSKOJE","USAF":"314320","WBAN":"99999"},{"NAME":"VERKHNIY NERGEN NW","USAF":"316530","WBAN":"99999"},{"NAME":"BRATOLJUBOVKA","USAF":"315210","WBAN":"99999"},{"NAME":"VERHNI NERGEN","USAF":"316610","WBAN":"99999"},{"NAME":"AYAK (?)","USAF":"313720","WBAN":"99999"},{"NAME":"URMI","USAF":"316240","WBAN":"99999"},{"NAME":"PAD","USAF":"314330","WBAN":"99999"},{"NAME":"BATOMGA","USAF":"311580","WBAN":"99999"},{"NAME":"PAYKAN-IN-AMUR","USAF":"315280","WBAN":"99999"},{"NAME":"KHARA-IN-AMUR","USAF":"315930","WBAN":"99999"},{"NAME":"LITOVKO","USAF":"316470","WBAN":"99999"},{"NAME":"DAMBUKI","USAF":"312570","WBAN":"99999"},{"NAME":"SEGZEMA","USAF":"315660","WBAN":"99999"},{"NAME":"SVOBODNYJ","USAF":"314450","WBAN":"99999"},{"NAME":"BOGORODSKOE","USAF":"314390","WBAN":"99999"},{"NAME":"SIMANOVSK","USAF":"314420","WBAN":"99999"},{"NAME":"ZEJA","USAF":"313000","WBAN":"99999"},{"NAME":"TROICKOE","USAF":"316550","WBAN":"99999"},{"NAME":"NIKOLAEVSK-ON-AMUR","USAF":"313690","WBAN":"99999"},{"NAME":"BELOGORSK","USAF":"315130","WBAN":"99999"},{"NAME":"IVANKOVTSI","USAF":"316380","WBAN":"99999"},{"NAME":"AYAN","USAF":"311680","WBAN":"99999"},{"NAME":"ZAVITAJA","USAF":"315270","WBAN":"99999"},{"NAME":"MARIINSKOJE","USAF":"315020","WBAN":"99999"},{"NAME":"PETROVSK NW","USAF":"313660","WBAN":"99999"},{"NAME":"MUHINO","USAF":"313770","WBAN":"99999"},{"NAME":"MALINOVKA","USAF":"315830","WBAN":"99999"},{"NAME":"BIRA","USAF":"316180","WBAN":"99999"},{"NAME":"...","USAF":"311250","WBAN":"99999"},{"NAME":"NOVOKUROVKA","USAF":"317230","WBAN":"99999"},{"NAME":"SIHOTE","USAF":"315770","WBAN":"99999"},{"NAME":"BIRAKAN","USAF":"317030","WBAN":"99999"},{"NAME":"UARKI","USAF":"314360","WBAN":"99999"},{"NAME":"ARHARA","USAF":"315940","WBAN":"99999"},{"NAME":"BIROBIDZHAN","USAF":"317130","WBAN":"99999"},{"NAME":"DE-KASTRI","USAF":"315090","WBAN":"99999"},{"NAME":"ELABUGA","USAF":"317330","WBAN":"99999"},{"NAME":"OBLUC'E","USAF":"317020","WBAN":"99999"},{"NAME":"SMIDOVICH","USAF":"317250","WBAN":"99999"},{"NAME":"PYRKI SAKHALIN","USAF":"320210","WBAN":"99999"},{"NAME":"TYGDA","USAF":"312990","WBAN":"99999"},{"NAME":"ASTASIHA","USAF":"315860","WBAN":"99999"},{"NAME":"...","USAF":"311320","WBAN":"99999"},{"NAME":"ASTASHIKNA","USAF":"315880","WBAN":"99999"},{"NAME":"UNAHA","USAF":"311990","WBAN":"99999"},{"NAME":"SIZEMAN","USAF":"315730","WBAN":"99999"},{"NAME":"USAKOVO","USAF":"314410","WBAN":"99999"},{"NAME":"HABAROVSK","USAF":"317360","WBAN":"99999"},{"NAME":"KUMARA","USAF":"314440","WBAN":"99999"},{"NAME":"NOVY","USAF":"317350","WBAN":"99999"},{"NAME":"HUMA","USAF":"503530","WBAN":"99999"},{"NAME":"NEL' KAN","USAF":"311520","WBAN":"99999"},{"NAME":"SERGEJEVKA","USAF":"315110","WBAN":"99999"},{"NAME":"POGIBI","USAF":"320270","WBAN":"99999"},{"NAME":"KHABAROVSK","USAF":"999999","WBAN":"44301"},{"NAME":"RYBNOVSK","USAF":"320040","WBAN":"99999"},{"NAME":"CHERNJAEVO","USAF":"313710","WBAN":"99999"},{"NAME":"POJARKOVO","USAF":"315870","WBAN":"99999"},{"NAME":"NADEZHDINSKOYE","USAF":"317270","WBAN":"99999"},{"NAME":"IGNATYEVO","USAF":"313289","WBAN":"99999"},{"NAME":"MAGDAGACI","USAF":"312950","WBAN":"99999"},{"NAME":"AMURSKAYA NORTH","USAF":"311870","WBAN":"99999"},{"NAME":"BLAGOVESCENSK","USAF":"315100","WBAN":"99999"},{"NAME":"TIVJAKU","USAF":"317540","WBAN":"99999"},{"NAME":"CJUL'BJU","USAF":"311230","WBAN":"99999"},{"NAME":"AIHUI","USAF":"504680","WBAN":"99999"},{"NAME":"DICHUN","USAF":"317050","WBAN":"99999"},{"NAME":"VIAHTU","USAF":"320450","WBAN":"99999"},{"NAME":"SOLEKUL","USAF":"316770","WBAN":"99999"},{"NAME":"CAPE SYURKUM","USAF":"315790","WBAN":"99999"},{"NAME":"TUMNIN","USAF":"316830","WBAN":"99999"},{"NAME":"MOSKALVO","USAF":"320140","WBAN":"99999"},{"NAME":"POMPEYEVKA","USAF":"317040","WBAN":"99999"},{"NAME":"VERINO","USAF":"317900","WBAN":"99999"},{"NAME":"...","USAF":"311130","WBAN":"99999"},{"NAME":"NORTHEAST","USAF":"507410","WBAN":"99999"},{"NAME":"NYVROVO","USAF":"320110","WBAN":"99999"},{"NAME":"LENINSKOE","USAF":"317100","WBAN":"99999"},{"NAME":"OLENEVOD NORTHEAST","USAF":"320430","WBAN":"99999"},{"NAME":"KAJGAN","USAF":"320130","WBAN":"99999"},{"NAME":"KHOR","USAF":"317910","WBAN":"99999"},{"NAME":"CAPE YELIZAVETI","USAF":"320120","WBAN":"99999"},{"NAME":"OHA","USAF":"320100","WBAN":"99999"},{"NAME":"OKHA RUSSIAN FEDERAT","USAF":"353943","WBAN":"99999"},{"NAME":"ALEKSEYEVKA WEST","USAF":"316890","WBAN":"99999"},{"NAME":"CHERINAY","USAF":"317490","WBAN":"99999"},{"NAME":"TALDAN","USAF":"306930","WBAN":"99999"},{"NAME":"BICEVAJA","USAF":"317920","WBAN":"99999"},{"NAME":"IOLI","USAF":"317660","WBAN":"99999"},{"NAME":"ALEKSANDROVSK-SAHALINSKIJ","USAF":"320610","WBAN":"99999"},{"NAME":"TIGAN-URKAN","USAF":"305990","WBAN":"99999"},{"NAME":"SUNWU","USAF":"505640","WBAN":"99999"},{"NAME":"TA-HE","USAF":"502460","WBAN":"99999"},{"NAME":"VJAZEMSKAJA","USAF":"317860","WBAN":"99999"},{"NAME":"CAJVO","USAF":"320360","WBAN":"99999"},{"NAME":"GVASJUGI","USAF":"318010","WBAN":"99999"},{"NAME":"GROSSEVICHI WEST","USAF":"317670","WBAN":"99999"},{"NAME":"ADO-TYMOVO","USAF":"320570","WBAN":"99999"},{"NAME":"NOGLIKI","USAF":"320530","WBAN":"99999"},{"NAME":"EKATERINO-NIKOL'SKOE","USAF":"317070","WBAN":"99999"},{"NAME":"SOVETSKAYA GAVAN","USAF":"317700","WBAN":"99999"},{"NAME":"SVETLYY WEST","USAF":"311120","WBAN":"99999"},{"NAME":"KURUN-URJAKAH","USAF":"310670","WBAN":"99999"},{"NAME":"TYNDA","USAF":"304990","WBAN":"99999"},{"NAME":"ENKAN","USAF":"311630","WBAN":"99999"},{"NAME":"MATAY-IN-KHABAROV","USAF":"317980","WBAN":"99999"},{"NAME":"SUKPAY","USAF":"318150","WBAN":"99999"},{"NAME":"TYMOVSKOE","USAF":"320710","WBAN":"99999"},{"NAME":"UCHUR","USAF":"310260","WBAN":"99999"},{"NAME":"PIL'VO","USAF":"320690","WBAN":"99999"},{"NAME":"NAGORNYJ","USAF":"304930","WBAN":"99999"},{"NAME":"LERMONTOVKA","USAF":"317880","WBAN":"99999"},{"NAME":"SKOVORODINO","USAF":"306920","WBAN":"99999"},{"NAME":"DZALINDA","USAF":"306950","WBAN":"99999"},{"NAME":"FUJIN","USAF":"507880","WBAN":"99999"},{"NAME":"ONOR","USAF":"320770","WBAN":"99999"},{"NAME":"UST'-JUDOMA","USAF":"310540","WBAN":"99999"},{"NAME":"KOPPI SOUTH","USAF":"317760","WBAN":"99999"},{"NAME":"TAKHTAMYGDA NE","USAF":"305980","WBAN":"99999"},{"NAME":"AGZU","USAF":"318250","WBAN":"99999"},{"NAME":"KONGI","USAF":"320590","WBAN":"99999"},{"NAME":"GROSSEVICHI","USAF":"318230","WBAN":"99999"},{"NAME":"HE-GANG","USAF":"507750","WBAN":"99999"},{"NAME":"UGINO","USAF":"310160","WBAN":"99999"},{"NAME":"LESOGORSK SOUTHEAST","USAF":"320850","WBAN":"99999"},{"NAME":"BIKIN","USAF":"318320","WBAN":"99999"},{"NAME":"YICHUN","USAF":"507740","WBAN":"99999"},{"NAME":"CULMAN/NERIUGRI","USAF":"303930","WBAN":"99999"},{"NAME":"KANKU","USAF":"311020","WBAN":"99999"},{"NAME":"XIAO-YANG-QI","USAF":"504420","WBAN":"99999"},{"NAME":"JIU-HAI-LAI","USAF":"503490","WBAN":"99999"},{"NAME":"LONG-ZHEN","USAF":"506560","WBAN":"99999"},{"NAME":"SREDNAYAYA NYUKZHA","USAF":"304980","WBAN":"99999"},{"NAME":"SMIRNYKH","USAF":"320910","WBAN":"99999"},{"NAME":"UGLEGORSK","USAF":"320880","WBAN":"99999"},{"NAME":"UST'-MIL'","USAF":"310410","WBAN":"99999"},{"NAME":"GAMCANZA","USAF":"318510","WBAN":"99999"},{"NAME":"URUSA","USAF":"305970","WBAN":"99999"},{"NAME":"ZOLOTOJ","USAF":"318290","WBAN":"99999"},{"NAME":"POGRANICHNOE","USAF":"320760","WBAN":"99999"},{"NAME":"KRASNYJ JAR","USAF":"318450","WBAN":"99999"},{"NAME":"UST-URKIMA","USAF":"304970","WBAN":"99999"},{"NAME":"CHIA-MU-SSU /CHIAMUEZE","USAF":"508730","WBAN":"99999"},{"NAME":"NENJIANG","USAF":"505570","WBAN":"99999"},{"NAME":"MOHE","USAF":"501360","WBAN":"99999"},{"NAME":"PESKOYSKIY NORTHWEST","USAF":"320930","WBAN":"99999"},{"NAME":"ULUNGA-IN-PRIMOR","USAF":"318560","WBAN":"99999"},{"NAME":"BAOQING","USAF":"508880","WBAN":"99999"},{"NAME":"IGNASINO","USAF":"306860","WBAN":"99999"},{"NAME":"PORONAJSK","USAF":"320980","WBAN":"99999"},{"NAME":"YUGORENOK","USAF":"310620","WBAN":"99999"},{"NAME":"KRASHOGORSK","USAF":"321050","WBAN":"99999"},{"NAME":"USMUN","USAF":"310070","WBAN":"99999"},{"NAME":"GLUBINNOYE NORTH","USAF":"318480","WBAN":"99999"},{"NAME":"TIE-LI","USAF":"508620","WBAN":"99999"},{"NAME":"MAKAROV","USAF":"321160","WBAN":"99999"},{"NAME":"SOSUNOVO","USAF":"318660","WBAN":"99999"},{"NAME":"UL' YA","USAF":"310870","WBAN":"99999"},{"NAME":"EROFEJ PAVLOVIC","USAF":"306830","WBAN":"99999"}],
+    
+    winterConfig: {
+        sortBy: 3, //0=满足阈值个数从多到少, 1=最低温, 2=最低均温, 3=最低昼温, 4=冬三月低温平均, 5=冬三月均温, 6=冬三月高温平均
+        showMin: 1, //打印冬季周期最低温
+        showMinForAvg: 1, //打印冬季周期最低均温
+        showMinForMax: 1, //打印冬季周期最低昼温
+        showAvgForMin: 1, //打印冬三月低均
+        showAvg: 1, //打印冬三月均温
+        showAvgForMax: 1 //打印冬三月高均S
+    },
     M: {
         showValid: 0 //0 not show, 1 show valid
     },
@@ -201,6 +213,7 @@ function consoleResult(){
         if(config.console.overview > 0){ result.overview(); }
         if(config.console.M > 0){ result.M(); }
         if(config.console.YM > 0){ result.YM(); }
+        if(config.console.winter > 0){ result.winter(); }
         if(config.console.consec > 0){ result.consec(); }
         if(config.console.list > 0){ result.list(); }
         if(config.console.yearRange > 0){ result.yearRange(); } //这个适合放在最后面，年份字太多了，影响观看
@@ -217,6 +230,9 @@ function consoleDetails(){
     let overview = startObj.overview;
     let stat_YM = startObj.stat_YM;
     let stat_M = startObj.stat_M;
+    let stat_WINTER = startObj.stat_WINTER;
+    let winter_MaxTHR = startObj.winter_MaxTHR;
+    let maxTHR_winter = startObj.maxTHR_winter;
     let stat_CONSEC = startObj.stat_CONSEC;
     let totalThreshholdDays = startObj.totalThreshholdDays;
     
@@ -322,6 +338,77 @@ function consoleDetails(){
                 + stat_YM[vym1].avg + ' (sum/' + stat_YM[vym1].dayCountForAvg + ')  '
                 + stat_YM[vym1].avgForMax + ' (sum/' + stat_YM[vym1].dayCountForMax + ')'
             );
+        }
+        console.log('\n');
+    }
+
+    //console逐冬周期数据
+    function consoleWinter(){
+        console.log('STATISTICS BY WINTER:');
+        let objK = Object.keys(stat_WINTER);
+        let objV = Object.values(stat_WINTER);
+        let len = objK.length;
+        
+        if(len === 0){ return; } //如果数据源为空，则跳过
+        
+        //因为数据源是对象，无法排序，这里把对象内容放到数组里再排序
+        let tempArr = [];
+        for(let i=0; i<len; i++){
+            let tempObj = {};
+            tempObj.period = objK[i];
+            tempObj.fullPeriod = objV[i].fullPeriod;
+            tempObj.winterM3 = objV[i].winterM3;
+            tempArr.push(tempObj);
+        }
+        //根据什么排序
+        let tempSortByStr = '';
+        let tempSortBy = config.winterConfig.sortBy; //0=满足阈值个数从多到少, 1=最低温, 2=最低均温, 3=最低昼温, 4=冬三月低温平均, 5=冬三月均温, 6=冬三月高温平均
+        if(tempSortBy === 0){
+            tempSortByStr = 'MOST DAYS MATCHED THRESHHOLD VALUE';
+            tempArr.sort((a, b) => b.fullPeriod.threshHoldDays - a.fullPeriod.threshHoldDays); //按满足阈值天数排序，从多到少
+        }else if(tempSortBy === 1){
+            tempSortByStr = 'MIN';
+            tempArr.sort((a, b) => a.fullPeriod.min - b.fullPeriod.min); //按最低温
+        }else if(tempSortBy === 2){
+            tempSortByStr = 'MIN OF AVG';
+            tempArr.sort((a, b) => a.fullPeriod.minForAvg - b.fullPeriod.minForAvg); //按最低均温
+        }else if(tempSortBy === 3){
+            tempSortByStr = 'MIN OF MAX';
+            tempArr.sort((a, b) => a.fullPeriod.minForMax - b.fullPeriod.minForMax); //按最低昼温
+        }else if(tempSortBy === 4){
+            tempSortByStr = 'AVG OF MIN FOR WINTER 3 MONTHS';
+            tempArr.sort((a, b) => a.winterM3.avgForMin - b.winterM3.avgForMin); //按冬三月低温平均
+        }else if(tempSortBy === 5){
+            tempSortByStr = 'AVG FOR WINTER 3 MONTHS';
+            tempArr.sort((a, b) => a.winterM3.avg - b.winterM3.avg); //按冬三月均温
+        }else if(tempSortBy === 6){
+            tempSortByStr = 'AVG OF MAX FOR WINTER 3 MONTHS';
+            tempArr.sort((a, b) => a.winterM3.avgForMax - b.winterM3.avgForMax); //按冬三月高温平均
+        }
+        
+        //打印
+        console.log('IN ONLY 1 WINTER '+ focusedAttr + ' ' + focusedOrderSymbolStr + ' ' + config.consecValue + ' MOST DAYS: ' + winter_MaxTHR + ' ( ' + maxTHR_winter + ' )');
+        console.log('WINTER LIST SORTED BY ' + tempSortByStr + ':');
+        for(let i=0; i<len; i++){
+            console.log('─── ' + tempArr[i].period + ' ─── | ' + focusedAttr + ' ' + focusedOrderSymbolStr + ' ' + config.consecValue + ' TOTAL DAYS: ' + tempArr[i].fullPeriod.threshHoldDays);
+            if(config.winterConfig.showMin > 0){
+                console.log('MIN FOR MIN: ' + tempArr[i].fullPeriod.min);
+            }
+            if(config.winterConfig.showMinForAvg > 0){
+                console.log('MIN FOR AVG: ' + tempArr[i].fullPeriod.minForAvg);
+            }
+            if(config.winterConfig.showMinForMax > 0){
+                console.log('MIN FOR MAX: ' + tempArr[i].fullPeriod.minForMax);
+            }
+            if(config.winterConfig.showAvgForMin > 0){
+                console.log('WINTER 3 MONTHS AVG FOR MIN: ' + tempArr[i].winterM3.avgForMin + '\t( avg = sum / ' + tempArr[i].winterM3.dayCountForMin + ' )');
+            }
+            if(config.winterConfig.showAvg > 0){
+                console.log('WINTER 3 MONTHS AVG FOR AVG: ' + tempArr[i].winterM3.avg + '\t( avg = sum / ' + tempArr[i].winterM3.dayCountForAvg + ' )');
+            }
+            if(config.winterConfig.showAvgForMax > 0){
+                console.log('WINTER 3 MONTHS AVG FOR MAX: ' + tempArr[i].winterM3.avgForMax + '\t( avg = sum / ' + tempArr[i].winterM3.dayCountForMax + ' )');
+            }
         }
         console.log('\n');
     }
@@ -501,8 +588,16 @@ function consoleDetails(){
                 tempObj[totalText] = tempArrTotal;
             }
 
-            //50 最大连续日数
+            //50 单个冬季最多满足阈值天数
             if(config.multipleTarget === '50'){
+                tempAttr0 = 'WINTER MAX'; //这个属性key在后面排序需要用到，所以单独用变量表示
+                tempObj[tempAttr0] = winter_MaxTHR;
+                tempObj['MAX WINTER'] = maxTHR_winter;
+                tempObj['TOTAL MATCHED'] = totalThreshholdDays;
+            }
+
+            //50 最大连续日数
+            if(config.multipleTarget === '60'){
                 if(stat_CONSEC.length > 0){ //这里必须提前判断数组是否为空，否则后面会报错
                     tempAttr0 = 'MAX CONSEC'; //这个属性key在后面排序需要用到，所以单独用变量表示
                     tempObj[tempAttr0] = stat_CONSEC[0].consecDays;
@@ -562,6 +657,7 @@ function consoleDetails(){
         'yearRange': consoleRange,
         'M': consoleM,
         'YM': consoleYM,
+        'winter': consoleWinter,
         'consec': consoleConsec,
         'list': consoleList,
         'allRecords': consoleAllRecords,
@@ -641,6 +737,8 @@ function Csv(str){
         
         let stat_M = {}; //某个月份，比如'01'
 
+        let stat_WINTER = {}; //某个冬天，比如23/24冬，从7月16日到次年7月15日算1个冬天周期
+
         let stat_Y = {}; //某年，比如'1969'
         let stat_MD = {}; //某月某日，比如'01-20'
         
@@ -664,6 +762,12 @@ function Csv(str){
                 totalDays += 1;
                 let lenOfRowArr = arrayOfRowCells.length;
                 let tempObj = {};
+
+                //如果日期不在设置范围内，则忽略本次循环
+                let tc1 = Date.parse(arrayOfRowCells[1]) >= Date.parse(d1);
+                let tc2 = Date.parse(arrayOfRowCells[1]) <= Date.parse(d2);
+                if(!tc1 || !tc2){ return; } //forEach函数忽略本次循环不用continue，用return
+
                 if(config.month !== 0){//0 = 全年，非0则是筛选到单月
                     if(monthRegExp.test( arrayOfRowCells[1] )){
                         for(let i=0; i<lenOfRowArr; i++){
@@ -672,11 +776,6 @@ function Csv(str){
                         arrOfCsv.push(tempObj);
                     }
                 }else{ //全年
-                    let tc1 = Date.parse(arrayOfRowCells[1]) >= Date.parse(d1);
-                    let tc2 = Date.parse(arrayOfRowCells[1]) <= Date.parse(d2);
-                    
-                    //如果日期不在设置范围内，则忽略本次循环，forEach函数忽略本次循环不用continue，用return
-                    if(!tc1 || !tc2){ return; }
                     //如果日期在设置范围内，则正常执行本次循环内容
                     for(let i=0; i<lenOfRowArr; i++){
                         tempObj[getArrOfTitles()[i]] = arrayOfRowCells[i];
@@ -753,6 +852,11 @@ function Csv(str){
             }
         }); //给每个月份key装填value
         
+        //某个冬天 7月16日到次年7月15日算1个冬天
+        let vObj_WINTER = {};
+        let winter_MaxTHR = 0; //单个冬季周期最大满足阈值天数, 比如38(仁钦隆勃2009/2010冬一共38次-40)
+        let maxTHR_winter = ''; //哪个冬季周期，比如 2023/2024
+
         //某年
         let vObj_Y = {};
         let vObj_MD = {}; //某月某日
@@ -775,6 +879,10 @@ function Csv(str){
             let temp_M_Str = temp_YMD_Arr[1];
             let temp_Y_Str = temp_YMD_Arr[0];
             let temp_MD_Str = temp_YMD_Arr[1] + '-' + temp_YMD_Arr[2];
+            let tempWinter = {
+                period: tools.getWinter(v['DATE']).period,
+                isInWinterM3: tools.getWinter(v['DATE']).isInWinterM3
+            };
             
             //某年某月
             if(!stat_YM.hasOwnProperty(temp_YM_Str)){
@@ -918,6 +1026,79 @@ function Csv(str){
                 }
             }
             
+            //某个冬天
+            if(!stat_WINTER.hasOwnProperty(tempWinter.period)){ //先判断stat_WINTER对象中是否包含某个winter周期的属性，如果没有则添加
+                vObj_WINTER = {
+                    'fullPeriod': {
+                        'minArr': [],
+                        'avgArr': [],
+                        'maxArr': [],
+                        'min': undefined,
+                        'minForAvg': undefined,
+                        'minForMax': undefined,
+                        'threshHoldDays': 0
+                    },
+                    'winterM3': {
+                        'dayCount': 0,
+                        'dayCountForMin': 0,
+                        'dayCountForAvg': 0,
+                        'dayCountForMax': 0,
+                        'minArr': [],
+                        'avgArr': [],
+                        'maxArr': [],
+                        'min': undefined,
+                        'minForAvg': undefined,
+                        'minForMax': undefined,
+                        'avgForMin': undefined,
+                        'avg': undefined,
+                        'avgForMax': undefined,
+                        'maxForMin': undefined,
+                        'maxForAvg': undefined,
+                        'max': undefined
+                    }
+                }
+            }
+
+            if(v['MIN'] !== undefined){
+                vObj_WINTER.fullPeriod.minArr.push(Number(v['MIN']));
+                vObj_WINTER.fullPeriod.min = Math.min(...vObj_WINTER.fullPeriod.minArr);
+                if(tempWinter.isInWinterM3){
+                    vObj_WINTER.winterM3.dayCount += 1;
+                    vObj_WINTER.winterM3.dayCountForMin += 1;
+                    vObj_WINTER.winterM3.minArr.push(Number(v['MIN']));
+                    vObj_WINTER.winterM3.min = Math.min(...vObj_WINTER.winterM3.minArr);
+                    vObj_WINTER.winterM3.avgForMin = tools.getAvgForNumberArr(vObj_WINTER.winterM3.minArr);
+                    vObj_WINTER.winterM3.maxForMin = Math.max(...vObj_WINTER.winterM3.minArr);
+                }
+            }
+            if(v['TEMP'] !== undefined){
+                vObj_WINTER.fullPeriod.avgArr.push(Number(v['TEMP']));
+                vObj_WINTER.fullPeriod.minForAvg = Math.min(...vObj_WINTER.fullPeriod.avgArr);
+                if(tempWinter.isInWinterM3){
+                    vObj_WINTER.winterM3.dayCount += 1;
+                    vObj_WINTER.winterM3.dayCountForAvg += 1;
+                    vObj_WINTER.winterM3.avgArr.push(Number(v['TEMP']));
+                    vObj_WINTER.winterM3.minForAvg = Math.min(...vObj_WINTER.winterM3.avgArr);
+                    vObj_WINTER.winterM3.avg = tools.getAvgForNumberArr(vObj_WINTER.winterM3.avgArr);
+                    vObj_WINTER.winterM3.maxForAvg = Math.max(...vObj_WINTER.winterM3.avgArr);
+                }
+            }
+            if(v['MAX'] !== undefined){
+                vObj_WINTER.fullPeriod.maxArr.push(Number(v['MAX']));
+                vObj_WINTER.fullPeriod.minForMax = Math.min(...vObj_WINTER.fullPeriod.maxArr);
+                if(tempWinter.isInWinterM3){
+                    vObj_WINTER.winterM3.dayCount += 1;
+                    vObj_WINTER.winterM3.dayCountForMax += 1;
+                    vObj_WINTER.winterM3.maxArr.push(Number(v['MAX']));
+                    vObj_WINTER.winterM3.minForMax = Math.min(...vObj_WINTER.winterM3.maxArr);
+                    vObj_WINTER.winterM3.avgForMax = tools.getAvgForNumberArr(vObj_WINTER.winterM3.maxArr);
+                    vObj_WINTER.winterM3.max = Math.max(...vObj_WINTER.winterM3.maxArr);
+                }
+            }
+            let tempCondition = co.toLowerCase() === 'asc' ? Number(v[focusedAttr]) <= Number(config.consecValue) : Number(v[focusedAttr]) >= Number(config.consecValue);
+            if(tempCondition){ vObj_WINTER.fullPeriod.threshHoldDays += 1; } //统计这个冬天的临界值满足情况
+            stat_WINTER[tempWinter.period] = vObj_WINTER; //完成一个键值对
+
             //某年
             if(!stat_Y.hasOwnProperty(temp_Y_Str)){ stat_Y[temp_Y_Str] = {}; }
             
@@ -934,6 +1115,7 @@ function Csv(str){
             }
             if(i === 0){
                 if(orderIf){ //这里不需要额外考虑undefined??
+                    totalThreshholdDays += 1; //统计满足阈值的所有天数
                     consecCount += 1;
                     //创建新对象
                     let tempConsecObj = {};
@@ -1015,6 +1197,16 @@ function Csv(str){
             if(Number(v['MAX']) === overview.MAX.max){ overview.MAX.maxDate.push(v['DATE']) }
         });
 
+        //统计逐冬最大满足阈值天数
+        let objK = Object.keys(stat_WINTER);
+        let objV = Object.values(stat_WINTER);
+        for(let i=0; i<objK.length; i++){
+            if(objV[i].fullPeriod.threshHoldDays > winter_MaxTHR){
+                winter_MaxTHR = objV[i].fullPeriod.threshHoldDays;
+                maxTHR_winter = objK[i];
+            }
+        }
+
         //单独给stat_CONSEC数组排序，毫无疑问，应该从大到小排，数字最大的记录排前面
         stat_CONSEC.sort((a, b) => { return b.consecDays - a.consecDays; });
 
@@ -1041,6 +1233,9 @@ function Csv(str){
             'arr': finalArr,
             'stat_YM': stat_YM,
             'stat_M': stat_M,
+            'stat_WINTER': stat_WINTER,
+            'winter_MaxTHR': winter_MaxTHR,
+            'maxTHR_winter': maxTHR_winter,
             'stat_CONSEC': stat_CONSEC,
             'overview':  overview,
             'totalDaysBeforeSort': totalDays,
@@ -1103,6 +1298,34 @@ function Tools(){
             'YMD': dateAndTimeArr
         }
     }
+
+    //获取特定日期所处的冬季周期，比如判断2023-07-18属于哪个冬季周期，这里2023-07-18属于 '2023/2024' 冬季周期。同时判断该日期是否处于冬三月
+    function getWinter(dateStr){
+        let regExp = /\d{4}\-\d{2}\-\d{2}/;
+        if(regExp.test(dateStr) === false){ return undefined; } //判断输入格式
+        
+        let periodStr = '';
+        let isInWinterM3 = false;
+        let YMD_Arr = dateStr.split('-');
+        //判断给定日期所处冬季周期
+        if( Date.parse(dateStr) <= Date.parse(YMD_Arr[0] + '-07-15') ){
+            periodStr = (Number(YMD_Arr[0]) - 1).toString() + '/' + YMD_Arr[0];
+        }else{
+            periodStr = YMD_Arr[0] + '/' + (Number(YMD_Arr[0]) + 1).toString();
+        }
+        //判断给定日期是否处于冬三月
+        if( Date.parse(dateStr) <= Date.parse(YMD_Arr[0] + '-11-30') && Date.parse(dateStr) >= Date.parse(YMD_Arr[0] + '-03-01') ){
+            isInWinterM3 = false;
+        }else{
+            isInWinterM3 = true;
+        }
+
+        return {
+            period: periodStr,
+            isInWinterM3: isInWinterM3
+        }
+    }
+
     //在对象数组中，把包含undefined值的对象排到后面
     function sortUndefinedObj(a, b, order){
         if(a === undefined && b === undefined){
@@ -1259,6 +1482,7 @@ function Tools(){
     this.getAvgForNumberArr = getAvgForNumberArr;
     this.getDateDiff = getDateDiff;
     this.getCurrentDate = getCurrentDate;
+    this.getWinter = getWinter;
     this.sortUndefinedObj = sortUndefinedObj;
     this.isValidTempF = isValidTempF;
     this.getCsvStringFromArrOfObj = getCsvStringFromArrOfObj;

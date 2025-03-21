@@ -22,7 +22,7 @@ let config = {
         byCoordsRange: 0, ////是否筛选经纬度
         byElev: 0, //是否筛选海拔
 
-        maxDistance: 300, //方圆多少km
+        maxDistance: 800, //方圆多少km
         
         countryCode: '', //留空则不筛选国家
 
