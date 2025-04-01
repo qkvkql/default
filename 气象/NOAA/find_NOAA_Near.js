@@ -15,24 +15,24 @@ for(let i = 0; i < sheets.length; i++)
 }
 
 let config = {
-    USAF: '31137',
+    USAF: '24688',
     searchType: 1, //按什么搜索，0代表按站号搜索
-    coorArr: [30, 113], //如果是按坐标搜索(searchType = 1), 需要在这给出坐标
+    coorArr: [49.094405480935805, 121.05183776917747], //如果是按坐标搜索(searchType = 1), 需要在这给出坐标
     filters: {
-        byCoordsRange: 1, ////是否筛选经纬度
+        byCoordsRange: 0, ////是否筛选经纬度
         byElev: 0, //是否筛选海拔
 
-        maxDistance: 5000, //方圆多少km
+        maxDistance: 1000, //方圆多少km
         
-        countryCode: '', //留空则不筛选国家
+        countryCode: 'ch', //留空则不筛选国家
+        
+        lat1: -90, //纬度范围：起始纬度
+        lat2: 90, //纬度范围：终止纬度
+        lon1: -10, //经度范围：起始经度
+        lon2: 31.99999999, //经度范围：终止经度
 
-        elev1: -500, //海拔低值
-        elev2: 500, //海拔高值
-        
-        lat1: 22, //纬度范围：起始纬度
-        lat2: 26.999999999, //纬度范围：终止纬度
-        lon1: 104, //经度范围：起始经度
-        lon2: 123 //经度范围：终止经度
+        elev1: 2000, //海拔低值
+        elev2: 9000 //海拔高值
     },
     //筛选排序
     sort: {

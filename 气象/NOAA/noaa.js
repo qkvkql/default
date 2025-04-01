@@ -8,7 +8,7 @@ const ejs = require("ejs");
 //配置对象，用于设置筛选条件
 const config = {
     stationObj: {
-        USAF: '44243',
+        USAF: '31338',
         //留空则默认为99999，长度小于5则前面自动补0
         WBAN: '99999'
     },
@@ -19,18 +19,17 @@ const config = {
     
     multipleStation: 0, //是否切换到打印邻近站点模式
     order: 'asc', //asc(从小到大、从低到高，从早到晚), desc
-    item: 'min', //date, min, avg, max
-    consecValue: '-40', //连续记录的临界值
-    showNumber: 5, //显示多少个结果
+    item: 'max', //date, min, avg, max，只能是这几个值！！！必须小写！！！
+    consecValue: '-30', //连续记录的临界值
+    showNumber: 10, //显示多少个结果
     console: { //设置console打印哪些
         station: 1,
         overview: 1,
         M: 1,
-        YM: 1,
-        winter: 1,
-        consec: 1,
-        list: 1,
-        yearRange: 1,
+        YM: 0,
+        consec: 0,
+        list: 0,
+        yearRange: 0,
         allRecords: 0
     },
 
@@ -39,17 +38,16 @@ const config = {
     //00=最低夜温(最低气温),01=夜温平均,02=最高夜温; 10=最低均温,11=均温,12=最高均温; 20=最低昼温,21=昼温平均,22=最高昼温(最高气温)
     //30=月份低温平均,31=月份均温,32=月份高温平均; 40=极端单月低温平均,41=极端单月均温,42极端单月高温平均; 50=单个冬季最多阈值天数
     //60=最长连续记录; 70=年平均气温(用overview)
-    multipleTarget: '31',
-    arrOfStations: [{"NAME":"KACUG","USAF":"306220","WBAN":"99999"},{"NAME":"BAJANDAJ","USAF":"306270","WBAN":"99999"},{"NAME":"SARMA","USAF":"306200","WBAN":"99999"},{"NAME":"UZUR","USAF":"306370","WBAN":"99999"},{"NAME":"UST'ORDYNSKIJ","USAF":"307130","WBAN":"99999"},{"NAME":"KRESTOVAYA SE","USAF":"307250","WBAN":"99999"},{"NAME":"BOHAN","USAF":"306180","WBAN":"99999"},{"NAME":"SUHAJA","USAF":"307260","WBAN":"99999"},{"NAME":"BOLSOJ USKAN ISLAND","USAF":"306320","WBAN":"99999"},{"NAME":"BALAGANSK","USAF":"306120","WBAN":"99999"},{"NAME":"GORJACINSK","USAF":"307310","WBAN":"99999"},{"NAME":"USOL' E-SIBIRSKOE","USAF":"307120","WBAN":"99999"},{"NAME":"CHEREMUKHOVO","USAF":"307300","WBAN":"99999"},{"NAME":"MAKSIMIHA","USAF":"306380","WBAN":"99999"},{"NAME":"CEREMHOVO","USAF":"306170","WBAN":"99999"},{"NAME":"MIKHAYLOVKA","USAF":"307110","WBAN":"99999"},{"NAME":"UST'-BARGUZIN","USAF":"306350","WBAN":"99999"},{"NAME":"IRKUTSK","USAF":"307100","WBAN":"99999"},{"NAME":"ANGARSK","USAF":"307150","WBAN":"99999"},{"NAME":"IRKUTSK","USAF":"307910","WBAN":"99999"},{"NAME":"IRKUTSK OBSERVATORY","USAF":"307190","WBAN":"99999"},{"NAME":"BOLSOJE-GOLOUSTNOJ","USAF":"307270","WBAN":"99999"},{"NAME":"KABANSK","USAF":"307290","WBAN":"99999"},{"NAME":"SMOLENSHCHINA","USAF":"307180","WBAN":"99999"},{"NAME":"ISTOK ANGRY","USAF":"308130","WBAN":"99999"},{"NAME":"TAKARKHAY NW","USAF":"307330","WBAN":"99999"},{"NAME":"KHEYTA-IN-IRKUT","USAF":"307141","WBAN":"99999"},{"NAME":"BARGUZIN","USAF":"306360","WBAN":"99999"},{"NAME":"BABUSKIN","USAF":"308220","WBAN":"99999"},{"NAME":"MUKHINO","USAF":"308230","WBAN":"99999"},{"NAME":"...","USAF":"308330","WBAN":"99999"},{"NAME":"TANHOJ","USAF":"308240","WBAN":"99999"},{"NAME":"KULTUK","USAF":"308140","WBAN":"99999"},{"NAME":"VERKHNIYS TALTSY NE","USAF":"307380","WBAN":"99999"},{"NAME":"SLJUDJANKA","USAF":"308120","WBAN":"99999"},{"NAME":"ZAMAKTA","USAF":"307410","WBAN":"99999"},{"NAME":"HAMAR-DABAN","USAF":"308150","WBAN":"99999"},{"NAME":"NOVOSELENGINSK","USAF":"308290","WBAN":"99999"},{"NAME":"HORINSK","USAF":"307390","WBAN":"99999"},{"NAME":"UNKNOWN","USAF":"308180","WBAN":"99999"},{"NAME":"MUHORSIBIR","USAF":"308370","WBAN":"99999"},{"NAME":"PETROVSKIJ ZAVOD","USAF":"308380","WBAN":"99999"},{"NAME":"INNOKENTYEVKA SOUTH","USAF":"308410","WBAN":"99999"},{"NAME":"PETROPAVLOVKA","USAF":"309240","WBAN":"99999"},{"NAME":"TOREJ","USAF":"309160","WBAN":"99999"},{"NAME":"BICURA","USAF":"309340","WBAN":"99999"},{"NAME":"KJAHTA","USAF":"309250","WBAN":"99999"},{"NAME":"HILOK","USAF":"308440","WBAN":"99999"},{"NAME":"CAKIR","USAF":"309150","WBAN":"99999"},{"NAME":"KRASNYJ CHIKOJ","USAF":"309350","WBAN":"99999"},{"NAME":"ENGOROK","USAF":"309410","WBAN":"99999"},{"NAME":"ULYGAIIN DUGANG","USAF":"442430","WBAN":"99999"},{"NAME":"CEREMHOVO","USAF":"309440","WBAN":"99999"},{"NAME":"HADATYN","USAF":"442420","WBAN":"99999"},{"NAME":"ESUTAY","USAF":"309400","WBAN":"99999"},{"NAME":"SUMILOVKA","USAF":"309470","WBAN":"99999"},{"NAME":"MENZA","USAF":"309380","WBAN":"99999"},{"NAME":"BARUUNHARAA","USAF":"442410","WBAN":"99999"},{"NAME":"DZUUNHARAA","USAF":"442450","WBAN":"99999"},{"NAME":"NAME AND LOC UNKN","USAF":"442360","WBAN":"99999"},{"NAME":"BULGAN","USAF":"442390","WBAN":"99999"},{"NAME":"BATA SUMBER","USAF":"442400","WBAN":"99999"},{"NAME":"BINDER","USAF":"442570","WBAN":"99999"}],
+    multipleTarget: '11',
+    arrOfStations: [{"NAME":"卡丘格","USAF":"30622","WBAN":"99999"},{"NAME":"巴尔古津","USAF":"30636","WBAN":"99999"},{"NAME":"莫戈恰","USAF":"30673","WBAN":"99999"},{"NAME":"乌留皮诺","USAF":"30781","WBAN":"99999"},{"NAME":"埃基姆昌","USAF":"31329","WBAN":"99999"},{"NAME":"布鲁坎","USAF":"31348","WBAN":"99999"},{"NAME":"索菲斯克","USAF":"31478","WBAN":"99999"},{"NAME":"切昆达","USAF":"31532","WBAN":"99999"},{"NAME":"奥布卢奇耶","USAF":"31702","WBAN":"99999"},{"NAME":"克孜勒","USAF":"36096","WBAN":"99999"},{"NAME":"科什阿加奇","USAF":"36259","WBAN":"99999"},{"NAME":"埃尔津","USAF":"36307","WBAN":"99999"},{"NAME":"仁钦隆勃","USAF":"44203","WBAN":"99999"},{"NAME":"乌兰固木","USAF":"44212","WBAN":"99999"},{"NAME":"巴彦特斯","USAF":"44221","WBAN":"99999"},{"NAME":"车臣乌拉","USAF":"44224","WBAN":"99999"},{"NAME":"陶松臣格勒","USAF":"44225","WBAN":"99999"},{"NAME":"乌兰巴托","USAF":"44292","WBAN":"99999"},{"NAME":"漠河","USAF":"50136","WBAN":"99999"},{"NAME":"图里河","USAF":"50434","WBAN":"99999"},{"NAME":"海拉尔","USAF":"50527","WBAN":"99999"},{"NAME":"阿勒泰","USAF":"51076","WBAN":"99999"},{"NAME":"乌鲁木齐","USAF":"51463","WBAN":"99999"},{"NAME":"巴音布鲁克","USAF":"51542","WBAN":"99999"},{"NAME":"呼和浩特","USAF":"53463","WBAN":"99999"},{"NAME":"马鬃山","USAF":"52323","WBAN":"99999"},{"NAME":"康保","USAF":"53392","WBAN":"99999"},{"NAME":"哈尔滨","USAF":"50953","WBAN":"99999"},{"NAME":"桦甸","USAF":"54273","WBAN":"99999"},{"NAME":"西丰","USAF":"54252","WBAN":"99999"},{"NAME":"右玉","USAF":"53478","WBAN":"99999"},{"NAME":"嘉荫","USAF":"50673","WBAN":"99999"},{"NAME":"呼玛","USAF":"50353","WBAN":"99999"},{"NAME":"阿尔山","USAF":"50727","WBAN":"99999"},{"NAME":"清水河","USAF":"56034","WBAN":"99999"},{"NAME":"安多","USAF":"55294","WBAN":"99999"},{"NAME":"青河","USAF":"51186","WBAN":"99999"},{"NAME":"巴里坤","USAF":"52101","WBAN":"99999"},{"NAME":"昭苏","USAF":"51437","WBAN":"99999"},{"NAME":"根河","USAF":"50431","WBAN":"99999"},{"NAME":"额尔古纳","USAF":"50425","WBAN":"99999"},{"NAME":"通戈科琴","USAF":"30664","WBAN":"99999"},{"NAME":"谢列姆贾","USAF":"31338","WBAN":"99999"},{"NAME":"Sevli","USAF":"31325","WBAN":"99999"},{"NAME":"Toko","USAF":"31137","WBAN":"99999"},{"NAME":"巴通加","USAF":"31158","WBAN":"99999"},{"NAME":"萨雷格谢普","USAF":"36104","WBAN":"99999"},{"NAME":"格尔必奇","USAF":"30679","WBAN":"99999"},{"NAME":"卡图吉诺","USAF":"30379","WBAN":"99999"},{"NAME":"30473","USAF":"30473","WBAN":"99999"},{"NAME":"丘尔曼","USAF":"30393","WBAN":"99999"},{"NAME":"乌斯季乌马尔塔","USAF":"31474","WBAN":"99999"},{"NAME":"呼中","USAF":"50247","WBAN":"99999"},{"NAME":"北极村","USAF":"50137","WBAN":"99999"},{"NAME":"塔河","USAF":"50246","WBAN":"99999"},{"NAME":"牙克石","USAF":"50526","WBAN":"99999"},{"NAME":"陈巴尔虎旗","USAF":"50524","WBAN":"99999"},{"NAME":"鄂温克族自治旗","USAF":"50525","WBAN":"99999"},{"NAME":"普里额尔古纳斯克","USAF":"30975","WBAN":"99999"},{"NAME":"伊格纳希诺","USAF":"30686","WBAN":"99999"},{"NAME":"阿马扎尔","USAF":"30682","WBAN":"99999"},{"NAME":"乌斯季卡尔斯克","USAF":"30772","WBAN":"99999"},{"NAME":"克谢尼耶夫卡","USAF":"30675","WBAN":"99999"},{"NAME":"Tajna","USAF":"30875","WBAN":"99999"},{"NAME":"Ingur","USAF":"30655","WBAN":"99999"},{"NAME":"乌苏格利","USAF":"30764","WBAN":"99999"},{"NAME":"尼布楚","USAF":"30768","WBAN":"99999"},{"NAME":"卡扎钦斯克","USAF":"30337","WBAN":"99999"},{"NAME":"托拉赫姆","USAF":"36103","WBAN":"99999"},{"NAME":"西图伦","USAF":"44213","WBAN":"99999"}],
     
     winterConfig: {
-        sortBy: 1, //0=不额外排序, 1=满足阈值个数从多到少, 2=最低温, 3=最低均温, 4=最低昼温, 5=冬三月低温平均, 6=冬三月均温, 7=冬三月高温平均
-        showMin: 0, //打印冬季周期最低温
-        showMinForAvg: 0, //打印冬季周期最低均温
-        showMinForMax: 0, //打印冬季周期最低昼温
-        showAvgForMin: 0, //打印冬三月低均
-        showAvg: 0, //打印冬三月均温
-        showAvgForMax: 0 //打印冬三月高均S
+        winterWhichHemisphere: 0, //确定研究哪个半球的冬夏周期，0=北半球冬季周期，1=北半球夏季=南半球冬季周期
+        showWinter: 0, //打印冬夏周期信息 0=不打印, 1=打印
+        sortBy: 0, //0=不额外排序, 1=满足阈值个数从多到少, 2=asc最低温,desc最高温; 3=asc最低均温,desc最高均温; 4=asc最低昼温,desc最高夜温; 5=冬三月低温平均, 6=冬三月均温, 7=冬三月高温平均
+        extra: 0, //0=asc最低温,desc最高温; 1=asc最低均温,desc最高均温; 2=asc最低昼温,desc最高夜温; 3=冬三月低均 4=冬三月均温 5=冬三月昼均
+        showExtreme: 0, //1=打印冬周期或夏周期最低、最高三项温度
+        showAvg: 0 //1=打印冬三月或夏三月均温
     },
     M: {
         showValid: 0 //0 not show, 1 show valid
@@ -97,7 +95,6 @@ app.listen(3000, function(){console.log("server is running on port 3000");})
 //统计邻站准备工作
 let expectedStationCount = 0;
 let notFoundCount = 0;
-let failedToParseCount = 0;
 let normalStationCount = 0;
 let resultArrForStations = [];
 
@@ -213,7 +210,7 @@ function consoleResult(){
         if(config.console.overview > 0){ result.overview(); }
         if(config.console.M > 0){ result.M(); }
         if(config.console.YM > 0){ result.YM(); }
-        if(config.console.winter > 0){ result.winter(); }
+        if(config.winterConfig.showWinter > 0){ result.winter(); }
         if(config.console.consec > 0){ result.consec(); }
         if(config.console.list > 0){ result.list(); }
         if(config.console.yearRange > 0){ result.yearRange(); } //这个适合放在最后面，年份字太多了，影响观看
@@ -299,7 +296,7 @@ function consoleDetails(){
                 );
             }
         }else{
-            console.log('MONTHLY AVG OF CLIMATE:');
+            console.log('CLIMATE OF AIR TEMPERATURE BY MONTH:');
             tools.getArrOfNumberMonthBegin(11).forEach((vm1) => {
                 let ms = tools.FN(vm1, 12);
                 console.log('MONTH = ' + ms);
@@ -321,12 +318,24 @@ function consoleDetails(){
         }
     }
     //console AVG BY YM
-    function consoleYM(){
-        let tempYMArr = Object.keys(stat_YM);
-        tempYMArr.sort((a, b) => {
-            return stat_YM[a]['avg'] - stat_YM[b]['avg'];
+    //这里单独写一个方法给ymArr排序，除了这里会用到，后面多站点也会用到
+    function sortYM_Arr(ymArr, item){
+        ymArr.sort((a, b) => { //排序
+            let tempSortItem;
+            if(item === 'min'){ //按YM低温平均排序
+                tempSortItem = 'avgForMin';
+            }else if(item === 'max'){ //按YM高温平均排序
+                tempSortItem = 'avgForMax';
+            }else{ //item是均温或日期则按YM均温排序，即默认按YM均温排序
+                tempSortItem = 'avg';
+            }
+            return co.toLowerCase() === 'asc' ? stat_YM[a][tempSortItem] - stat_YM[b][tempSortItem] : stat_YM[b][tempSortItem] - stat_YM[a][tempSortItem];
         });
-        console.log('EVERY MONTH:');
+        return ymArr; //排序后原数组顺序被改变
+    }
+    function consoleYM(){
+        let tempYMArr = sortYM_Arr(Object.keys(stat_YM), ci);
+        console.log('EVERY MONTH SORTED BY AVG OF ' + focusedAttr + ', ' + co.toUpperCase() + ':');
         for(let index=0; index<tempYMArr.length; index++){
             let vym1 = tempYMArr[index];
             if(index === config.showNumber){
@@ -344,7 +353,7 @@ function consoleDetails(){
 
     //console逐冬周期数据
     function consoleWinter(){
-        console.log('STATISTICS BY WINTER:');
+        console.log('STATISTICS BY PERIOD:');
         let objK = Object.keys(stat_WINTER);
         let objV = Object.values(stat_WINTER);
         let len = objK.length;
@@ -370,47 +379,75 @@ function consoleDetails(){
             tempSortByStr = 'MOST DAYS MATCHED THRESHHOLD VALUE';
             tempArr.sort((a, b) => b.fullPeriod.threshHoldDays - a.fullPeriod.threshHoldDays); //按满足阈值天数排序，从多到少
         }else if(tempSortBy === 2){
-            tempSortByStr = 'MIN';
-            tempArr.sort((a, b) => a.fullPeriod.min - b.fullPeriod.min); //按最低温
+            tempSortByStr = co === 'asc' ? 'MIN' : 'MAX';
+            tempArr.sort((a, b) => co === 'asc' ? tools.sortUndefinedObj(a.fullPeriod.min, b.fullPeriod.min, 'asc') :
+            tools.sortUndefinedObj(a.fullPeriod.max, b.fullPeriod.max, 'desc'));
         }else if(tempSortBy === 3){
-            tempSortByStr = 'MIN OF AVG';
-            tempArr.sort((a, b) => a.fullPeriod.minForAvg - b.fullPeriod.minForAvg); //按最低均温
+            tempSortByStr = co === 'asc' ? 'MIN OF AVG' : 'MAX OF AVG';
+            tempArr.sort((a, b) => co === 'asc' ? tools.sortUndefinedObj(a.fullPeriod.minForAvg, b.fullPeriod.minForAvg, 'asc') :
+            tools.sortUndefinedObj(a.fullPeriod.maxForAvg, b.fullPeriod.maxForAvg, 'desc'));
         }else if(tempSortBy === 4){
-            tempSortByStr = 'MIN OF MAX';
-            tempArr.sort((a, b) => a.fullPeriod.minForMax - b.fullPeriod.minForMax); //按最低昼温
+            tempSortByStr = co === 'asc' ? 'MIN OF MAX' : 'MAX OF MIN';
+            tempArr.sort((a, b) => co === 'asc' ? tools.sortUndefinedObj(a.fullPeriod.minForMax, b.fullPeriod.minForMax, 'asc') :
+            tools.sortUndefinedObj(a.fullPeriod.maxForMin, b.fullPeriod.maxForMin, 'desc'));
         }else if(tempSortBy === 5){
-            tempSortByStr = 'AVG OF MIN FOR WINTER 3 MONTHS';
-            tempArr.sort((a, b) => a.winterM3.avgForMin - b.winterM3.avgForMin); //按冬三月低温平均
+            tempSortByStr = 'AVG OF MIN FOR PERIOD 3 MONTHS';
+            tempArr.sort((a, b) => tools.sortUndefinedObj(a.winterM3.avgForMin, b.winterM3.avgForMin, 'asc'));
         }else if(tempSortBy === 6){
-            tempSortByStr = 'AVG FOR WINTER 3 MONTHS';
-            tempArr.sort((a, b) => a.winterM3.avg - b.winterM3.avg); //按冬三月均温
+            tempSortByStr = 'AVG OF PERIOD 3 MONTHS';
+            tempArr.sort((a, b) => tools.sortUndefinedObj(a.winterM3.avg, b.winterM3.avg, 'asc'));
         }else if(tempSortBy === 7){
-            tempSortByStr = 'AVG OF MAX FOR WINTER 3 MONTHS';
-            tempArr.sort((a, b) => a.winterM3.avgForMax - b.winterM3.avgForMax); //按冬三月高温平均
+            tempSortByStr = 'AVG OF MAX FOR PERIOD 3 MONTHS';
+            tempArr.sort((a, b) => tools.sortUndefinedObj(a.winterM3.avgForMax, b.winterM3.avgForMax, 'asc'));
         }
         
         //打印
-        console.log('IN ONLY 1 WINTER '+ focusedAttr + ' ' + focusedOrderSymbolStr + ' ' + config.consecValue + ' MOST DAYS: ' + winter_MaxTHR + ' ( ' + maxTHR_winter + ' )');
-        console.log('WINTER LIST SORTED BY ' + tempSortByStr + ':');
+        console.log(focusedAttr + ' ' + focusedOrderSymbolStr + ' ' + config.consecValue + ' TOTAL: ' + totalThreshholdDays);
+        console.log('SINGLE PERIOD '+ focusedAttr + ' ' + focusedOrderSymbolStr + ' ' + config.consecValue + ' MOST DAYS: ' + winter_MaxTHR + ' ( ' + maxTHR_winter + ' )');
+        console.log('PERIOD LIST SORTED BY ' + tempSortByStr + ':');
         for(let i=0; i<len; i++){
-            console.log('─── ' + tempArr[i].period + ' ───\t |\t ' + focusedAttr + ' ' + focusedOrderSymbolStr + ' ' + config.consecValue + ' TOTAL DAYS: ' + tempArr[i].fullPeriod.threshHoldDays + '\t |\t MIN: ' + tempArr[i].fullPeriod.min);
-            if(config.winterConfig.showMin > 0){
-                console.log('MIN FOR MIN: ' + tempArr[i].fullPeriod.min);
+            if(config.winterConfig.showExtreme > 0 || config.winterConfig.showAvg > 0){ console.log(''); } //如果打印超过1行，多加一行空格
+            //let tempExtraStr = co.toLowerCase() === 'asc' ? '\t| MIN: ' + tempArr[i].fullPeriod.min : '\t| MAX: ' + tempArr[i].fullPeriod.max;
+            let tempExtraStr = '';
+            if(config.winterConfig.extra === 0){
+                tempExtraStr = co.toLowerCase() === 'asc' ? '\t| MIN: ' + tempArr[i].fullPeriod.min : '\t| MAX: ' + tempArr[i].fullPeriod.max;
+            }else if(config.winterConfig.extra === 1){
+                tempExtraStr = co.toLowerCase() === 'asc' ? '\t| MIN OF AVG: ' + tempArr[i].fullPeriod.minForAvg : '\t| MAX OF AVG: ' + tempArr[i].fullPeriod.maxForAvg;
+            }else if(config.winterConfig.extra === 2){
+                tempExtraStr = co.toLowerCase() === 'asc' ? '\t| MIN OF MAX: ' + tempArr[i].fullPeriod.minForMax : '\t| MAX OF MIN: ' + tempArr[i].fullPeriod.maxForMin;
+            }else if(config.winterConfig.extra === 3){
+                tempExtraStr = '\t| AVG OF MIN OF PERIOD 3 MONTHS: ' + tempArr[i].winterM3.avgForMin;
+            }else if(config.winterConfig.extra === 4){
+                tempExtraStr = '\t| AVG OF PERIOD 3 MONTHS: ' + tempArr[i].winterM3.avg;
+            }else if(config.winterConfig.extra === 5){
+                tempExtraStr = '\t| AVG OF MAX OF PERIOD 3 MONTHS: ' + tempArr[i].winterM3.avgForMax;
             }
-            if(config.winterConfig.showMinForAvg > 0){
-                console.log('MIN FOR AVG: ' + tempArr[i].fullPeriod.minForAvg);
+            console.log(
+                tools.FN(i+1, tempArr.length) +'. ━━' + tempArr[i].period + '━━\t' + focusedAttr + ' ' + focusedOrderSymbolStr + ' ' +
+                config.consecValue + ' TOTAL DAYS: ' + tempArr[i].fullPeriod.threshHoldDays + tempExtraStr
+            ); 
+            if(config.winterConfig.showExtreme > 0){
+                if(co.toLowerCase() === 'asc'){ //MIN三项
+                    console.log('MIN FOR MIN: ' + tempArr[i].fullPeriod.min + ' ( ' + tempArr[i].fullPeriod.dateMin + ' )');
+                    console.log('MIN FOR AVG: ' + tempArr[i].fullPeriod.minForAvg + ' ( ' + tempArr[i].fullPeriod.dateMinForAvg + ' )');
+                    console.log('MIN FOR MAX: ' + tempArr[i].fullPeriod.minForMax + ' ( ' + tempArr[i].fullPeriod.dateMinForMax + ' )');
+                }else{ //MAX三项
+                    console.log('MAX FOR MAX: ' + tempArr[i].fullPeriod.max + ' ( ' + tempArr[i].fullPeriod.dateMax + ' )');
+                    console.log('MAX FOR AVG: ' + tempArr[i].fullPeriod.maxForAvg + ' ( ' + tempArr[i].fullPeriod.dateMaxForAvg + ' )');
+                    console.log('MAX FOR MIN: ' + tempArr[i].fullPeriod.maxForMin + ' ( ' + tempArr[i].fullPeriod.dateMaxForMin + ' )');
+                }
             }
-            if(config.winterConfig.showMinForMax > 0){
-                console.log('MIN FOR MAX: ' + tempArr[i].fullPeriod.minForMax);
-            }
-            if(config.winterConfig.showAvgForMin > 0){
-                console.log('WINTER 3 MONTHS AVG FOR MIN: ' + tempArr[i].winterM3.avgForMin + '\t( avg = sum / ' + tempArr[i].winterM3.dayCountForMin + ' )');
-            }
+            //AVG三项
             if(config.winterConfig.showAvg > 0){
-                console.log('WINTER 3 MONTHS AVG FOR AVG: ' + tempArr[i].winterM3.avg + '\t( avg = sum / ' + tempArr[i].winterM3.dayCountForAvg + ' )');
-            }
-            if(config.winterConfig.showAvgForMax > 0){
-                console.log('WINTER 3 MONTHS AVG FOR MAX: ' + tempArr[i].winterM3.avgForMax + '\t( avg = sum / ' + tempArr[i].winterM3.dayCountForMax + ' )');
+                if(co.toLowerCase() === 'asc'){ //MIN三项
+                    console.log('PERIOD 3 MONTHS AVG OF MIN: ' + tempArr[i].winterM3.avgForMin + '\t( avg = sum / ' + tempArr[i].winterM3.dayCountForMin + ' )');
+                    console.log('PERIOD 3 MONTHS AVG OF AVG: ' + tempArr[i].winterM3.avg + '\t( avg = sum / ' + tempArr[i].winterM3.dayCountForAvg + ' )');
+                    console.log('PERIOD 3 MONTHS AVG OF MAX: ' + tempArr[i].winterM3.avgForMax + '\t( avg = sum / ' + tempArr[i].winterM3.dayCountForMax + ' )');
+                }else{
+                    console.log('PERIOD 3 MONTHS AVG OF MAX: ' + tempArr[i].winterM3.avgForMax + '\t( avg = sum / ' + tempArr[i].winterM3.dayCountForMax + ' )');
+                    console.log('PERIOD 3 MONTHS AVG OF AVG: ' + tempArr[i].winterM3.avg + '\t( avg = sum / ' + tempArr[i].winterM3.dayCountForAvg + ' )');
+                    console.log('PERIOD 3 MONTHS AVG OF MIN: ' + tempArr[i].winterM3.avgForMin + '\t( avg = sum / ' + tempArr[i].winterM3.dayCountForMin + ' )');
+                }
             }
         }
         console.log('\n');
@@ -425,7 +462,7 @@ function consoleDetails(){
         for(let i=0; i<stat_CONSEC.length; i++){
             if(i === config.showNumber){ break; } //限制console记录个数
             console.log(
-                tools.FN(i+1, stat_CONSEC.length) + '  ( ' + stat_CONSEC[i].startDate + ' - '
+                tools.FN(i+1, stat_CONSEC.length) + '. ( ' + stat_CONSEC[i].startDate + ' - '
                 + stat_CONSEC[i].endDate + ' )  CONSECUTIVE DAYS: ' + stat_CONSEC[i].consecDays
             );
         }
@@ -434,7 +471,7 @@ function consoleDetails(){
 
     //逐日列出
     function consoleList(){
-        console.log('DAILY LIST, SORT BY ' + config.item.toUpperCase() + ', ' + config.order.toUpperCase() + ':');
+        console.log('EVERY DAY SORTED BY ' + config.item.toUpperCase() + ', ' + co.toUpperCase() + ':');
         for(let i = 0; i < config.showNumber; i++){
             if(!startObj.arr[i]){ break; }//如果筛选出的天数小于预定展示天数，直接结束循环
             let tempObj = startObj.arr[i];
@@ -443,7 +480,7 @@ function consoleDetails(){
             let avg = tempObj['TEMP'] === undefined ? undefined : (tempObj['TEMP']);
             let max = tempObj['MAX'] === undefined ? undefined : (tempObj['MAX']);
             let avgAttr = tempObj['TEMP_ATTRIBUTES'] === undefined ? undefined : tempObj['TEMP_ATTRIBUTES'];
-            console.log(tools.FN(i+1, config.showNumber) + '\t' + date + '\tmin: ' + min + '\tavg: ' + avg + '\tmax: ' + max + '\t\t avg = sum / ' + avgAttr);
+            console.log(tools.FN(i+1, config.showNumber) + '. ' + date + '\tmin: ' + min + '\tavg: ' + avg + '\tmax: ' + max + '\t\t avg = sum / ' + avgAttr);
         }
         console.log('\n');
     }
@@ -459,199 +496,216 @@ function consoleDetails(){
 
     //仅用于查询多站信息
     function consoleMutipleStation(){
-        let tempRegExp = /[a-zA-Z]/i;
-        if(tempRegExp.test(lon.toString())){ //如果错误解析某站点csv
-            failedToParseCount += 1;
-            console.log(stationNumberToPrint + ': FAILED TO PARSE STATION');
-        }else{ //正确解析某站点csv
-            normalStationCount += 1;
-            let tempObj = {};
-            
-            //给 tempObj 添加属性,中间包含几个自定义属性
-            //基本属性
-            tempObj.NAME = name;
-            tempObj['STATION NUMBER'] = stationNumberToPrint;
-            let tempAttr0; //自定义属性预定义，到这一步还不确定对应哪一项
+        normalStationCount += 1;
+        let tempObj = {};
+        
+        //给 tempObj 添加属性,中间包含几个自定义属性
+        //基本属性
+        tempObj.NAME = name;
+        tempObj['STATION NUMBER'] = stationNumberToPrint;
+        let tempAttr0; //自定义属性预定义，到这一步还不确定对应哪一项
 
-            /****************** 自定义属性 START ******************/
-            //夜温MIN
-            //00 最低夜温(最低气温)
-            if(config.multipleTarget === '00'){
-                tempAttr0 = 'MIN'; //这个属性key在后面排序需要用到，所以单独用变量表示
-                tempObj[tempAttr0] = overview.MIN.min;
-                tempObj['MIN DATE'] = overview.MIN.minDate;
-                tempObj['MIN TOTAL'] = overview.MIN.total;
-            }
-            //01 夜温平均
-            if(config.multipleTarget === '01'){
-                tempAttr0 = 'AVG OF MIN'; //这个属性key在后面排序需要用到，所以单独用变量表示
-                tempObj[tempAttr0] = overview.MIN.avg;
-                tempObj['AVG TOTAL'] = overview.MIN.total;
-            }
-            //02 最高夜温
-            if(config.multipleTarget === '02'){
-                tempAttr0 = 'MAX OF MIN'; //这个属性key在后面排序需要用到，所以单独用变量表示
-                tempObj[tempAttr0] = overview.MIN.max;
-                tempObj['MAX DATE'] = overview.MIN.maxDate;
-                tempObj['MAX TOTAL'] = overview.MIN.total;
-            }
-            
-            //均温AVG
-            //10 最低日均温
-            if(config.multipleTarget === '10'){
-                tempAttr0 = 'MIN OF AVG'; //这个属性key在后面排序需要用到，所以单独用变量表示
-                tempObj[tempAttr0] = overview.AVG.min;
-                tempObj['MIN DATE'] = overview.AVG.minDate;
-                tempObj['MIN TOTAL'] = overview.AVG.total;
-            }
-            //11 平均气温
-            if(config.multipleTarget === '11'){
-                tempAttr0 = 'AVG'; //这个属性key在后面排序需要用到，所以单独用变量表示
-                tempObj[tempAttr0] = overview.AVG.avg;
-                tempObj['AVG TOTAL'] = overview.AVG.total;
-            }
-            //12 最高日均温
-            if(config.multipleTarget === '12'){
-                tempAttr0 = 'MAX OF AVG'; //这个属性key在后面排序需要用到，所以单独用变量表示
-                tempObj[tempAttr0] = overview.AVG.max;
-                tempObj['MAX DATE'] = overview.AVG.maxDate;
-                tempObj['MAX TOTAL'] = overview.AVG.total;
-            }
-            
-            //昼温MAX
-            //20 最低昼温
-            if(config.multipleTarget === '20'){
-                tempAttr0 = 'MIN OF MAX'; //这个属性key在后面排序需要用到，所以单独用变量表示
-                tempObj[tempAttr0] = overview.MAX.min;
-                tempObj['MIN DATE'] = overview.MAX.minDate;
-                tempObj['MIN TOTAL'] = overview.MAX.total;
-            }
-            //21 昼温平均
-            if(config.multipleTarget === '21'){
-                tempAttr0 = 'AVG OF MAX'; //这个属性key在后面排序需要用到，所以单独用变量表示
-                tempObj[tempAttr0] = overview.MAX.avg;
-                tempObj['AVG TOTAL'] = overview.MAX.total;
-            }
-            //22 最高昼温(最高气温)
-            if(config.multipleTarget === '22'){
-                tempAttr0 = 'MAX'; //这个属性key在后面排序需要用到，所以单独用变量表示
-                tempObj[tempAttr0] = overview.MAX.max;
-                tempObj['MAX DATE'] = overview.MAX.maxDate;
-                tempObj['MAX TOTAL'] = overview.MAX.total;
-            }
-
-            //月份
-            //月份低温平均
-            if(config.multipleTarget === '30' || config.multipleTarget === '31' || config.multipleTarget === '32'){
-                let tempK = '';
-                let targetText = ''; //标题文本, AVG OF MIN, AVG, AVG OF MAX
-                let totalText = ''; //MIN, AVG, MAX有记录总天数
-                if(config.multipleTarget === '30'){
-                    tempK = 'avgForMin';
-                    targetText = 'AVG OF MIN';
-                    totalText = 'MONTH MIN TOTAL';
-                }else if(config.multipleTarget === '31'){
-                    tempK = 'avg';
-                    targetText = 'AVG';
-                    totalText = 'MONTH AVG TOTAL';
-                }else{
-                    tempK = 'avgForMax';
-                    targetText = 'AVG OF MAX';
-                    totalText = 'MONTH MAX TOTAL';
-                }
-                let tempV = undefined;
-                let tempArr = []; //月平均低温(最低或最高如果相同，则不止一个月份，所以要用数组)
-                let tempArrM = []; //对应月份
-                let tempArrTotal = 0; //对应valid dayCount,如果有多个月比如12、1、2月低温平均都是-40，那么对应这三个月的低温dayCount之和
-                tools.getArrOfMonthStr().forEach((v) => {
-                    let tempMonthObj = config.M.showValid > 0 ? stat_M[v].valid : stat_M[v];
-                    if(typeof tempMonthObj[tempK] !== 'undefined' && tempMonthObj[tempK] !== undefined){
-                        tempArr.push(tempMonthObj[tempK]);
-                    }
-                });
-                if(tempArr.length > 0){
-                    if(co.toLowerCase() === 'asc'){
-                        tempV = Math.min(...tempArr);
-                    }else{
-                        tempV = Math.max(...tempArr);
-                    }
-                    tools.getArrOfMonthStr().forEach((v) => {
-                        let tempMonthObj = config.M.showValid > 0 ? stat_M[v].valid : stat_M[v];
-                        if(Number(tempMonthObj[tempK]) === tempV){
-                            tempArrM.push(v);
-                            tempArrTotal += tempMonthObj.dayCountForMin;
-                        }
-                    })
-                }else{
-                    return;
-                }
-                tempAttr0 = targetText; //这个属性key在后面排序需要用到，所以单独用变量表示
-                tempObj[tempAttr0] = tempV;
-                tempObj['MONTH'] = tempArrM;
-                tempObj[totalText] = tempArrTotal;
-            }
-
-            //50 单个冬季最多满足阈值天数
-            if(config.multipleTarget === '50'){
-                tempAttr0 = 'WINTER MAX'; //这个属性key在后面排序需要用到，所以单独用变量表示
-                tempObj[tempAttr0] = winter_MaxTHR;
-                tempObj['MAX WINTER'] = maxTHR_winter;
-                tempObj['TOTAL MATCHED'] = totalThreshholdDays;
-            }
-
-            //50 最大连续日数
-            if(config.multipleTarget === '60'){
-                if(stat_CONSEC.length > 0){ //这里必须提前判断数组是否为空，否则后面会报错
-                    tempAttr0 = 'MAX CONSEC'; //这个属性key在后面排序需要用到，所以单独用变量表示
-                    tempObj[tempAttr0] = stat_CONSEC[0].consecDays;
-                    tempObj['1ST START'] = stat_CONSEC[0].startDate;
-                    tempObj['1ST END'] = stat_CONSEC[0].endDate;
-                    tempObj['TOTAL MATCHED'] = totalThreshholdDays;
-                }else{
-                    return;
-                }
-            }
-            /****************** 自定义属性 END ******************/
-
-            //常用属性
-            tempObj['ELEV(m)'] = elev;
-            tempObj.LATITUDE = lat;
-            tempObj.LONGITUDE = lon;
-            
-            //填装对象到数组
-            resultArrForStations.push(tempObj);
-            if(expectedStationCount === config.arrOfStations.length){ //读取完数组最后一个站点
-                console.log('\n****** STATIONS NEARBY ******')
-                console.log('EXPECTED: ' + expectedStationCount);
-                console.log('NOT FOUND: ' + notFoundCount);
-                console.log('FAILED TO PARSE: ' + failedToParseCount);
-                console.log('SUCCEED TO RETRIEVE: ' + normalStationCount + '\n');
-
-                //给结果数组排序
-                resultArrForStations.sort((a, b) => {
-                    return config.multipleTarget === '50' ?
-                    b[tempAttr0] - a[tempAttr0] :
-                    tools.sortUndefinedObj(a[tempAttr0], b[tempAttr0], config.order);
-                });
-                //resultArrForStations.sort((a, b) => { return b[tempAttr0] - a[tempAttr0]; });
-
-                //打印结果
-                console.table(resultArrForStations);
-                //打印CSV字符文本
-                console.log('\n' + tools.getCsvStringFromArrOfObj(resultArrForStations));
-            }
+        /****************** 自定义属性 START ******************/
+        //夜温MIN
+        //00 最低夜温(最低气温)
+        if(config.multipleTarget === '00'){
+            tempAttr0 = 'MIN'; //这个属性key在后面排序需要用到，所以单独用变量表示
+            tempObj[tempAttr0] = overview.MIN.min;
+            tempObj['MIN DATE'] = overview.MIN.minDate;
+            tempObj['MIN TOTAL'] = overview.MIN.total;
+        }
+        //01 夜温平均
+        if(config.multipleTarget === '01'){
+            tempAttr0 = 'AVG OF MIN'; //这个属性key在后面排序需要用到，所以单独用变量表示
+            tempObj[tempAttr0] = overview.MIN.avg;
+            tempObj['AVG TOTAL'] = overview.MIN.total;
+        }
+        //02 最高夜温
+        if(config.multipleTarget === '02'){
+            tempAttr0 = 'MAX OF MIN'; //这个属性key在后面排序需要用到，所以单独用变量表示
+            tempObj[tempAttr0] = overview.MIN.max;
+            tempObj['MAX DATE'] = overview.MIN.maxDate;
+            tempObj['MAX TOTAL'] = overview.MIN.total;
         }
         
-        /* console.log('MIN OF ALL TIME: ' + overview['MIN'].min);
-        console.log('MAX OF ALL TIME: ' + overview.MAX.max);
-        console.log('MIN OF MAX: ' + overview.MAX.min);
-        console.log('MAX OF MIN: ' + overview.MIN.max);
-        console.log('JAN MEAN: ' + stat_M['01'].avgForMin + '  ' + stat_M['01'].avg + '  ' + stat_M['01'].avgForMax);
-        console.log('JAN EXTREME: ' + stat_M['01'].min + '  ' + '  ' + stat_M['01'].max);
-        console.log('JULY MEAN: ' + stat_M['07'].avgForMin + '  ' + stat_M['07'].avg + '  ' + stat_M['07'].avgForMax);
-        console.log('JULY EXTREME: ' + stat_M['07'].min + '  ' + '  ' + stat_M['07'].max);
-        console.log('ANNUAL MEAN: ' + overview.AVG.avg);
-        console.log('MAX CONSEC: ' + stat_CONSEC[0].consecDays + ' [ ' + stat_CONSEC[0].startDate + ' - ' + stat_CONSEC[0].endDate + ' ] ') */
+        //均温AVG
+        //10 最低日均温
+        if(config.multipleTarget === '10'){
+            tempAttr0 = 'MIN OF AVG'; //这个属性key在后面排序需要用到，所以单独用变量表示
+            tempObj[tempAttr0] = overview.AVG.min;
+            tempObj['MIN DATE'] = overview.AVG.minDate;
+            tempObj['MIN TOTAL'] = overview.AVG.total;
+        }
+        //11 平均气温
+        if(config.multipleTarget === '11'){
+            tempAttr0 = 'AVG'; //这个属性key在后面排序需要用到，所以单独用变量表示
+            tempObj[tempAttr0] = overview.AVG.avg;
+            tempObj['AVG TOTAL'] = overview.AVG.total;
+        }
+        //12 最高日均温
+        if(config.multipleTarget === '12'){
+            tempAttr0 = 'MAX OF AVG'; //这个属性key在后面排序需要用到，所以单独用变量表示
+            tempObj[tempAttr0] = overview.AVG.max;
+            tempObj['MAX DATE'] = overview.AVG.maxDate;
+            tempObj['MAX TOTAL'] = overview.AVG.total;
+        }
+        
+        //昼温MAX
+        //20 最低昼温
+        if(config.multipleTarget === '20'){
+            tempAttr0 = 'MIN OF MAX'; //这个属性key在后面排序需要用到，所以单独用变量表示
+            tempObj[tempAttr0] = overview.MAX.min;
+            tempObj['MIN DATE'] = overview.MAX.minDate;
+            tempObj['MIN TOTAL'] = overview.MAX.total;
+        }
+        //21 昼温平均
+        if(config.multipleTarget === '21'){
+            tempAttr0 = 'AVG OF MAX'; //这个属性key在后面排序需要用到，所以单独用变量表示
+            tempObj[tempAttr0] = overview.MAX.avg;
+            tempObj['AVG TOTAL'] = overview.MAX.total;
+        }
+        //22 最高昼温(最高气温)
+        if(config.multipleTarget === '22'){
+            tempAttr0 = 'MAX'; //这个属性key在后面排序需要用到，所以单独用变量表示
+            tempObj[tempAttr0] = overview.MAX.max;
+            tempObj['MAX DATE'] = overview.MAX.maxDate;
+            tempObj['MAX TOTAL'] = overview.MAX.total;
+        }
+
+        //月份
+        //月份低温平均、均温、高温平均
+        if(config.multipleTarget === '30' || config.multipleTarget === '31' || config.multipleTarget === '32'){
+            let tempK = '';
+            let targetText = ''; //标题文本, AVG OF MIN, AVG, AVG OF MAX
+            let totalText = ''; //MIN, AVG, MAX有记录总天数
+            if(config.multipleTarget === '30'){
+                tempK = 'avgForMin';
+                targetText = 'AVG OF MIN';
+                totalText = 'MONTH MIN TOTAL';
+            }else if(config.multipleTarget === '31'){
+                tempK = 'avg';
+                targetText = 'AVG';
+                totalText = 'MONTH AVG TOTAL';
+            }else{
+                tempK = 'avgForMax';
+                targetText = 'AVG OF MAX';
+                totalText = 'MONTH MAX TOTAL';
+            }
+            let tempV = undefined;
+            let tempArr = []; //月平均低温(最低或最高如果相同，则不止一个月份，所以要用数组)
+            let tempArrM = []; //对应月份
+            let tempArrTotal = 0; //对应valid dayCount,如果有多个月比如12、1、2月低温平均都是-40，那么对应这三个月的低温dayCount之和
+            tools.getArrOfMonthStr().forEach((v) => {
+                let tempMonthObj = config.M.showValid > 0 ? stat_M[v].valid : stat_M[v];
+                if(typeof tempMonthObj[tempK] !== 'undefined' && tempMonthObj[tempK] !== undefined){
+                    tempArr.push(tempMonthObj[tempK]);
+                }
+            });
+            if(tempArr.length > 0){
+                if(co.toLowerCase() === 'asc'){
+                    tempV = Math.min(...tempArr);
+                }else{
+                    tempV = Math.max(...tempArr);
+                }
+                tools.getArrOfMonthStr().forEach((v) => {
+                    let tempMonthObj = config.M.showValid > 0 ? stat_M[v].valid : stat_M[v];
+                    if(Number(tempMonthObj[tempK]) === tempV){
+                        tempArrM.push(v);
+                        tempArrTotal += tempMonthObj.dayCountForMin;
+                    }
+                })
+            }else{
+                return;
+            }
+            tempAttr0 = targetText; //这个属性key在后面排序需要用到，所以单独用变量表示
+            tempObj[tempAttr0] = tempV;
+            tempObj['MONTH'] = tempArrM;
+            tempObj[totalText] = tempArrTotal;
+        }
+
+        //40 极端冷/热月低温平均、均温、高温平均
+        if(config.multipleTarget === '40' || config.multipleTarget === '41' || config.multipleTarget === '42'){
+            let tempItem;
+            let tempAvg;
+            let tempDayCount;
+            if(config.multipleTarget === '40'){
+                tempItem = 'MIN';
+                tempAvg = 'avgForMin';
+                tempDayCount = 'dayCountForMin';
+            }else if(config.multipleTarget === '41'){
+                tempItem = 'AVG';
+                tempAvg = 'avg';
+                tempDayCount = 'dayCountForAvg';
+            }else if(config.multipleTarget === '42'){
+                tempItem = 'MAX';
+                tempAvg = 'avgForMax';
+                tempDayCount = 'dayCountForMax';
+            }
+            let tempYM_Arr = sortYM_Arr(Object.keys(stat_YM), tempItem.toLowerCase());
+            if(tempYM_Arr.length === 0){ //如果数据源为空，则跳过这个气象站
+                return;
+            }
+            let tempYM = tempYM_Arr[0];
+            
+            if(co.toLowerCase() === 'asc'){
+                tempAttr0 = 'MIN FOR AVG OF ' + tempItem;
+            }else{
+                tempAttr0 = 'MAX FOR AVG OF ' + tempItem;
+            }
+
+            tempObj[tempAttr0] = stat_YM[tempYM][tempAvg];
+            tempObj['Y-M'] = tempYM;
+            tempObj['AVG ='] = 'sum/' + stat_YM[tempYM][tempDayCount];
+        }
+
+        //50 单个冬季最多满足阈值天数
+        if(config.multipleTarget === '50'){
+            tempAttr0 = 'PERIOD MAX'; //这个属性key在后面排序需要用到，所以单独用变量表示
+            tempObj[tempAttr0] = winter_MaxTHR;
+            tempObj['MAX PERIOD'] = maxTHR_winter;
+            tempObj['TOTAL MATCHED'] = totalThreshholdDays;
+        }
+
+        //60 最大连续日数
+        if(config.multipleTarget === '60'){
+            if(stat_CONSEC.length > 0){ //这里必须提前判断数组是否为空，否则后面会报错
+                tempAttr0 = 'MAX CONSEC'; //这个属性key在后面排序需要用到，所以单独用变量表示
+                tempObj[tempAttr0] = stat_CONSEC[0].consecDays;
+                tempObj['1ST START'] = stat_CONSEC[0].startDate;
+                tempObj['1ST END'] = stat_CONSEC[0].endDate;
+                tempObj['TOTAL MATCHED'] = totalThreshholdDays;
+            }else{
+                return;
+            }
+        }
+        /****************** 自定义属性 END ******************/
+
+        //常用属性
+        tempObj['ELEV(m)'] = elev;
+        tempObj.LATITUDE = lat;
+        tempObj.LONGITUDE = lon;
+        
+        //填装对象到数组
+        resultArrForStations.push(tempObj);
+        if(expectedStationCount === config.arrOfStations.length){ //读取完数组最后一个站点
+            console.log('\n****** STATIONS NEARBY ******')
+            console.log('EXPECTED: ' + expectedStationCount);
+            console.log('NOT FOUND: ' + notFoundCount);
+            console.log('SUCCEED TO RETRIEVE: ' + normalStationCount + '\n');
+
+            //给结果数组排序
+            resultArrForStations.sort((a, b) => {
+                return config.multipleTarget === '50' ?
+                b[tempAttr0] - a[tempAttr0] :
+                tools.sortUndefinedObj(a[tempAttr0], b[tempAttr0], config.order);
+            });
+            //resultArrForStations.sort((a, b) => { return b[tempAttr0] - a[tempAttr0]; });
+
+            //打印结果
+            console.table(resultArrForStations);
+            //打印CSV字符文本
+            console.log('\n' + tools.getCsvStringFromArrOfObj(resultArrForStations));
+        }
     }
 
     return {
@@ -748,9 +802,9 @@ function Csv(str){
         let stat_CONSEC = []; //连续记录
 
         rowArr.forEach((v) => {
-            let strOfRows = v.trim();
+            let strOfRows = v.trim(); //console.log(strOfRows);
             let arrayOfRowCells = [];
-            let tempArrOfRowCells = strOfRows.replace(regExp, '\t').split('\t');
+            let tempArrOfRowCells = strOfRows.replace(regExp, '\t').replace(/\"\,\,\"/g, '\tundefined\t').trim().split('\t');
             tempArrOfRowCells.forEach((v1) => {
                 if(v1.length > 0){
                     arrayOfRowCells.push(v1.trim());
@@ -883,8 +937,8 @@ function Csv(str){
             let temp_Y_Str = temp_YMD_Arr[0];
             let temp_MD_Str = temp_YMD_Arr[1] + '-' + temp_YMD_Arr[2];
             let tempWinter = {
-                period: tools.getWinter(v['DATE']).period,
-                isInWinterM3: tools.getWinter(v['DATE']).isInWinterM3
+                period: tools.getWinter(v['DATE'], config.winterConfig.winterWhichHemisphere).period,
+                isInWinterM3: tools.getWinter(v['DATE'], config.winterConfig.winterWhichHemisphere).isInWinterM3
             };
             
             //某年某月
@@ -1033,12 +1087,21 @@ function Csv(str){
             if(!stat_WINTER.hasOwnProperty(tempWinter.period)){ //先判断stat_WINTER对象中是否包含某个winter周期的属性，如果没有则添加
                 vObj_WINTER = {
                     'fullPeriod': {
-                        'minArr': [],
-                        'avgArr': [],
-                        'maxArr': [],
+                        'minArr': [], //对象数组，数组里面是{value: xx.x, date: 'xxxx-xx-xx'}对象
+                        'avgArr': [], //对象数组
+                        'maxArr': [], //对象数组
+                        'dateMin': [],
+                        'dateMinForAvg': [],
+                        'dateMinForMax': [],
+                        'dateMaxForMin': [],
+                        'dateMaxForAvg': [],
+                        'dateMax': [],
                         'min': undefined,
                         'minForAvg': undefined,
                         'minForMax': undefined,
+                        'maxForMin': undefined,
+                        'maxForAvg': undefined,
+                        'max': undefined,
                         'threshHoldDays': 0
                     },
                     'winterM3': {
@@ -1046,9 +1109,9 @@ function Csv(str){
                         'dayCountForMin': 0,
                         'dayCountForAvg': 0,
                         'dayCountForMax': 0,
-                        'minArr': [],
-                        'avgArr': [],
-                        'maxArr': [],
+                        'minArr': [], //对象数组
+                        'avgArr': [], //对象数组
+                        'maxArr': [], //对象数组
                         'min': undefined,
                         'minForAvg': undefined,
                         'minForMax': undefined,
@@ -1063,39 +1126,30 @@ function Csv(str){
             }
 
             if(v['MIN'] !== undefined){
-                vObj_WINTER.fullPeriod.minArr.push(Number(v['MIN']));
-                vObj_WINTER.fullPeriod.min = Math.min(...vObj_WINTER.fullPeriod.minArr);
+                let tempObj = {value: Number(v['MIN']), date: v['DATE']}
+                vObj_WINTER.fullPeriod.minArr.push(tempObj);
                 if(tempWinter.isInWinterM3){
                     vObj_WINTER.winterM3.dayCount += 1;
                     vObj_WINTER.winterM3.dayCountForMin += 1;
                     vObj_WINTER.winterM3.minArr.push(Number(v['MIN']));
-                    vObj_WINTER.winterM3.min = Math.min(...vObj_WINTER.winterM3.minArr);
-                    vObj_WINTER.winterM3.avgForMin = tools.getAvgForNumberArr(vObj_WINTER.winterM3.minArr);
-                    vObj_WINTER.winterM3.maxForMin = Math.max(...vObj_WINTER.winterM3.minArr);
                 }
             }
             if(v['TEMP'] !== undefined){
-                vObj_WINTER.fullPeriod.avgArr.push(Number(v['TEMP']));
-                vObj_WINTER.fullPeriod.minForAvg = Math.min(...vObj_WINTER.fullPeriod.avgArr);
+                let tempObj = {value: Number(v['TEMP']), date: v['DATE']}
+                vObj_WINTER.fullPeriod.avgArr.push(tempObj);
                 if(tempWinter.isInWinterM3){
                     vObj_WINTER.winterM3.dayCount += 1;
                     vObj_WINTER.winterM3.dayCountForAvg += 1;
                     vObj_WINTER.winterM3.avgArr.push(Number(v['TEMP']));
-                    vObj_WINTER.winterM3.minForAvg = Math.min(...vObj_WINTER.winterM3.avgArr);
-                    vObj_WINTER.winterM3.avg = tools.getAvgForNumberArr(vObj_WINTER.winterM3.avgArr);
-                    vObj_WINTER.winterM3.maxForAvg = Math.max(...vObj_WINTER.winterM3.avgArr);
                 }
             }
             if(v['MAX'] !== undefined){
-                vObj_WINTER.fullPeriod.maxArr.push(Number(v['MAX']));
-                vObj_WINTER.fullPeriod.minForMax = Math.min(...vObj_WINTER.fullPeriod.maxArr);
+                let tempObj = {value: Number(v['MAX']), date: v['DATE']}
+                vObj_WINTER.fullPeriod.maxArr.push(tempObj);
                 if(tempWinter.isInWinterM3){
                     vObj_WINTER.winterM3.dayCount += 1;
                     vObj_WINTER.winterM3.dayCountForMax += 1;
                     vObj_WINTER.winterM3.maxArr.push(Number(v['MAX']));
-                    vObj_WINTER.winterM3.minForMax = Math.min(...vObj_WINTER.winterM3.maxArr);
-                    vObj_WINTER.winterM3.avgForMax = tools.getAvgForNumberArr(vObj_WINTER.winterM3.maxArr);
-                    vObj_WINTER.winterM3.max = Math.max(...vObj_WINTER.winterM3.maxArr);
                 }
             }
             let tempCondition = co.toLowerCase() === 'asc' ? Number(v[focusedAttr]) <= Number(config.consecValue) : Number(v[focusedAttr]) >= Number(config.consecValue);
@@ -1200,14 +1254,78 @@ function Csv(str){
             if(Number(v['MAX']) === overview.MAX.max){ overview.MAX.maxDate.push(v['DATE']) }
         });
 
+        //stat_WINTER
         //统计逐冬最大满足阈值天数
-        let objK = Object.keys(stat_WINTER);
-        let objV = Object.values(stat_WINTER);
-        for(let i=0; i<objK.length; i++){
-            if(objV[i].fullPeriod.threshHoldDays > winter_MaxTHR){
-                winter_MaxTHR = objV[i].fullPeriod.threshHoldDays;
-                maxTHR_winter = objK[i];
+        let objWinterK = Object.keys(stat_WINTER);
+        let objWinterV = Object.values(stat_WINTER);
+        for(let i=0; i<objWinterK.length; i++){
+            if(objWinterV[i].fullPeriod.threshHoldDays > winter_MaxTHR){ //获取最大满足阈值天数(可能不止一个，获取第一个)
+                winter_MaxTHR = objWinterV[i].fullPeriod.threshHoldDays;
+                maxTHR_winter = objWinterK[i];
             }
+            //遍历之后再求极值和均值，这样可以极大提高效率
+            //冬夏长周期(时长一年)
+            //MIN
+            let tempAN = objWinterV[i].fullPeriod.minArr;
+            let tempVN = [];
+            tempAN.forEach((vw) => {
+                tempVN.push(vw.value);
+            });
+            objWinterV[i].fullPeriod.min = Math.min(...tempVN);
+            objWinterV[i].fullPeriod.maxForMin = Math.max(...tempVN);
+            let tempEN1 = objWinterV[i].fullPeriod.min;
+            let tempEX1 = objWinterV[i].fullPeriod.maxForMin;
+            tempVN.forEach((vw, iw) => {
+                if(vw === tempEN1){ objWinterV[i].fullPeriod.dateMin.push(tempAN[iw].date); }
+                if(vw === tempEX1){ objWinterV[i].fullPeriod.dateMaxForMin.push(tempAN[iw].date); }
+            });
+            //AVG
+            let tempAG = objWinterV[i].fullPeriod.avgArr;
+            let tempVG = [];
+            tempAG.forEach((vw) => {
+                tempVG.push(vw.value);
+            });
+            objWinterV[i].fullPeriod.minForAvg = Math.min(...tempVG);
+            objWinterV[i].fullPeriod.maxForAvg = Math.max(...tempVG);
+            let tempEN2 = objWinterV[i].fullPeriod.minForAvg;
+            let tempEX2 = objWinterV[i].fullPeriod.maxForAvg;
+            tempVG.forEach((vw, iw) => {
+                if(vw === tempEN2){ objWinterV[i].fullPeriod.dateMinForAvg.push(tempAG[iw].date); }
+                if(vw === tempEX2){ objWinterV[i].fullPeriod.dateMaxForAvg.push(tempAG[iw].date); }
+            });
+            //MAX
+            let tempAX = objWinterV[i].fullPeriod.maxArr;
+            let tempVX = [];
+            tempAX.forEach((vw) => {
+                tempVX.push(vw.value);
+            });
+            objWinterV[i].fullPeriod.minForMax = Math.min(...tempVX);
+            objWinterV[i].fullPeriod.max = Math.max(...tempVX);
+            let tempEN3 = objWinterV[i].fullPeriod.minForMax;
+            let tempEX3 = objWinterV[i].fullPeriod.max;
+            tempVX.forEach((vw, iw) => {
+                if(vw === tempEN3){ objWinterV[i].fullPeriod.dateMinForMax.push(tempAX[iw].date); }
+                if(vw === tempEX3){ objWinterV[i].fullPeriod.dateMax.push(tempAX[iw].date); }
+            });
+            /* objWinterV[i].fullPeriod.min = Math.min(...objWinterV[i].fullPeriod.minArr);
+            objWinterV[i].fullPeriod.maxForMin = Math.max(...objWinterV[i].fullPeriod.minArr);
+            objWinterV[i].fullPeriod.minForAvg = Math.min(...objWinterV[i].fullPeriod.avgArr);
+            objWinterV[i].fullPeriod.maxForAvg = Math.max(...objWinterV[i].fullPeriod.avgArr);
+            objWinterV[i].fullPeriod.minForMax = Math.min(...objWinterV[i].fullPeriod.maxArr);
+            objWinterV[i].fullPeriod.max = Math.max(...objWinterV[i].fullPeriod.maxArr); */
+            //winterM3 冬三月或夏三月
+            //低温
+            objWinterV[i].winterM3.min = Math.min(...objWinterV[i].winterM3.minArr);
+            objWinterV[i].winterM3.avgForMin = tools.getAvgForNumberArr(objWinterV[i].winterM3.minArr);
+            objWinterV[i].winterM3.maxForMin = Math.max(...objWinterV[i].winterM3.minArr);
+            //均温
+            objWinterV[i].winterM3.minForAvg = Math.min(...objWinterV[i].winterM3.avgArr);
+            objWinterV[i].winterM3.avg = tools.getAvgForNumberArr(objWinterV[i].winterM3.avgArr);
+            objWinterV[i].winterM3.maxForAvg = Math.max(...objWinterV[i].winterM3.avgArr);
+            //高温
+            objWinterV[i].winterM3.minForMax = Math.min(...objWinterV[i].winterM3.maxArr);
+            objWinterV[i].winterM3.avgForMax = tools.getAvgForNumberArr(objWinterV[i].winterM3.maxArr);
+            objWinterV[i].winterM3.max = Math.max(...objWinterV[i].winterM3.maxArr);
         }
 
         //单独给stat_CONSEC数组排序，毫无疑问，应该从大到小排，数字最大的记录排前面
@@ -1303,24 +1421,39 @@ function Tools(){
     }
 
     //获取特定日期所处的冬季周期，比如判断2023-07-18属于哪个冬季周期，这里2023-07-18属于 '2023/2024' 冬季周期。同时判断该日期是否处于冬三月
-    function getWinter(dateStr){
+    function getWinter(dateStr, winterWhichHemisphere){
         let regExp = /\d{4}\-\d{2}\-\d{2}/;
         if(regExp.test(dateStr) === false){ return undefined; } //判断输入格式
         
         let periodStr = '';
         let isInWinterM3 = false;
         let YMD_Arr = dateStr.split('-');
-        //判断给定日期所处冬季周期
-        if( Date.parse(dateStr) <= Date.parse(YMD_Arr[0] + '-07-15') ){
-            periodStr = (Number(YMD_Arr[0]) - 1).toString() + '/' + YMD_Arr[0];
-        }else{
-            periodStr = YMD_Arr[0] + '/' + (Number(YMD_Arr[0]) + 1).toString();
-        }
-        //判断给定日期是否处于冬三月
-        if( Date.parse(dateStr) <= Date.parse(YMD_Arr[0] + '-11-30') && Date.parse(dateStr) >= Date.parse(YMD_Arr[0] + '-03-01') ){
-            isInWinterM3 = false;
-        }else{
-            isInWinterM3 = true;
+        if(winterWhichHemisphere === 0){ //针对北半球冬季，为0则针对南半球冬季(对应北半球夏天)
+            //判断给定日期所处冬季周期
+            if( Date.parse(dateStr) <= Date.parse(YMD_Arr[0] + '-07-15') ){
+                periodStr = (Number(YMD_Arr[0]) - 1).toString() + '/' + YMD_Arr[0];
+            }else{
+                periodStr = YMD_Arr[0] + '/' + (Number(YMD_Arr[0]) + 1).toString();
+            }
+            //判断给定日期是否处于冬三月
+            if( Date.parse(dateStr) <= Date.parse(YMD_Arr[0] + '-11-30') && Date.parse(dateStr) >= Date.parse(YMD_Arr[0] + '-03-01') ){
+                isInWinterM3 = false;
+            }else{
+                isInWinterM3 = true;
+            }
+        }else{ //针对北半球夏季/南半球冬季
+            //判断给定日期所处冬季周期
+            if( Date.parse(dateStr) <= Date.parse(YMD_Arr[0] + '-01-15') ){
+                periodStr = (Number(YMD_Arr[0]) - 1).toString() + '/' + YMD_Arr[0];
+            }else{
+                periodStr = YMD_Arr[0] + '/' + (Number(YMD_Arr[0]) + 1).toString();
+            }
+            //判断给定日期是否处于冬三月, 这里判断里面是用或，和前面的判断 && 相反, 这里花了我20分钟才找出原因...
+            if( Date.parse(dateStr) <= Date.parse(YMD_Arr[0] + '-05-31') || Date.parse(dateStr) >= Date.parse(YMD_Arr[0] + '-09-01') ){
+                isInWinterM3 = false;
+            }else{
+                isInWinterM3 = true;
+            }
         }
 
         return {

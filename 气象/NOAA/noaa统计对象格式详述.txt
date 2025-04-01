@@ -29,6 +29,38 @@ let statObjForYM = {
 	}
 }
 
+let statObjForWinter = {
+	'2023/2024': {
+		'fullPeriod': {
+			'minArr': [],
+			'avgArr': [],
+			'maxArr': [],
+			'min': undefined,
+			'minForAvg': undefined,
+			'minForMax': undefined,
+			'threshHoldDays': 0
+		},
+		'winterM3': {
+			'dayCount': 87,
+			'dayCountForMin': 85,
+			'dayCountForAvg': 85,
+			'dayCountForMax': 85,
+			'minArr': [],
+			'avgArr': [],
+			'maxArr': [],
+			'min': undefined,
+			'minForAvg': undefined,
+			'minForMax': undefined,
+			'avgForMin': undefined,
+			'avg': undefined,
+			'avgForMax': undefined,
+			'maxForMin': undefined,
+			'maxForAvg': undefined,
+			'max': undefined
+		}
+	}
+}
+
 某个月份： 共33个细分属性
 let statObjForOnlyMonth = {
 	'01': {
