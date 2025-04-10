@@ -1,0 +1,38 @@
+*{
+    margin: 0px;
+    padding: 0px;
+}
+/* .wrapper, #colorCube, #colorText{
+    width: 100%;
+} */
+.wrapper{
+    position: absolute;
+    left: 20px;
+    top: 20px;
+}
+#colorHead{
+    width: 888px;
+    height: 23px;
+    margin-left: 1px;
+    border: 1px solid black;
+    text-align: center;
+}
+#colorCube{
+    height: 23px;
+}
+#colorText{
+    height: 45px;
+    margin-top: 3px;
+}
+.cube, .text{
+    float: left;
+    margin: 1px 0 0 1px;
+    border: 1px solid black;
+    width: 30px;
+    height: 100%;
+}
+.text{
+    text-align: center;
+    line-height: 14px;
+    color: #000000;
+}
