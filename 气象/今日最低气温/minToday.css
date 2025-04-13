@@ -27,12 +27,15 @@ table{
     width: 100px;
 }
 #th3{
-    width: 100px;
+    width: 140px;
 }
 #th4{
     width: 100px;
 }
-#th5, #th6, #th7, #th8, #th9{
+#th7{
+    width: 100px;
+}
+#th5, #th6, #th8, #th9{
     width: 140px;
 }
 th{
