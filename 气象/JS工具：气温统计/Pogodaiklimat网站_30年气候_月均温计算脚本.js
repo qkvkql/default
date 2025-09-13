@@ -45,3 +45,9 @@ for(let i = 0; i < arrOfObjK.length; i++){
 }
 console.log(objOfMonthlyDataForClimate);
 console.table(resultArr);
+//输出Str
+let resultStr = '';
+for(let i=0; i<resultArr.length; i++){
+    resultStr += resultArr[i]['平均气温'].toString().trim() + '\n';
+}
+console.log(resultStr);
