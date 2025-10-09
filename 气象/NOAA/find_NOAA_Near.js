@@ -1,5 +1,5 @@
 const reader = require('xlsx');
-let xlsxFilePath = 'D:/文档/世界所有国家站站号.xlsx';
+let xlsxFilePath = 'D:/文档/NOAA站点信息.xlsx';
 
 //Read xlsx file to array, must in front of other lines
 const file = reader.readFile(xlsxFilePath);
@@ -15,23 +15,23 @@ for(let i = 0; i < sheets.length; i++)
 }
 
 let config = {
-    USAF: '24688',
+    USAF: '45011',
     searchType: 1, //按什么搜索，0代表按站号搜索
-    coorArr: [49.094405480935805, 121.05183776917747], //如果是按坐标搜索(searchType = 1), 需要在这给出坐标
+    coorArr: [51.49809441, 104.1092043], //如果是按坐标搜索(searchType = 1), 需要在这给出坐标
     filters: {
         byCoordsRange: 0, ////是否筛选经纬度
         byElev: 0, //是否筛选海拔
 
-        maxDistance: 1000, //方圆多少km
+        maxDistance: 500, //方圆多少km
         
-        countryCode: 'ch', //留空则不筛选国家
+        countryCode: 'rs', //留空则不筛选国家
         
-        lat1: -90, //纬度范围：起始纬度
+        lat1: 60, //纬度范围：起始纬度
         lat2: 90, //纬度范围：终止纬度
-        lon1: -10, //经度范围：起始经度
-        lon2: 31.99999999, //经度范围：终止经度
+        lon1: -180, //经度范围：起始经度
+        lon2: 180, //经度范围：终止经度
 
-        elev1: 2000, //海拔低值
+        elev1: 3000, //海拔低值
         elev2: 9000 //海拔高值
     },
     //筛选排序
@@ -40,7 +40,7 @@ let config = {
         order: 'asc' //排序方式
     },
 
-    usafNoEnd0: 0, //是否忽略USAF结尾是0的记录，1是 0否
+    usafType: 0, //USAF过滤器，0=不过滤，1=查询末尾是0的(可查实时数据的交换站)，2，排除末尾是0的(查不是交换站的站)
     limited: '' //是否限定到只考察 xxxxx0-99999 站点，一般不要做限制, 如果非要限制，值为 'limited'
 }
 //在这里修改参数
@@ -62,9 +62,8 @@ function consoleResult(){
     if(config.filters.countryCode.trim() !== ''){
         placeStr += countryText;
     }
-    if(config.usafNoEnd0 === 1){
-        placeStr += '\nLast Digit of USAF ≠ 0';
-    }
+    if(config.usafType === 1){ placeStr += '\nLast Digit of USAF = 0'; }
+    if(config.usafType === 2){ placeStr += '\nLast Digit of USAF ≠ 0'; }
     console.log('\nAll Stations Nearby ' + placeStr);
     console.log('DISTANCE <= ' + config.filters.maxDistance.toString() + 'km');
     console.log('SORTED BY ' + itemStr + ' ' + config.sort.order.toUpperCase());
@@ -185,7 +184,8 @@ function getNearbyStations(searchType, stationNumber, coorArr, maxDistance, limi
         resultArr = resultArr.filter((e) => coordsMatched( e['LAT'], e['LON'], config.filters.lat1, config.filters.lat2, config.filters.lon1, config.filters.lon2 ));
     }
     //筛选USAF, 一般不筛选
-    if(config.usafNoEnd0 > 0){ resultArr = resultArr.filter((e) => e['USAF'].substring(5, 6) !== '0'); }
+    if(config.usafType === 1){ resultArr = resultArr.filter((e) => e['USAF'].substring(5, 6) === '0' && e['WBAN'] === '99999'); } //usaf末位为0 = 交换站
+    if(config.usafType === 2){ resultArr = resultArr.filter((e) => e['USAF'].substring(5, 6) !== '0'); } //usaf末位不为0 = 不可查实时数据的交换站
 
     //注意多种排序的先后顺序
     if(config.sort.item.toUpperCase() === 'd'.toUpperCase()){ //按距离排序

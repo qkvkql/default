@@ -4,55 +4,59 @@ let readMultipleFiles = require('read-multiple-files');
 const express = require("express");
 const bodyParser = require("body-parser");
 const ejs = require("ejs");
-
 //配置对象，用于设置筛选条件
 const config = {
+    multipleStation: 0, //是否切换到打印邻近站点模式
     stationObj: {
         USAF: '31338',
-        //留空则默认为99999，长度小于5则前面自动补0
-        WBAN: '99999'
+        WBAN: '99999' //留空则默认为99999，长度小于5则前面自动补0
     },
-
+    explosiveConfig: {
+        meanValue: -27.6, //平均值，不一定是日均温的平均值，也可能是平均低温或平均高温，得提前给出，这里再加异步代码先算均温再算方差有点太麻烦了，先这样凑合吧
+        item: 'avg', //一般针对日均温求爆发力，也可以指定是min, max
+        month: 1, //必须是1到12中的一个数字来代表月份，求这个月份所有日期的方差
+        showExplosive: 0 //是否打印爆发力
+    },
     dateStart: '1929-01-01',
     dateEnd: '2025-12-31',
     month: 0, //0 = 全年, 1 = 一月, ... , 12 = 十二月。这个月份不能填错，不然报错都找不到错误
     
-    multipleStation: 0, //是否切换到打印邻近站点模式
     order: 'asc', //asc(从小到大、从低到高，从早到晚), desc
-    item: 'max', //date, min, avg, max，只能是这几个值！！！必须小写！！！
-    consecValue: '-30', //连续记录的临界值
+    item: 'min', //date, min, avg, max，只能是这几个值！！！必须小写！！！
+    consecValue: '-40', //连续记录的临界值
     showNumber: 10, //显示多少个结果
     console: { //设置console打印哪些
         station: 1,
         overview: 1,
         M: 1,
-        YM: 0,
+        YM: 1,
         consec: 0,
-        list: 0,
-        yearRange: 0,
+        list: 1,
+        yearRange: 1,
         allRecords: 0
     },
 
     //获取邻站信息
     //决定console哪一类信息
     //00=最低夜温(最低气温),01=夜温平均,02=最高夜温; 10=最低均温,11=均温,12=最高均温; 20=最低昼温,21=昼温平均,22=最高昼温(最高气温)
-    //30=月份低温平均,31=月份均温,32=月份高温平均; 40=极端单月低温平均,41=极端单月均温,42极端单月高温平均; 50=单个冬季最多阈值天数
+    //30=月份低温平均,31=月份均温,32=月份高温平均; 40=极端单月低温平均,41=极端单月均温,42极端单月高温平均; 50=单个冬季最多阈值天数 51=有效冬季个数
     //60=最长连续记录; 70=年平均气温(用overview)
-    multipleTarget: '11',
-    arrOfStations: [{"NAME":"卡丘格","USAF":"30622","WBAN":"99999"},{"NAME":"巴尔古津","USAF":"30636","WBAN":"99999"},{"NAME":"莫戈恰","USAF":"30673","WBAN":"99999"},{"NAME":"乌留皮诺","USAF":"30781","WBAN":"99999"},{"NAME":"埃基姆昌","USAF":"31329","WBAN":"99999"},{"NAME":"布鲁坎","USAF":"31348","WBAN":"99999"},{"NAME":"索菲斯克","USAF":"31478","WBAN":"99999"},{"NAME":"切昆达","USAF":"31532","WBAN":"99999"},{"NAME":"奥布卢奇耶","USAF":"31702","WBAN":"99999"},{"NAME":"克孜勒","USAF":"36096","WBAN":"99999"},{"NAME":"科什阿加奇","USAF":"36259","WBAN":"99999"},{"NAME":"埃尔津","USAF":"36307","WBAN":"99999"},{"NAME":"仁钦隆勃","USAF":"44203","WBAN":"99999"},{"NAME":"乌兰固木","USAF":"44212","WBAN":"99999"},{"NAME":"巴彦特斯","USAF":"44221","WBAN":"99999"},{"NAME":"车臣乌拉","USAF":"44224","WBAN":"99999"},{"NAME":"陶松臣格勒","USAF":"44225","WBAN":"99999"},{"NAME":"乌兰巴托","USAF":"44292","WBAN":"99999"},{"NAME":"漠河","USAF":"50136","WBAN":"99999"},{"NAME":"图里河","USAF":"50434","WBAN":"99999"},{"NAME":"海拉尔","USAF":"50527","WBAN":"99999"},{"NAME":"阿勒泰","USAF":"51076","WBAN":"99999"},{"NAME":"乌鲁木齐","USAF":"51463","WBAN":"99999"},{"NAME":"巴音布鲁克","USAF":"51542","WBAN":"99999"},{"NAME":"呼和浩特","USAF":"53463","WBAN":"99999"},{"NAME":"马鬃山","USAF":"52323","WBAN":"99999"},{"NAME":"康保","USAF":"53392","WBAN":"99999"},{"NAME":"哈尔滨","USAF":"50953","WBAN":"99999"},{"NAME":"桦甸","USAF":"54273","WBAN":"99999"},{"NAME":"西丰","USAF":"54252","WBAN":"99999"},{"NAME":"右玉","USAF":"53478","WBAN":"99999"},{"NAME":"嘉荫","USAF":"50673","WBAN":"99999"},{"NAME":"呼玛","USAF":"50353","WBAN":"99999"},{"NAME":"阿尔山","USAF":"50727","WBAN":"99999"},{"NAME":"清水河","USAF":"56034","WBAN":"99999"},{"NAME":"安多","USAF":"55294","WBAN":"99999"},{"NAME":"青河","USAF":"51186","WBAN":"99999"},{"NAME":"巴里坤","USAF":"52101","WBAN":"99999"},{"NAME":"昭苏","USAF":"51437","WBAN":"99999"},{"NAME":"根河","USAF":"50431","WBAN":"99999"},{"NAME":"额尔古纳","USAF":"50425","WBAN":"99999"},{"NAME":"通戈科琴","USAF":"30664","WBAN":"99999"},{"NAME":"谢列姆贾","USAF":"31338","WBAN":"99999"},{"NAME":"Sevli","USAF":"31325","WBAN":"99999"},{"NAME":"Toko","USAF":"31137","WBAN":"99999"},{"NAME":"巴通加","USAF":"31158","WBAN":"99999"},{"NAME":"萨雷格谢普","USAF":"36104","WBAN":"99999"},{"NAME":"格尔必奇","USAF":"30679","WBAN":"99999"},{"NAME":"卡图吉诺","USAF":"30379","WBAN":"99999"},{"NAME":"30473","USAF":"30473","WBAN":"99999"},{"NAME":"丘尔曼","USAF":"30393","WBAN":"99999"},{"NAME":"乌斯季乌马尔塔","USAF":"31474","WBAN":"99999"},{"NAME":"呼中","USAF":"50247","WBAN":"99999"},{"NAME":"北极村","USAF":"50137","WBAN":"99999"},{"NAME":"塔河","USAF":"50246","WBAN":"99999"},{"NAME":"牙克石","USAF":"50526","WBAN":"99999"},{"NAME":"陈巴尔虎旗","USAF":"50524","WBAN":"99999"},{"NAME":"鄂温克族自治旗","USAF":"50525","WBAN":"99999"},{"NAME":"普里额尔古纳斯克","USAF":"30975","WBAN":"99999"},{"NAME":"伊格纳希诺","USAF":"30686","WBAN":"99999"},{"NAME":"阿马扎尔","USAF":"30682","WBAN":"99999"},{"NAME":"乌斯季卡尔斯克","USAF":"30772","WBAN":"99999"},{"NAME":"克谢尼耶夫卡","USAF":"30675","WBAN":"99999"},{"NAME":"Tajna","USAF":"30875","WBAN":"99999"},{"NAME":"Ingur","USAF":"30655","WBAN":"99999"},{"NAME":"乌苏格利","USAF":"30764","WBAN":"99999"},{"NAME":"尼布楚","USAF":"30768","WBAN":"99999"},{"NAME":"卡扎钦斯克","USAF":"30337","WBAN":"99999"},{"NAME":"托拉赫姆","USAF":"36103","WBAN":"99999"},{"NAME":"西图伦","USAF":"44213","WBAN":"99999"}],
+    multipleTarget: '31',
+    arrOfStations: [{"NAME":"TYNDA","USAF":"304990","WBAN":"99999"},{"NAME":"SREDNAYAYA NYUKZHA","USAF":"304980","WBAN":"99999"},{"NAME":"NAGORNYJ","USAF":"304930","WBAN":"99999"},{"NAME":"UST-URKIMA","USAF":"304970","WBAN":"99999"},{"NAME":"AMURSKAYA NORTH","USAF":"311870","WBAN":"99999"},{"NAME":"TIGAN-URKAN","USAF":"305990","WBAN":"99999"},{"NAME":"TAKHTAMYGDA NE","USAF":"305980","WBAN":"99999"},{"NAME":"SKOVORODINO","USAF":"306920","WBAN":"99999"},{"NAME":"UNAHA","USAF":"311990","WBAN":"99999"},{"NAME":"TALDAN","USAF":"306930","WBAN":"99999"},{"NAME":"URUSA","USAF":"305970","WBAN":"99999"},{"NAME":"DZALINDA","USAF":"306950","WBAN":"99999"},{"NAME":"CULMAN/NERIUGRI","USAF":"303930","WBAN":"99999"},{"NAME":"MAGDAGACI","USAF":"312950","WBAN":"99999"}],
     
     winterConfig: {
         winterWhichHemisphere: 0, //确定研究哪个半球的冬夏周期，0=北半球冬季周期，1=北半球夏季=南半球冬季周期
-        showWinter: 0, //打印冬夏周期信息 0=不打印, 1=打印
+        showWinter: 1, //打印冬夏周期信息 0=不打印, 1=打印
         sortBy: 0, //0=不额外排序, 1=满足阈值个数从多到少, 2=asc最低温,desc最高温; 3=asc最低均温,desc最高均温; 4=asc最低昼温,desc最高夜温; 5=冬三月低温平均, 6=冬三月均温, 7=冬三月高温平均
         extra: 0, //0=asc最低温,desc最高温; 1=asc最低均温,desc最高均温; 2=asc最低昼温,desc最高夜温; 3=冬三月低均 4=冬三月均温 5=冬三月昼均
         showExtreme: 0, //1=打印冬周期或夏周期最低、最高三项温度
-        showAvg: 0 //1=打印冬三月或夏三月均温
+        showAvg: 0, //1=打印冬三月或夏三月均温
+        periodValidCount: 60 //冬/夏三月至少多少天有MIN/AVG/MAX数据才算有效冬/夏季
     },
     M: {
         showValid: 0 //0 not show, 1 show valid
     },
-    monthValidCount: 18, //某个月的avg/min/max至少有20个正常记录，才算一个有效avg/min/max月,才会计算有参考价值的月度均值
+    monthValidCount: 20, //某个月的avg/min/max至少有20个正常记录，才算一个有效avg/min/max月,才会计算有参考价值的月度均值
 
     noaaLocation: 'D:/NOAA Data/', //NOAA csv文件根目录
 
@@ -126,6 +130,7 @@ function getAllOfWeatherStation(stationObj){
 //let stationObj = config.stationObj;
 let csvFileName = tools.getStationNumber(stationObj).csvFileName;
 let stationNumberToPrint = tools.getStationNumber(stationObj).stationNumberToPrint;
+//let currentUSAF = stationObj.USAF, currentWBAN = stationObj.WBAN;
 
 //起始日期
 let y1 = config.dateStart.split('-')[0];
@@ -183,6 +188,23 @@ let focusedOrderSymbolStr = '<=';
 sortOrderRefer.forEach((v) => { if( v.order === config.order.toLowerCase() ){ focusedOrderSymbolStr = v.symbol; } } );
 /****** 以上部分在连续stat和排序中会用到 ******/
 
+/****** 针对爆发力的准备部分 ******/
+let cei = config.explosiveConfig.item;
+let ceiRefer = [
+    { 'condition': cei.toLowerCase() === 'min'.toLowerCase(), 'attrName': 'MIN' },
+    { 'condition': cei.toLowerCase() === 'avg'.toLowerCase(), 'attrName': 'TEMP' },
+    { 'condition': cei.toLowerCase() === 'max'.toLowerCase(), 'attrName': 'MAX' }
+];
+let explosiveItem = 'TEMP'; //如果config.item是date(日期),设置默认ATTR
+ceiRefer.forEach((v) => { if(v.condition){ explosiveItem = v.attrName; } });
+
+let explosiveMonth = '01';
+let cem = config.explosiveConfig.month;
+if(cem > 0 && cem <= 12){
+    explosiveMonth = tools.FN(cem, 12);
+}
+/****** 针对爆发力的准备部分 ******/
+
 //批量异步依次读取csv文件内容
 let sourceStr = '';
 readMultipleFiles(new Set(getPaths().paths), 'utf8').subscribe({
@@ -207,6 +229,7 @@ function consoleResult(){
     }
     if(config.multipleStation === 0){
         if(config.console.station > 0){ result.station(); }
+        if(config.explosiveConfig.showExplosive > 0){ result.explosive(); }
         if(config.console.overview > 0){ result.overview(); }
         if(config.console.M > 0){ result.M(); }
         if(config.console.YM > 0){ result.YM(); }
@@ -230,8 +253,10 @@ function consoleDetails(){
     let stat_WINTER = startObj.stat_WINTER;
     let winter_MaxTHR = startObj.winter_MaxTHR;
     let maxTHR_winter = startObj.maxTHR_winter;
+    let stat_Explosive = startObj.stat_Explosive;
     let stat_CONSEC = startObj.stat_CONSEC;
     let totalThreshholdDays = startObj.totalThreshholdDays;
+    let validPeriodCount = startObj.validPeriodCount
     
     //站点信息
     if(startObj.arr.length === 0){ return {}; } //判断筛选后的对象数组是否为空，为空是因为目标月份没有任何记录
@@ -245,7 +270,7 @@ function consoleDetails(){
     //console站点信息
     function consoleStation(){
         console.log('\n' + stationNumberToPrint + ' | ' + name);
-        console.log(elev + '(m) | ( ' + lat + ', ' + lon + ' )\n');
+        console.log(elev + '(m) | ( ' + lat + ', ' + lon + ' )');
     }
 
     //console overview概述
@@ -403,6 +428,7 @@ function consoleDetails(){
         
         //打印
         console.log(focusedAttr + ' ' + focusedOrderSymbolStr + ' ' + config.consecValue + ' TOTAL: ' + totalThreshholdDays);
+        console.table(validPeriodCount);
         console.log('SINGLE PERIOD '+ focusedAttr + ' ' + focusedOrderSymbolStr + ' ' + config.consecValue + ' MOST DAYS: ' + winter_MaxTHR + ' ( ' + maxTHR_winter + ' )');
         console.log('PERIOD LIST SORTED BY ' + tempSortByStr + ':');
         for(let i=0; i<len; i++){
@@ -451,6 +477,12 @@ function consoleDetails(){
             }
         }
         console.log('\n');
+    }
+
+    //console爆发力指数
+    function consoleExplosive(){
+        console.log('EP:  ' + Math.round(100*(Math.pow(stat_Explosive.variance, 0.5))) + '  | ' + explosiveMonth + '  |  '
+            + config.explosiveConfig.item.toUpperCase() + '  |  ' + stat_Explosive.total + ' samples');
     }
 
     //console连续记录
@@ -503,6 +535,8 @@ function consoleDetails(){
         //基本属性
         tempObj.NAME = name;
         tempObj['STATION NUMBER'] = stationNumberToPrint;
+        /* tempObj['USAF'] = currentUSAF;
+        tempObj['WBAN'] = currentWBAN; */
         let tempAttr0; //自定义属性预定义，到这一步还不确定对应哪一项
 
         /****************** 自定义属性 START ******************/
@@ -666,6 +700,12 @@ function consoleDetails(){
             tempObj['TOTAL MATCHED'] = totalThreshholdDays;
         }
 
+        //51 单个冬季有效冬夏三月个数
+        if(config.multipleTarget === '51'){
+            tempAttr0 = 'VALID PERIOD FOR ' + ci.toUpperCase(); //这个属性key在后面排序需要用到，所以单独用变量表示
+            tempObj[tempAttr0] = validPeriodCount[ci.toLowerCase()];
+        }
+
         //60 最大连续日数
         if(config.multipleTarget === '60'){
             if(stat_CONSEC.length > 0){ //这里必须提前判断数组是否为空，否则后面会报错
@@ -677,6 +717,13 @@ function consoleDetails(){
             }else{
                 return;
             }
+        }
+
+        //70 年平均气温
+        if(config.multipleTarget === '70'){
+            tempAttr0 = 'AVG OF YEAR'; //这个属性key在后面排序需要用到，所以单独用变量表示
+            tempObj[tempAttr0] = overview.AVG.avg;
+            tempObj['AVG TOTAL'] = overview.AVG.total;
         }
         /****************** 自定义属性 END ******************/
 
@@ -695,9 +742,14 @@ function consoleDetails(){
 
             //给结果数组排序
             resultArrForStations.sort((a, b) => {
-                return config.multipleTarget === '50' ?
+                if(config.multipleTarget === '50' || config.multipleTarget === '51' || config.multipleTarget === '60'){
+                    return b[tempAttr0] - a[tempAttr0];
+                }else{
+                    return tools.sortUndefinedObj(a[tempAttr0], b[tempAttr0], config.order);   
+                }
+                /* return config.multipleTarget === '50' ?
                 b[tempAttr0] - a[tempAttr0] :
-                tools.sortUndefinedObj(a[tempAttr0], b[tempAttr0], config.order);
+                tools.sortUndefinedObj(a[tempAttr0], b[tempAttr0], config.order); */
             });
             //resultArrForStations.sort((a, b) => { return b[tempAttr0] - a[tempAttr0]; });
 
@@ -705,6 +757,9 @@ function consoleDetails(){
             console.table(resultArrForStations);
             //打印CSV字符文本
             console.log('\n' + tools.getCsvStringFromArrOfObj(resultArrForStations));
+            //打印JSON字符,用于SURFER等值线地图
+            //let arrForIsoline = tools.filterArrByAttributes(['LONGITUDE', 'LATITUDE', tempAttr0], resultArrForStations); //图像要求先经度后纬度！！！
+            //console.log('\n' + tools.getCsvStringFromArrOfObj(arrForIsoline));
         }
     }
 
@@ -715,6 +770,7 @@ function consoleDetails(){
         'M': consoleM,
         'YM': consoleYM,
         'winter': consoleWinter,
+        'explosive': consoleExplosive,
         'consec': consoleConsec,
         'list': consoleList,
         'allRecords': consoleAllRecords,
@@ -757,6 +813,11 @@ function Csv(str){
     function getSortedArrOfCsv(){
         let totalDays = 0;
         let totalThreshholdDays = 0;
+        let validPeriodCount = {
+            min: 0,
+            avg: 0,
+            max: 0
+        };
 
         //站点概述
         let overview = {
@@ -795,6 +856,12 @@ function Csv(str){
         let stat_M = {}; //某个月份，比如'01'
 
         let stat_WINTER = {}; //某个冬天，比如23/24冬，从7月16日到次年7月15日算1个冬天周期
+
+        let stat_Explosive = { //爆发力指数 均温最冷月份每个日期均温对最冷月份均温的方差，默认使用日均温，默认计算一月，当然也必须支持指定日高低温和月份
+            total: 0, //非undefiend样本可数
+            varianceSum: 0, //平方和，除以个数就是方差
+            variance: 0 //方差
+        };
 
         let stat_Y = {}; //某年，比如'1969'
         let stat_MD = {}; //某月某日，比如'01-20'
@@ -1120,7 +1187,10 @@ function Csv(str){
                         'avgForMax': undefined,
                         'maxForMin': undefined,
                         'maxForAvg': undefined,
-                        'max': undefined
+                        'max': undefined,
+                        'minValid': false,
+                        'avgValid': false,
+                        'maxValid': false
                     }
                 }
             }
@@ -1155,6 +1225,13 @@ function Csv(str){
             let tempCondition = co.toLowerCase() === 'asc' ? Number(v[focusedAttr]) <= Number(config.consecValue) : Number(v[focusedAttr]) >= Number(config.consecValue);
             if(tempCondition){ vObj_WINTER.fullPeriod.threshHoldDays += 1; } //统计这个冬天的临界值满足情况
             stat_WINTER[tempWinter.period] = vObj_WINTER; //完成一个键值对
+
+            //计算爆发力指数
+            if(v[explosiveItem] !== undefined && temp_M_Str === explosiveMonth){
+                stat_Explosive.total += 1;
+                stat_Explosive.varianceSum += Math.pow(Number(v[explosiveItem]) - config.explosiveConfig.meanValue, 2);
+                stat_Explosive.variance = stat_Explosive.varianceSum / stat_Explosive.total;
+            }
 
             //某年
             if(!stat_Y.hasOwnProperty(temp_Y_Str)){ stat_Y[temp_Y_Str] = {}; }
@@ -1318,14 +1395,26 @@ function Csv(str){
             objWinterV[i].winterM3.min = Math.min(...objWinterV[i].winterM3.minArr);
             objWinterV[i].winterM3.avgForMin = tools.getAvgForNumberArr(objWinterV[i].winterM3.minArr);
             objWinterV[i].winterM3.maxForMin = Math.max(...objWinterV[i].winterM3.minArr);
+            if(objWinterV[i].winterM3.minArr.length >= config.winterConfig.periodValidCount){
+                validPeriodCount.min += 1;
+                objWinterV[i].winterM3.minValid = true;
+            }
             //均温
             objWinterV[i].winterM3.minForAvg = Math.min(...objWinterV[i].winterM3.avgArr);
             objWinterV[i].winterM3.avg = tools.getAvgForNumberArr(objWinterV[i].winterM3.avgArr);
             objWinterV[i].winterM3.maxForAvg = Math.max(...objWinterV[i].winterM3.avgArr);
+            if(objWinterV[i].winterM3.avgArr.length >= config.winterConfig.periodValidCount){
+                validPeriodCount.avg += 1;
+                objWinterV[i].winterM3.avgValid = true;
+            }
             //高温
             objWinterV[i].winterM3.minForMax = Math.min(...objWinterV[i].winterM3.maxArr);
             objWinterV[i].winterM3.avgForMax = tools.getAvgForNumberArr(objWinterV[i].winterM3.maxArr);
             objWinterV[i].winterM3.max = Math.max(...objWinterV[i].winterM3.maxArr);
+            if(objWinterV[i].winterM3.maxArr.length >= config.winterConfig.periodValidCount){
+                validPeriodCount.max += 1;
+                objWinterV[i].winterM3.maxValid = true;
+            }
         }
 
         //单独给stat_CONSEC数组排序，毫无疑问，应该从大到小排，数字最大的记录排前面
@@ -1357,10 +1446,12 @@ function Csv(str){
             'stat_WINTER': stat_WINTER,
             'winter_MaxTHR': winter_MaxTHR,
             'maxTHR_winter': maxTHR_winter,
+            'stat_Explosive': stat_Explosive,
             'stat_CONSEC': stat_CONSEC,
             'overview':  overview,
             'totalDaysBeforeSort': totalDays,
-            'totalThreshholdDays': totalThreshholdDays
+            'totalThreshholdDays': totalThreshholdDays,
+            'validPeriodCount': validPeriodCount
         };
     }
 
@@ -1373,6 +1464,25 @@ function Csv(str){
 
 //所有需要的各类简单工具函数
 function Tools(){
+    //有选择性的获取对象数组的某些属性,返回一个筛选后的新对象数组
+    function filterArrByAttributes(arrOfAttrs, sourceArr){
+        if(arrOfAttrs.length === 0 || sourceArr.length === 0){
+            return [];
+        }else{
+            let newArr = [];
+            sourceArr.forEach((v) => {
+                let tempObj = {};
+                arrOfAttrs.forEach((va) => {
+                    if(v.hasOwnProperty(va)){
+                        tempObj[va] = v[va];
+                    }
+                });
+                newArr.push(tempObj);
+            });
+            return newArr;
+        }
+    }
+
     //获取月份字符数组
     function getArrOfMonthStr(){
         let arrOfMonthStr = []; //月份字符数组，12个元素
@@ -1565,8 +1675,8 @@ function Tools(){
 
     //根据config stationNumber设置按特定规则返回站号
     function getStationNumber(stationNumberObj){
-        let USAF = stationNumberObj.USAF.trim();
-        let originalWBAN = stationNumberObj.WBAN.trim();
+        let USAF = stationNumberObj.USAF.toString().trim();
+        let originalWBAN = stationNumberObj.WBAN.toString().trim();
 
         //根据个性化输入得到格式化WBAN
         let WBAN = '';
@@ -1613,6 +1723,7 @@ function Tools(){
         }
     }
 
+    this.filterArrByAttributes = filterArrByAttributes,
     this.getArrOfMonthStr = getArrOfMonthStr,
     this.getArrOfNumberMonthBegin = getArrOfNumberMonthBegin,
     this.getAvgForNumberArr = getAvgForNumberArr;

@@ -24,7 +24,7 @@ table{
     width: 60px;
 }
 #th2{
-    width: 100px;
+    color: black;
 }
 #th3{
     width: 140px;
@@ -50,4 +50,12 @@ td{
 button{
     width: 98%;
     height: 98%;
+}
+
+.sites{
+    margin: 24px 0 96px 120px;
+}
+.sites a{
+    line-height: 48px;
+    font-size: 24px;
 }
