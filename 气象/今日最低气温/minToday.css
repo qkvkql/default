@@ -24,7 +24,7 @@ table{
     width: 60px;
 }
 #th2{
-    color: black;
+    color: #FFC000;
 }
 #th3{
     width: 140px;
@@ -39,7 +39,9 @@ table{
     width: 140px;
 }
 th{
-    border: 1px, solid, black;
+    color: #FFC000;
+    background-color: black;
+    border: 1px solid white;
 }
 td{
     height: 32px;
