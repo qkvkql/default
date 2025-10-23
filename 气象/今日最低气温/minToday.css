@@ -55,9 +55,25 @@ button{
 }
 
 .sites{
-    margin: 24px 0 96px 120px;
+    margin: 24px 0 24px 120px;
 }
 .sites a{
     line-height: 48px;
     font-size: 24px;
+}
+.stations-list{
+    margin: 0 0 48px 0;
+    background-color: #000000;
+}
+.station-list-head{
+    font-size: 28px;
+    color: #ffff00;
+}
+.stations-list td{
+    color: #ffffff;
+    border-color: #ffffff;
+}
+.station-title > th{
+    font-size: 20px;
+    color: #ffff00;
 }
