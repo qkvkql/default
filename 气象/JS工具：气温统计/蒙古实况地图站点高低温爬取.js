@@ -2,7 +2,13 @@
 let thsOfTitle = document.getElementsByClassName('ant-table-thead')[0].getElementsByTagName('th');
 let arrOfTitles = []; //标题数组
 for(let i=0; i<thsOfTitle.length; i++){
-    arrOfTitles.push(thsOfTitle[i].innerText.trim());
+    let tempH;
+    if(i>0 && thsOfTitle[i-1].innerText.trim() === thsOfTitle[i].innerText.trim()){ //系统实况日高低温标题有重名，迫不得已加这个判断
+        tempH = thsOfTitle[i-1].innerText.trim() + '_重名标题';
+    }else{
+        tempH = thsOfTitle[i].innerText.trim();
+    }
+    arrOfTitles.push(tempH);
 }
 //数据
 let trsOfDataRow = document.getElementsByClassName('ant-table-tbody')[0].getElementsByTagName('tr');
@@ -14,6 +20,8 @@ for(let i=0; i<trsOfDataRow.length; i++){
         let tempContent = tdsOfCurrentTr[j].innerText.trim();
         if(tempContent.toString().length > 0){
             tempObj[arrOfTitles[j]] = tempContent;
+        }else{
+            tempObj[arrOfTitles[j]] = '列<' + (j+1).toString() + '>';
         }
     }
     arrOfDataRows.push(tempObj);
@@ -44,4 +52,5 @@ for(let i=0; i<arrOfDataRows.length; i++){
         resultStr += '\n';
     }
 }
+//console.log(arrOfDataRows);
 console.log(resultStr);
