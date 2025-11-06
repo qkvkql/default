@@ -1,0 +1,5 @@
+ogimet单站逐日页面
+1.有一个页面【偶尔】逻辑正常，低温是早8点或11点最低，高温是白天最高 (例子：https://ogimet.com/cgi-bin/gsynres?ind=44203&ord=REV&enviar=Ver&ndays=30&ano=2025&mes=11&day=06&hora=14)，大部分时候不正常
+2.另一个单站逐日页面高低温是按照UTC伦敦时间算均温，且高低温逻辑错误 (例子：https://ogimet.com/cgi-bin/gsodres?mode=0&state=Spa&ind=50136&ord=REV&ano=2023&mes=01&day=25&ndays=&nyears=)
+总之，ogimet单站逐日页面几乎没有参考性
+pogodaiklimat单站逐日或地区多站单日页面，高低温都是24小时内最低最高(当地时区20-20)，且均温是23-02-05-08-11-14-17-20八点均温法均温，高低均温逻辑合理！
