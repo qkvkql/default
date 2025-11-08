@@ -1,7 +1,7 @@
 const fs = require('fs');
 const config = {
     'item': 'date', //item = date, min, avg, max
-    'threshHold': -50, //阈值用数字，数据源单位℃
+    'threshHold': -40, //阈值用数字，数据源单位℃
     'order': 'asc', //order = asc, desc
     //先设置一个模式
     'mode': 2, //mode: 0=history, 1=yearRange, 2=dateRange, 3=y, 4=m, 5=ym
@@ -9,18 +9,20 @@ const config = {
     'dateRange': [20181201, 20190228], //主要计算冬季周期，比如冬三月、冬五月、甚至完整冬季周期的平均气温和阈值天数。夜可以计算常年【年平均气温】(填日期麻烦，不推荐)
     'y': '1969', //统计单年气温
     'm': '07', //统计所有年份的某个月份，比如历史一均，实际用的比较少
-    'ym': '198701', //统计单月气温
+    'ym': '201001', //统计单月气温
     'singleMonthNormals': 1 //搭配yearRange使用，主要统计常年月份平均(尤其一均、七均)，也可计算【【【【常年年均(设为0)】】】】
 };
-const fileName = 'RSM00030565';
-const rootPath = 'C:/Users/龙治洲/Documents/';
+//文件地址
+const FN1 = 'RSM';
+const WMO = '00030622';
+const rootPath = 'C:/Users/龙治洲/Desktop/GHCND_Download/';
 const nameExtension = '.csv';
 //声明数据数组
 let dataObj = {};
 let dateList = [];
 let dataArr = [];
 //读取CSV文件
-fs.readFile(rootPath + fileName + nameExtension, 'utf8', (err, data) => {
+fs.readFile(rootPath + FN1 + WMO + nameExtension, 'utf8', (err, data) => {
     if (err) {
         console.error('Error reading file:', err);
         return;
@@ -64,13 +66,19 @@ fs.readFile(rootPath + fileName + nameExtension, 'utf8', (err, data) => {
     //console.log(veiwDate(dataArr, '19870109'))
     //console.log(viewDateRange(dataArr, config.dateRange));
     //console.log(viewWinters(dataArr));
-    let arrR = viewWinters(dataArr);
-    let tempStr = '';
-    for(let i=0; i<arrR.length; i++){
-        tempStr += arrR[i].period[0].toString().substring(0, 4) + '~' + arrR[i].period[1].toString().substring(0, 4) + '冬\t'
-        + arrR[i].thDays.toString() + '\t' + arrR[i].min.toString() + '\t' + printDateArr(arrR[i].minDates) + '\n';
+    getColdThreshHold(); //最常用的一个！！！
+    //fs.readFile内部函数
+    //皮包函数，统计某个站点所有冬季周期各类冷相关阈值天数
+    function getColdThreshHold(){
+        let arrR = viewWinters(dataArr).resultArr;
+        let tempStr = '';
+        console.log(viewWinters(dataArr).mostThDays);
+        for(let i=0; i<arrR.length; i++){
+            tempStr += arrR[i].period[0].toString().substring(0, 4) + '~' + arrR[i].period[1].toString().substring(0, 4) + '冬\t'
+            + arrR[i].thDays.toString() + '\t' + arrR[i].min.toString() + '\t' + printDateArr(arrR[i].minDates) + '\n';
+        }
+        console.log(tempStr);
     }
-    console.log(tempStr);
 });
 
 //整合函数，高度自定义
@@ -91,11 +99,31 @@ function viewWinters(arr){
         count += 1;
     }
     //period循环处理
+    let tempMostThDays = {
+        'mostThDays': 0,
+        'whichWinter': '',
+        'min': -999,
+        'minDates': ''
+    }
     for(let i=0; i<periodsArr.length; i++){
-        let tempObj = {'period': periodsArr[i], 'min': viewDateRange(arr, periodsArr[i]).extremes.min, 'thDays': viewDateRange(arr, periodsArr[i]).thDays, 'minDates': viewDateRange(arr, periodsArr[i]).extremes.minDates};
+        //临时声明
+        let inputObj = viewDateRange(arr, periodsArr[i]);
+        let tempPeriod = periodsArr[i];
+        let tempMin = inputObj.extremes.min;
+        let tempTh = inputObj.thDays;
+        let tempDates = inputObj.extremes.minDates;
+        //判断最大th
+        if(tempTh > tempMostThDays.mostThDays){
+            tempMostThDays.mostThDays = tempTh;
+            tempMostThDays.whichWinter = tempPeriod;
+            tempMostThDays.min = tempMin;
+            tempMostThDays.minDates = tempDates;
+        }
+        //填充对象
+        let tempObj = { 'period': tempPeriod, 'min': tempMin, 'thDays': tempTh, 'minDates': tempDates };
         resultArr.push(tempObj);
     }
-    return resultArr;
+    return {'resultArr': resultArr, 'mostThDays': tempMostThDays};
 }
 
 //**************************************** 函数 ****************************************
