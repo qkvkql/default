@@ -8,13 +8,13 @@ const config = {
     'yearRange': [1961, 1990], //搭配singleMonthNormals使用
     'dateRange': [20181201, 20190228], //主要计算冬季周期，比如冬三月、冬五月、甚至完整冬季周期的平均气温和阈值天数。夜可以计算常年【年平均气温】(填日期麻烦，不推荐)
     'y': '1969', //统计单年气温
-    'm': '07', //统计所有年份的某个月份，比如历史一均，实际用的比较少
+    'm': '01', //统计所有年份的某个月份，比如历史一均，实际用的比较少
     'ym': '201001', //统计单月气温
     'singleMonthNormals': 1 //搭配yearRange使用，主要统计常年月份平均(尤其一均、七均)，也可计算【【【【常年年均(设为0)】】】】
 };
 //文件地址
 const FN1 = 'RSM';
-const WMO = '00030622';
+const WMO = '00030565';
 const rootPath = 'C:/Users/龙治洲/Desktop/GHCND_Download/';
 const nameExtension = '.csv';
 //声明数据数组
@@ -63,10 +63,16 @@ fs.readFile(rootPath + FN1 + WMO + nameExtension, 'utf8', (err, data) => {
     }
     //打印结果
     console.log('Station Recorded Days Total: ' + dataArr.length);
-    //console.log(veiwDate(dataArr, '19870109'))
-    //console.log(viewDateRange(dataArr, config.dateRange));
+    //console.log(veiwDate(dataArr, '19870109'));
     //console.log(viewWinters(dataArr));
-    getColdThreshHold(); //最常用的一个！！！
+    printResult();
+    function printResult(){
+        if(config.mode === 2){ //每冬阈值天数和每冬极端低温，最常用的一个！！！
+            getColdThreshHold();
+        }else{
+            console.log(viewDateRange(dataArr, config.dateRange));
+        }
+    }
     //fs.readFile内部函数
     //皮包函数，统计某个站点所有冬季周期各类冷相关阈值天数
     function getColdThreshHold(){
