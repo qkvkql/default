@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D Earth - Locations & Temps</title>
+  
+  <!-- 1. Load Three.js (Explicit version from cdnjs to ensure stability) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <!-- 2. Load Globe.gl Library -->
+  <script src="https://cdn.jsdelivr.net/npm/globe.gl"></script>
+
+  <style>
+    body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Arial', sans-serif; }
+
+    /* Floating Title */
+    #title-card {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      color: white;
+      z-index: 10;
+      pointer-events: none;
+    }
+    h1 { margin: 0; font-size: 1.5rem; text-shadow: 0 0 10px #000; }
+    p { margin: 5px 0 0 0; color: #ccc; font-size: 0.9rem; }
+
+    /* Export Button */
+    #ui-controls {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      z-index: 10;
+    }
+    .btn-export {
+      background: #4CAF50;
+      color: white;
+      border: 1px solid #444;
+      padding: 10px 20px;
+      cursor: pointer;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: bold;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+      transition: background 0.3s;
+    }
+    .btn-export:hover { background: #45a049; }
+  </style>
+</head>
+<body>
+
+  <div id="title-card">
+    <h1>Global Temperature Monitor</h1>
+    <p>Physical Coastlines Only (No Country Borders)</p>
+  </div>
+
+  <div id="ui-controls">
+    <button id="exportBtn" class="btn-export" onclick="exportHighRes()">📸 Export 4K Image</button>
+  </div>
+
+  <!-- Container for the 3D Scene -->
+  <div id="globeViz"></div>
+
+  <script>
+    // --- 3. CONFIGURATION DATA ---
+    const MY_LOCATIONS = [
+      { name: "New York", lat: 40.71, lng: -74.00, minTemp: 12, color: "#FF5733", size: 1.0 },
+      { name: "London", lat: 51.50, lng: -0.12, minTemp: 9, color: "#33FF57", size: 0.8 },
+      { name: "Tokyo", lat: 35.67, lng: 139.65, minTemp: 18, color: "#FF33A8", size: 0.9 },
+      { name: "Sydney", lat: -33.86, lng: 151.20, minTemp: 22, color: "#3357FF", size: 1.1 },
+      { name: "Antarctica Stn", lat: -75.00, lng: 0.00, minTemp: -30, color: "#FFFFFF", size: 0.7 },
+      { name: "Cairo", lat: 30.04, lng: 31.23, minTemp: 28, color: "#FFFF33", size: 0.9 }
+    ];
+
+    // Global reference to the world object
+    let world;
+
+    // --- 4. GLOBE SETUP ---
+    document.addEventListener('DOMContentLoaded', () => {
+      
+      // Verify dependencies
+      if (typeof THREE === 'undefined') {
+        console.error('Three.js library failed to load.');
+        alert("Error: Three.js library not loaded.");
+        return;
+      }
+      if (typeof Globe === 'undefined') {
+        console.error('Globe library failed to load.');
+        document.getElementById('globeViz').innerHTML = '<p style="color:white; padding:20px;">Error: 3D Library could not load.</p>';
+        return;
+      }
+
+      // FIX: Added rendererConfig to ensure the canvas buffer is preserved for screenshots
+      world = Globe({ rendererConfig: { preserveDrawingBuffer: true } })
+        (document.getElementById('globeViz'))
+        .backgroundColor('#000011')
+        .showAtmosphere(true)
+        .atmosphereColor('#3a228a')
+        .atmosphereAltitude(0.15)
+        .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-dark.jpg')
+        
+        // Requirement 1: Continent Borders
+        .polygonsData([]) 
+        .polygonCapColor(() => 'rgba(200, 200, 200, 0.1)')
+        .polygonSideColor(() => 'rgba(0, 0, 0, 0)')
+        .polygonStrokeColor(() => '#00d2ff')
+        .polygonAltitude(0.01)
+
+        // Markers
+        .pointsData(MY_LOCATIONS)
+        .pointColor('color')
+        .pointAltitude(0.02)
+        .pointRadius('size')
+
+        // Labels
+        .labelsData(MY_LOCATIONS)
+        .labelLat('lat')
+        .labelLng('lng')
+        .labelText(d => `${d.name} (${d.minTemp}°C)`)
+        .labelSize(1.5)
+        .labelDotRadius(0.5)
+        .labelColor(() => 'rgba(255, 255, 255, 0.85)')
+        .labelAltitude(0.035)
+        .labelResolution(2);
+
+      // --- 5. LOAD CONTINENT DATA ---
+      fetch('https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_land.geojson')
+        .then(r => r.json())
+        .then(landGeojson => {
+          world.polygonsData(landGeojson.features);
+        })
+        .catch(err => console.error("Failed to load continent data", err));
+
+      // Auto-rotate settings
+      world.controls().autoRotate = true;
+      world.controls().autoRotateSpeed = 0.5;
+      
+      document.getElementById('globeViz').addEventListener('mousedown', () => {
+        world.controls().autoRotate = false;
+      });
+    });
+
+    // --- 6. HIGH RES EXPORT FUNCTION ---
+    function exportHighRes() {
+      if (!world) return;
+
+      const btn = document.getElementById('exportBtn');
+      const originalText = btn.innerText;
+      btn.innerText = "⏳ Capturing...";
+
+      // Use setTimeout to allow the UI to update "Capturing..." text
+      setTimeout(() => {
+        try {
+          const renderer = world.renderer();
+          const scene = world.scene();
+          const camera = world.camera();
+
+          // 1. Save original dimensions
+          const originalWidth = window.innerWidth;
+          const originalHeight = window.innerHeight;
+          const originalBackground = scene.background;
+
+          // 2. Define High Resolution (4000x4000)
+          const HD_WIDTH = 4000;
+          const HD_HEIGHT = 4000;
+
+          // 3. RESIZE USING LIBRARY METHODS (Crucial Fix)
+          // This ensures the camera aspect ratio and internal controls are updated correctly
+          world.width(HD_WIDTH);
+          world.height(HD_HEIGHT);
+          
+          // Force controls update to center the camera view
+          world.controls().update();
+          
+          // Force solid background color (removes transparency)
+          scene.background = new THREE.Color('#000011');
+          renderer.setClearColor('#000011', 1);
+
+          // 4. Render immediately
+          renderer.render(scene, camera);
+
+          // 5. Capture Data (JPEG forces opaque background)
+          const dataURL = renderer.domElement.toDataURL('image/jpeg', 0.95);
+
+          // 6. Download
+          const link = document.createElement('a');
+          link.download = `Earth-Render-${Date.now()}.jpg`;
+          link.href = dataURL;
+          link.click();
+
+          // 7. Restore Original State
+          world.width(originalWidth);
+          world.height(originalHeight);
+          scene.background = originalBackground;
+          world.controls().update();
+          renderer.render(scene, camera);
+
+          // Success
+          btn.innerText = "✅ Done!";
+          setTimeout(() => btn.innerText = originalText, 2000);
+
+        } catch (err) {
+          console.error("Export Error:", err);
+          alert("Export Failed: " + err.message);
+          btn.innerText = "❌ Failed";
+          setTimeout(() => btn.innerText = originalText, 2000);
+        }
+      }, 100);
+    }
+  </script>
+</body>
+</html>
