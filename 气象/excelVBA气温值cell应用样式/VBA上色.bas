@@ -279,8 +279,8 @@ Public Sub ApplyTemperatureColoring()
             
             ' Check the highlight criteria for Extreme Values (CWEV)
             If TempValue <= -55 Or (TempValue > 0 And TempValue < 35) Then
-                ' Set to Blue (#00b0f0)
-                Cell.Font.Color = HexToVBALong("#00b0f0") 
+                ' Set to Blue (#0000cc)
+                Cell.Font.Color = HexToVBALong("#0000cc") 
             ElseIf (TempValue > -55 And TempValue <= 0) Or TempValue >= 35 Then
                 ' Set to Yellow (#ffff00)
                 Cell.Font.Color = HexToVBALong("#ffff00")
