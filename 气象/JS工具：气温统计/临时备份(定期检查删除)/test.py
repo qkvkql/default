@@ -2,10 +2,23 @@
 import sys
 sys.stdout.reconfigure(encoding='utf-8')
 
-target_date = "2025-11-24"
+import time
+from datetime import datetime, timedelta, timezone
+def get_utc_datetime_parts():
+    now = datetime.now(timezone.utc)
+    return {
+        "YYYY": now.strftime("%Y"),
+        "MM": now.strftime("%m"),
+        "DD": now.strftime("%d"),
+        "hh": now.strftime("%H"),
+        # "mm": now.strftime("%M") 分钟
+    }
+dt = get_utc_datetime_parts()
+target_date =dt['YYYY'] + '-' + dt['MM'] + '-' + dt['DD'] # '2025-11-25'
+
 max_for_compare = 10
 
-wmo_stations = {
+rp5_stations = {
     '44224': {
         'en_name': 'Tsetsen-Uul',
         'cn_name': '车臣乌拉',
@@ -13,12 +26,12 @@ wmo_stations = {
         'rp5_url_str': 'Tsetsen-Uul'
     }
 }
-temp_usaf = ['44225', '44224', '44221', '44203']
+ogimet_1 = [{"Country":"俄罗斯","Region":"犹太自治州","USAF":31702,"Name":"奥布卢奇耶","Tool":"ogimet","Timezone":15},{"Country":"俄罗斯","Region":"哈巴罗夫斯克边疆区","USAF":31532,"Name":"切昆达","Tool":"ogimet","Timezone":15},{"Country":"俄罗斯","Region":"哈巴罗夫斯克边疆区","USAF":31478,"Name":"索菲斯克","Tool":"ogimet","Timezone":15},{"Country":"俄罗斯","Region":"阿穆尔州","USAF":31329,"Name":"埃基姆昌","Tool":"ogimet","Timezone":12},{"Country":"俄罗斯","Region":"哈巴罗夫斯克边疆区","USAF":31348,"Name":"布鲁坎","Tool":"ogimet","Timezone":15},{"Country":"俄罗斯","Region":"后贝加尔边疆区","USAF":30673,"Name":"莫戈恰","Tool":"ogimet","Timezone":12},{"Country":"俄罗斯","Region":"后贝加尔边疆区","USAF":30565,"Name":"乌斯季卡连加","Tool":"rp5","Timezone":12},{"Country":"俄罗斯","Region":"后贝加尔边疆区","USAF":30664,"Name":"通戈科琴","Tool":"ogimet","Timezone":12},{"Country":"俄罗斯","Region":"布里亚特共和国","USAF":30636,"Name":"巴尔古津","Tool":"ogimet","Timezone":12},{"Country":"俄罗斯","Region":"伊尔库茨克州","USAF":30622,"Name":"卡丘格","Tool":"ogimet","Timezone":12},{"Country":"俄罗斯","Region":"图瓦共和国","USAF":36104,"Name":"萨雷格谢普","Tool":"ogimet","Timezone":12},{"Country":"俄罗斯","Region":"图瓦共和国","USAF":36096,"Name":"克孜勒","Tool":"ogimet","Timezone":12},{"Country":"俄罗斯","Region":"图瓦共和国","USAF":36307,"Name":"埃尔津","Tool":"ogimet","Timezone":12},{"Country":"俄罗斯","Region":"阿尔泰共和国","USAF":36259,"Name":"科什阿加奇","Tool":"ogimet","Timezone":12},{"Country":"俄罗斯","Region":"后贝加尔边疆区","USAF":30781,"Name":"乌留皮诺","Tool":"ogimet","Timezone":12}]
+ogimet_2 = [e['USAF'] for e in ogimet_1 if e['Tool'] == 'ogimet']
+#temp_usaf = ['44225', '44224', '44221', '44203']
 import random
-import time
 import re
 from DrissionPage import ChromiumPage
-from datetime import datetime, timedelta, timezone
 
 def is_valid_date(date_str):
     try:
@@ -34,21 +47,10 @@ def is_valid_time(time_str):
     except ValueError:
         return False
 
-def get_utc_datetime_parts():
-    now = datetime.now(timezone.utc)
-    return {
-        "YYYY": now.strftime("%Y"),
-        "MM": now.strftime("%m"),
-        "DD": now.strftime("%d"),
-        "hh": now.strftime("%H"),
-        # "mm": now.strftime("%M") 分钟
-    }
-
-dt = get_utc_datetime_parts()
 def get_ogimet_hourly_url(str_of_USAF):
     return 'https://ogimet.com/cgi-bin/gsynres?ind=' + str_of_USAF + '&decoded=yes&ndays=7&ano=' + dt['YYYY'] + '&mes=' +dt['MM'] + '&day=' + dt['DD'] + '&hora=' + dt['hh']
 def get_rp5_hourly_url(str_of_USAF):
-    return 'https://rp5.ru/Weather_archive_in_' + wmo_stations[str_of_USAF]['rp5_url_str']
+    return 'https://rp5.ru/Weather_archive_in_' + rp5_stations[str_of_USAF]['rp5_url_str']
 
 def check_datetime(utc_date_str, utc_time_str, target_date_str, timezone_offset=12):
     if not (is_valid_date(utc_date_str) and is_valid_time(utc_time_str)):
@@ -292,10 +294,12 @@ def get_temperature_from_ogimet_latest_3h(wmo, tz): #中国和蒙古20-20时区�
             temperature_dict['temperature_of_HHmm_arr'].pop() #去掉那日开始datetime对应的3h整点气温，因为计算均温从23:00开始(20-20)
             #print(temperature_dict['temperature_of_HHmm_arr'])
             avg = calculate_average(temperature_dict['temperature_of_HHmm_arr'])
-        print(f'{wmo}\t{min}\t{max}\t{avg}')
+        return {'wmo': wmo, 'min': min, 'max': max, 'avg': avg}
+        #print(f'{wmo}\t{min}\t{max}\t{avg}')
 
     except Exception as e:
-        print(f"An error occurred: {e}")
+        print(f'{wmo}\tPage No Data')
+        return {'wmo': '', 'min': '', 'max': '', 'avg': ''}
     #finally:
         # Close the browser
         #driver.quit()
@@ -305,10 +309,13 @@ def scrape_ogimet_by_usaf(usaf_list):
     
     print(f"Starting scrape of {len(usaf_list)} URLs...")
 
-    for usaf in usaf_list:
+    for ele in ogimet_1:
+        if not isinstance(ele['USAF'], int):
+            results.append({'wmo': '', 'min': '', 'max': '', 'avg': ''})
+            continue
         try:
             # Call your existing function
-            data = get_temperature_from_ogimet_latest_3h(usaf, 12)
+            data = get_temperature_from_ogimet_latest_3h(str(ele['USAF']), ele['Timezone'])
             
             # Save the result
             results.append(data)
@@ -320,15 +327,16 @@ def scrape_ogimet_by_usaf(usaf_list):
 
         except Exception as e:
             # If an error occurs, print it but keep going to the next URL
-            print(f"XX Error scraping {usaf}: {e}")
-            results.append(None) # Or keep track of failed URLs
+            print(f"XX Error scraping {ele['USAF']}: {e}")
+            results.append({'wmo': '', 'min': '', 'max': '', 'avg': ''}) # Or keep track of failed URLs
 
-    print("Scraping finished.")
-    return results
+    for e in results:
+        print(f'{e['wmo']}\t{e['min']}\t{e['max']}\t{e['avg']}')
+    #return results
 
 
 #urls = [get_ogimet_hourly_url(usaf) for usaf in temp_usaf]
 
 if __name__ == "__main__":
-    scrape_ogimet_by_usaf(temp_usaf)
-    #get_temperature_from_ogimet_latest_3h('30781', 12)
+    scrape_ogimet_by_usaf(ogimet_2)
+    #print(get_temperature_from_ogimet_latest_3h('30781', 12))
