@@ -2,7 +2,7 @@
 import sys
 sys.stdout.reconfigure(encoding='utf-8')
 
-target_date = "2025-11-23"
+target_date = "2025-11-24"
 max_for_compare = 10
 
 wmo_stations = {
@@ -132,6 +132,54 @@ def check_datetime(utc_date_str, utc_time_str, target_date_str, timezone_offset=
         '21': ck21,
         'end': ckEnd
     }
+
+def transfer_date_format(alias, date_string):
+    current_year = datetime.now().year
+    alias_map = {
+        "mn": {
+            "orig_format": "MM/DD", 
+            "parse_format": "%Y/%m/%d",
+            "needs_year_prefix": True,
+            "needs_year_suffix": False
+        },
+        "rp5": {
+            "orig_format": "YYYY-Month-DD", 
+            "parse_format": "%Y-%B-%d", # %B matches full English month name (e.g., November)
+            "needs_year_prefix": False,
+            "needs_year_suffix": False
+        },
+        "pogodaiklimat": {
+            "orig_format": "DD.MM", 
+            "parse_format": "%d.%m.%Y",
+            "needs_year_prefix": False,
+            "needs_year_suffix": True
+        }
+    }
+    if alias not in alias_map:
+        return f"Error: Alias '{alias}' not recognized."
+    config = alias_map[alias]
+    string_to_parse = date_string
+    if config["needs_year_prefix"]:
+        string_to_parse = f"{current_year}/{date_string}"
+        
+    elif config["needs_year_suffix"]:
+        string_to_parse = f"{date_string}.{current_year}"
+    try:
+        dt_object = datetime.strptime(string_to_parse, config["parse_format"])
+        return dt_object.strftime("%d/%m/%Y")
+    except ValueError as e:
+        return f"Error parsing date '{date_string}': {e}"
+
+def transfer_datetime_to_utc_date(date_str, time_str, utc_offset):
+    try:
+        full_str = f"{date_str} {time_str}"
+        dt_local = datetime.strptime(full_str, "%d/%m/%Y %H:%M")
+        tz_local = timezone(timedelta(hours=utc_offset))
+        dt_local = dt_local.replace(tzinfo=tz_local)
+        dt_utc = dt_local.astimezone(timezone.utc)
+        return dt_utc.strftime("%d/%m/%Y")
+    except ValueError:
+        return "Error: Invalid format. Expected 'DD/MM/YYYY' and 'HH:MM'."
 
 def is_valid_simple_number(s):
     pattern = r'^[+-]?(\d+(\.\d*)?|\.\d+)$'
