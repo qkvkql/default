@@ -44,7 +44,7 @@ button {
 
 /* TABLE CONTAINER */
 .table-container {
-    width: 100%;
+    width: 80%;
     overflow-x: auto;
     border: 2px solid #555;
     background-color: black;
@@ -53,7 +53,6 @@ button {
 /* TABLE STYLES */
 table {
     table-layout: fixed; /* REQUIRED for resizing */
-    min-width: 2400px;
     width: 100%;
     border-collapse: collapse;
     color: white;
@@ -87,7 +86,7 @@ th {
 /* DATA CELL STYLES */
 td {
     font-size: 20px;
-    padding: 12px 15px;
+    padding: 5px 15px;
     border-bottom: 1px solid #333;
     border-right: 1px solid #333;
     white-space: nowrap;
@@ -95,12 +94,15 @@ td {
     text-overflow: ellipsis;
 }
 
-/* REQUIREMENT: Columns 3, 4, 5 (Number Data) -> Larger Font */
-/* nth-child indexes are 1-based */
+td:nth-child(1){
+    text-align: right;
+}
 td:nth-child(2), 
 td:nth-child(3), 
 td:nth-child(4) {
-    font-size: 28px; /* Larger than normal 20px */
+    width: 20%;
+    padding-right: 70px;
+    font-size: 42px; /* Larger than normal 20px */
     font-weight: bold;
     color: #aaddff; /* Light blue number color */
     text-align: right; /* Numbers usually look better right-aligned */

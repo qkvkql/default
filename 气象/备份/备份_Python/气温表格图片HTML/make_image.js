@@ -29,7 +29,7 @@ btnLoad.addEventListener('click', () => {
 });
 
 function loadDataToTable(sourceKey) {
-    const data = selectColumns(array_of_stations_by_different_filters[sourceKey], myDesiredColumns);
+    const data = selectColumns(my_toFixed(array_of_stations_by_different_filters[sourceKey]), myDesiredColumns);
     
     // Clear existing content
     headerRow.innerHTML = '';
@@ -50,13 +50,9 @@ function loadDataToTable(sourceKey) {
     titleCell.colSpan = Math.max(1, columns.length - 2);
 
     // --- RENDER HEADERS ---
-    // We calculate an explicit pixel width so the browser doesn't fight the JS resizing
-    const initialWidth = Math.floor(2400 / columns.length);
-
     columns.forEach(colName => {
         const th = document.createElement('th');
         th.innerText = colName;
-        th.style.width = `${initialWidth}px`; // Explicit width is key for resizing
         
         // Add Resizer Handle
         const resizer = document.createElement('div');
@@ -167,4 +163,15 @@ function selectColumns(data, columnsToKeep) {
 
         return newRecord;
     });
+}
+
+function my_toFixed(arrOfObj){
+    arrOfObj.forEach((o) => {
+        if(o['min'] !== ''){o['min'] = o['min'].toFixed(1);}
+        if(o['max'] !== ''){o['max'] = o['max'].toFixed(1);}
+        if(o['avg'] !== ''){o['avg'] = o['avg'].toFixed(1);}
+        if(o['latitude'] !== ''){o['latitude'] = o['latitude'].toFixed(2);}
+        if(o['elev'] !== ''){o['elev'] = o['elev'].toFixed(0);}
+    });
+    return arrOfObj;
 }
