@@ -1,0 +1,530 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+	<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport">
+	<link href="images/logo.png" type="image/x-icon" rel="shortcut icon" />
+	<link rel="stylesheet" href="minToday.css" type="text/css" />
+    <style type="text/css">
+        .force20-div{
+            height: 100px;
+            line-height: 100px;
+        }
+        input[type=checkbox]{
+            width: 80px;
+            height: 80px;
+            margin: 10px 0 0 134px;
+            border: 2px solid black;
+            accent-color: #f72585;
+        }
+        .ckbx-text{
+            font-size: 72px;
+            vertical-align: top;
+        }
+        table{
+            border: 1px, solid, black;
+        }
+        #th0{
+            width: 40px;
+            height: 60px;
+        }
+        #th1{
+            width: 60px;
+        }
+        #th2{
+            color: #FFC000;
+        }
+        #th3{
+            width: 140px;
+        }
+        #th4{
+            width: 100px;
+        }
+        #th7{
+            width: 100px;
+        }
+        #th5, #th6, #th8, #th9{
+            width: 140px;
+        }
+        th{
+            color: #FFC000;
+            background-color: black;
+            border: 1px solid white;
+        }
+        td{
+            height: 32px;
+            border: 1px, solid, black;
+            text-align: center;
+        }
+
+        button{
+            width: 98%;
+            height: 98%;
+        }
+
+        .sites{
+            margin: 24px 0 24px 120px;
+        }
+        .sites a{
+            line-height: 48px;
+            font-size: 24px;
+        }
+        .stations-list{
+            margin: 0 0 48px 0;
+            background-color: #000000;
+        }
+        .station-list-head{
+            font-size: 28px;
+            color: #ffff00;
+        }
+        .stations-list td{
+            color: #ffffff;
+            border-color: #ffffff;
+        }
+        .station-title > th{
+            font-size: 20px;
+            color: #ffff00;
+        }
+    </style>
+	<script src="minToday.js" type="text/javascript"></script>
+	<title>Ogimet 今日最低气温 实况</title>
+</head>
+<body>
+    <div>
+        <div>
+            <div class="force20-div">
+                <input type="checkbox" id="force20" tabindex="-1"><span class="ckbx-text">强制北京时间20点</span>
+            </div>
+            <table id="tb" cellspacing="0">
+                <tr>
+                    <th id="th0">序号</th>
+                    <th id="th1">站号</th>
+                    <th id="th2">站名</th>
+                    <th id="th3">Ogimet逐时</th>
+                    <th id="th4">Rp5逐时</th>
+                    <th id="th5">Pogodailimat月均</th>
+                    <th id="th6">Pogodailimat气候</th>
+                    <th id="th7">Ogimet逐日</th>
+                    <th id="th8">Pogodailimat逐日</th>
+                    <th id="th9">Pogodailimat逐时</th>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <div class="sites-wrapper">
+        <div class="sites">
+            <div><a href="https://meteoinfo.ru/pogoda/russia/chita-area/ust-karenga" target="_blank">
+                乌斯季卡连加实况(俄罗斯气象局)
+            </a></div>
+            
+            <div><a href="https://www.tcfa.top/" target="_blank">
+                tcfa气象环境遥感分析(包含国家站实况)
+            </a></div>
+            
+            <div><a href="https://worldview.earthdata.nasa.gov/?v=86.70427211569259,47.920317664346975,89.3865219260457,49.281931977797065&l=Reference_Labels_15m,Reference_Features_15m,Coastlines_15m,VIIRS_SNPP_Brightness_Temp_BandI5_Night(palette=rainbow_3,min=210.1,max=259.6,squash=true),VIIRS_SNPP_CorrectedReflectance_TrueColor(hidden),MODIS_Aqua_CorrectedReflectance_TrueColor(hidden),MODIS_Terra_CorrectedReflectance_TrueColor(hidden)&lg=true&s=-94.9473,30.0268&t=2024-02-18-T11%3A37%3A02Z" target="_blank">
+                NASA地温(Brightness Temperature, Band I5, Night, Suomi NPP / VIIRS)
+            </a></div>
+            
+            <div><a href="https://worldview.earthdata.nasa.gov/?v=100.23624399047002,37.883765537333915,141.16250242986249,58.65952589788661&l=Reference_Labels_15m,Reference_Features_15m,Coastlines_15m,VIIRS_NOAA20_Brightness_Temp_BandI5_Night(palette=rainbow_3,min=218.9,max=260.3,squash=true),OrbitTracks_Aqua_Descending&lg=false&t=2023-01-21-T13%3A02%3A45Z" target="_blank">
+                NASA地温(Brightness Temperature, Band I5, Night, NOAA-20 / VIIRS)
+            </a></div>
+            
+            <div><a href="https://worldview.earthdata.nasa.gov/?v=59.46660917226567,27.459617051740388,108.70192270802181,52.453376909127705&l=Reference_Labels_15m,Reference_Features_15m,Coastlines_15m,OrbitTracks_Aqua_Descending,MODIS_Aqua_Brightness_Temp_Band31_Night(palette=rainbow_3,min=210.1,max=269,squash=true)&lg=false&s=83.72,42.8319&t=2011-01-09-T13%3A02%3A45Z" target="_blank">
+                NASA地温(Brightness Temperature, Band 31, Night, Aqua / MODIS), 用于查看2003年后早期，分比率较低
+            </a></div>
+            
+            <div><a href="https://meteostat.net/en/place/cn/altay?s=51076&t=2011-01-01/2011-01-31" target="_blank">
+                Meteostat.net(NOAA站点逐日记录折线图), 早期数据可能有误差，整体值得参考
+            </a></div>
+            
+            <div><a href="https://www.meteoblue.com/en/weather/maps/index#coords=3.68/42.31/103.99&map=temperature~daily-max~auto~2%20m%20above%20gnd~graticuleOverlay" target="_blank">
+                MeteoBlue气温实况地图
+            </a></div>
+            
+            <div><a href="https://zoom.earth/maps/pressure/" target="_blank">
+                Zoom.earth气象实况图(颜色更舒服)
+            </a></div>
+            
+            <div><a href="https://www.tropicaltidbits.com/" target="_blank">
+                TropicalTidbits气象预报整合
+            </a></div>
+
+            <div><a href="https://119.29.229.118:8081/index" target="_blank">
+                Ty Archieve国家站各类历史记录(月均温，逐日记录，极端温度等)
+            </a></div>
+
+            <div><a href="https://weather.uwyo.edu/upperair/sounding.shtml" target="_blank">
+                世界交换站探空数据查询
+            </a></div>
+
+            <div><a href="https://lib.nus.edu.sg/chinamet/" target="_blank">
+                民国时期各站点逐日气温地图
+            </a></div>
+
+            <div><a href="https://www.cwa.gov.tw/V8/C/C/Statistics/monthlymean.html" target="_blank">
+                台湾气象月均温页面
+            </a></div>
+
+            <div><a href="https://www.ncei.noaa.gov/access/homr/#ncdcstnid=20018766&tab=MSHR" target="_blank">
+                NOAA各类站点信息查询
+            </a></div>
+
+            <div><a href="http://www.pogodaiklimat.ru/climate4/44292.htm" target="_blank">
+                乌兰巴托气候(Pogodaiklimat.ru Climate4)
+            </a></div>
+
+            <div><a href="https://www.data.jma.go.jp/stats/etrn/view/rank_s.php?prec_no=44&block_no=47662" target="_blank">
+                日本气象站各类记录查询(回到上一目录在地图上选地方)
+            </a></div>
+
+            <div><a href="https://www.data.jma.go.jp/stats/etrn/view/monthly_s3_en.php?block_no=47662&view=1" target="_blank">
+                日本站点每月平均气温
+            </a></div>
+
+            <div><a href="https://www.data.jma.go.jp/tcc/tcc/products/climate/climatview/graph_mkhtml.php?&n=44203&p=999&s=7&r=0&y=2025&m=8&e=0&k=0&d=0" target="_blank">
+                日本气象厅世界交换站每月高、低均温统计表
+            </a></div>
+
+            <div><a href="https://www.data.jma.go.jp/stats/data/en/normal/normal.html" target="_blank">
+                日本主要城市气候值
+            </a></div>
+
+            <div><a href="https://www.weather.gov/wrh/timeseries?site=PSINK&hours=72#:~:text=End%20of%20interactive%20chart." target="_blank">
+                美国犹他州 Peter Sink 5分钟实况(72小时内)
+            </a></div>
+        </div>
+    </div>
+
+    <!-- 站点收集 -->
+    <div class="stations-list-wrapper">
+        <div class="stations-list">
+            <table>
+                <tr>
+                    <th colspan="6" class="station-list-head">站点收集</th>
+                </tr>
+                <tr class="station-title"><!--标题行-->
+                    <th style="width: 100px">国家/地区</th>
+                    <th style="width: 200px">省级行政区划名</th>
+                    <th style="width: 260px">站名/地名</th>
+                    <th style="width: 160px">站号</th>
+                    <th style="width: 200px">坐标</th>
+                    <th>介绍</th>
+                </tr>
+                <tr>
+                    <td>俄罗斯</td>
+                    <td>外贝加尔边疆区</td>
+                    <td>戈尔必齐</td>
+                    <td>30679</td>
+                    <td>( 53.1, 119.2166666 )</td>
+                    <td>外贝加尔边疆区强站，一均约-30.5，一月平均低温曾达到-40，极端低温-53.1</td>
+                </tr>
+                <tr>
+                    <td>俄罗斯</td>
+                    <td>外贝加尔边疆区</td>
+                    <td>涅尔琴斯克(尼布楚)</td>
+                    <td>30768</td>
+                    <td>( 52.0, 116.5333333 )</td>
+                    <td>历史书上的地名，极端低温-49.9</td>
+                </tr>
+                <tr>
+                    <td>俄罗斯</td>
+                    <td>外贝加尔边疆区</td>
+                    <td>IMENI ODINNADTSATOGO, RS</td>
+                    <td>30473</td>
+                    <td>( 55.9, 119.6 )</td>
+                    <td>外贝加尔边疆区强冷站，外兴安岭西段南麓，极端低温-60.0</td>
+                </tr>
+                <tr>
+                    <td>俄罗斯</td>
+                    <td>阿穆尔州</td>
+                    <td>谢列姆贾</td>
+                    <td>31338</td>
+                    <td>( 53.133, 133.967 )</td>
+                    <td>同纬度最冷站，外东北东部谢列姆贾盆地，61-90一均-35.5，91-20一均约-33.3，单冬91次-40，极端低温-57.4</td>
+                </tr>
+                <tr>
+                    <td>俄罗斯</td>
+                    <td>哈巴罗夫斯克边疆区</td>
+                    <td>SEVLI</td>
+                    <td>31325</td>
+                    <td>( 53.517, 132.917 )</td>
+                    <td>外东北东部谢列姆贾盆地北侧强冷站，NOAA逐日档案历史十二均-31.5，历史一均-33.0，极端低温-56.1(1969-12-28)</td>
+                </tr>
+                <tr>
+                    <td>俄罗斯</td>
+                    <td>布里亚特共和国</td>
+                    <td>乌兰乌德(MUKHINO)</td>
+                    <td>30823</td>
+                    <td>( 51.807764, 107.437644 )</td>
+                    <td>布里亚特共和国首府，极端低温-54.4</td>
+                </tr>
+                <tr>
+                    <td>俄罗斯</td>
+                    <td>伊尔库茨克州</td>
+                    <td>卡扎钦斯克(KAZACHINSK)</td>
+                    <td>30337</td>
+                    <td>( 56.3166666, 107.6166666 )</td>
+                    <td>贝加尔湖西北岸，爆发力强，极端低温-53.9</td>
+                </tr>
+                <tr>
+                    <td>俄罗斯</td>
+                    <td>克拉斯诺亚尔斯克边疆区</td>
+                    <td>TEMBENCHI</td>
+                    <td>23499</td>
+                    <td>( 64.9333333, 98.8666666 )</td>
+                    <td>克拉斯诺亚尔斯克边疆区最冷站，91-20一均-36.5，61-90一均-38.1，极端低温-61.1</td>
+                </tr>
+                <tr>
+                    <td>哈萨克斯坦</td>
+                    <td>东哈萨克斯坦州</td>
+                    <td>大纳雷姆斯科耶(ULKEN NARYN)</td>
+                    <td>36428</td>
+                    <td>( 49.2, 84.5166666 )</td>
+                    <td>哈萨克斯坦强冷站，91-20一均-20.2，极端低温-48</td>
+                </tr>
+                <tr>
+                    <td>哈萨克斯坦</td>
+                    <td>东哈萨克斯坦州</td>
+                    <td>马尔卡湖</td>
+                    <td>36566</td>
+                    <td>( 48.79118611, 86.025625 )</td>
+                    <td>哈萨克斯坦最冷站，1991-2020一均-22.2。距离喀纳斯湖只有70km，可以用这个站推测喀纳斯、禾木的气候</td>
+                </tr>
+                <tr>
+                    <td>挪威</td>
+                    <td>芬马克郡</td>
+                    <td>凯于托凯诺(KAUTOKEINO II)</td>
+                    <td>01047</td>
+                    <td>( 69.0166667, 23.0666667 )</td>
+                    <td>挪威强冷站，极端低温-50.3(1999-01-27)</td>
+                </tr>
+                <tr>
+                    <td>挪威</td>
+                    <td>芬马克郡</td>
+                    <td>卡拉绍克(KARASJOK)</td>
+                    <td>01065</td>
+                    <td>( 69.4666666, 25.5166666 )</td>
+                    <td>极端低温-51.5</td>
+                </tr>
+                <tr>
+                    <td>美国</td>
+                    <td>阿拉斯加州</td>
+                    <td>乌米阿特(UMIAT AIRPORT)</td>
+                    <td>70162 || 701620-26508</td>
+                    <td>( 69.36944, -152.14 )</td>
+                    <td>NOAA逐日档案历史二均-30.8(700+样本)，pogodaiklimat历史二均-30.9，极端低温-59.7(1955-02-15)，最低日均温-56.1，最低昼温-51.4</td>
+                </tr>
+                <tr>
+                    <td>美国</td>
+                    <td>阿拉斯加州</td>
+                    <td>普拉德霍贝(PRUDHOE BAY)</td>
+                    <td>999999-27405</td>
+                    <td>( 70.25, -148.33333 )</td>
+                    <td>NOAA逐日档案历史二均-32.3℃(113日均温样本)，极端低温-48.3</td>
+                </tr>
+                <tr>
+                    <td>南极大陆</td>
+                    <td>日本建设运营</td>
+                    <td>富士圆顶</td>
+                    <td>89734</td>
+                    <td>( -77.3166666, 39.7 )</td>
+                    <td></td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+</body>
+<script type="text/javascript">
+    let arrOfStations = [{"Country":"蒙古","countryCode":"A","USAF":"44243","NAME":"色楞格省 尧勒","urlSuffOfRp5":"Ulygaiin_Dugang"},{"Country":"蒙古","countryCode":"A","USAF":"44212","NAME":"乌布苏省 乌兰固木","urlSuffOfRp5":"Ulaangom"},{"Country":"蒙古","countryCode":"A","USAF":"44221","NAME":"扎布汗省 巴彦特斯","urlSuffOfRp5":"Gandan_Huryee"},{"Country":"蒙古","countryCode":"A","USAF":"44224","NAME":"扎布汗省 车臣乌拉","urlSuffOfRp5":"Tsetsen-Uul"},{"Country":"蒙古","countryCode":"A","USAF":"44225","NAME":"扎布汗省 陶松臣格勒","urlSuffOfRp5":"Tosontsengel"},{"Country":"蒙古","countryCode":"A","USAF":"44203","NAME":"库苏古尔省 仁钦隆勃","urlSuffOfRp5":"Rinchinlhumbe"},{"Country":"蒙古","countryCode":"A","USAF":"44292","NAME":"乌兰巴托市 乌兰巴托","urlSuffOfRp5":"Ulan_Bator"},{"Country":"蒙古","countryCode":"A","USAF":"44291","NAME":"乌兰巴托市 Буянт-Ухаа","urlSuffOfRp5":"Ulan_Bator,_Songiin_(airport)"},{"Country":"蒙古","countryCode":"A","USAF":"44275","NAME":"巴彦洪戈尔省 巴彦布拉格","urlSuffOfRp5":"Bayanbulag"},{"Country":"蒙古","countryCode":"A","USAF":"44284","NAME":"巴彦洪戈尔省 嘎鲁特","urlSuffOfRp5":"Galut"},{"Country":"蒙古","countryCode":"A","USAF":"44265","NAME":"科布多省 布尔干","urlSuffOfRp5":"Baitag"},{"Country":"蒙古","countryCode":"A","USAF":"44277","NAME":"戈壁阿尔泰省 阿尔泰","urlSuffOfRp5":"Altai,_Mongolia"},{"Country":"蒙古","countryCode":"A","USAF":"44207","NAME":"库苏古尔省 哈特嘎勒","urlSuffOfRp5":"Hatgal"},{"Country":"蒙古","countryCode":"A","USAF":"44231","NAME":"库苏古尔省 木伦","urlSuffOfRp5":"Moron"},{"Country":"蒙古","countryCode":"A","USAF":"44215","NAME":"乌布苏省 南戈壁","urlSuffOfRp5":"Umnu-Gobi"},{"Country":"蒙古","countryCode":"A","USAF":"44213","NAME":"乌布苏省 西图伦","urlSuffOfRp5":"Baruunturuun"},{"Country":"蒙古","countryCode":"A","USAF":"44263","NAME":"巴彦乌列盖省 布尔干","urlSuffOfRp5":"Jargalant"},{"Country":"蒙古","countryCode":"A","USAF":"44229","NAME":"后杭爱省 塔里亚特","urlSuffOfRp5":"Tariat"},{"Country":"俄罗斯","countryCode":"B","USAF":"31702","NAME":"犹太自治州 奥布卢奇耶","urlSuffOfRp5":"Obluchye"},{"Country":"俄罗斯","countryCode":"B","USAF":"31532","NAME":"哈巴罗夫斯克边疆区 切昆达","urlSuffOfRp5":"Cekunda"},{"Country":"俄罗斯","countryCode":"B","USAF":"31478","NAME":"哈巴罗夫斯克边疆区 索菲斯克","urlSuffOfRp5":"Sofiysk"},{"Country":"俄罗斯","countryCode":"B","USAF":"31329","NAME":"阿穆尔州 埃基姆昌","urlSuffOfRp5":"Ekimchan"},{"Country":"俄罗斯","countryCode":"B","USAF":"31348","NAME":"哈巴罗夫斯克边疆区 布鲁坎","urlSuffOfRp5":"Burukan"},{"Country":"俄罗斯","countryCode":"B","USAF":"30565","NAME":"后贝加尔边疆区 乌斯季卡连加","urlSuffOfRp5":"Ust-Karenga"},{"Country":"俄罗斯","countryCode":"B","USAF":"30664","NAME":"后贝加尔边疆区 通戈科琴","urlSuffOfRp5":"Tungokochen"},{"Country":"俄罗斯","countryCode":"B","USAF":"30766","NAME":"后贝加尔边疆区 车尔尼雪夫斯克","urlSuffOfRp5":"Chernyshevsk"},{"Country":"俄罗斯","countryCode":"B","USAF":"30781","NAME":"后贝加尔边疆区 乌留皮诺","urlSuffOfRp5":"Uryupino"},{"Country":"俄罗斯","countryCode":"B","USAF":"30673","NAME":"后贝加尔边疆区 莫戈恰","urlSuffOfRp5":"Mogocha"},{"Country":"俄罗斯","countryCode":"B","USAF":"30636","NAME":"布里亚特共和国 巴尔古津","urlSuffOfRp5":"Barguzin"},{"Country":"俄罗斯","countryCode":"B","USAF":"30622","NAME":"伊尔库茨克州 卡丘格","urlSuffOfRp5":"Kachug"},{"Country":"俄罗斯","countryCode":"B","USAF":"36096","NAME":"图瓦共和国 克孜勒","urlSuffOfRp5":"Kyzyl"},{"Country":"俄罗斯","countryCode":"B","USAF":"36307","NAME":"图瓦共和国 埃尔津","urlSuffOfRp5":"Erzin"},{"Country":"俄罗斯","countryCode":"B","USAF":"36104","NAME":"图瓦共和国 萨雷格谢普","urlSuffOfRp5":"Saryg-Sep"},{"Country":"俄罗斯","countryCode":"B","USAF":"36259","NAME":"阿尔泰共和国 科什阿加奇","urlSuffOfRp5":"Kosh-Agach"},{"Country":"哈萨克斯坦","countryCode":"C","USAF":"36535","NAME":"东哈萨克斯坦州 科克佩克特","urlSuffOfRp5":"Kokpekty"},{"Country":"哈萨克斯坦","countryCode":"C","USAF":"36566","NAME":"东哈萨克斯坦州 马尔卡湖","urlSuffOfRp5":"Markakol_Lake"},{"Country":"朝鲜","countryCode":"C","USAF":"47005","NAME":"两江道 三池渊","urlSuffOfRp5":"Samjiyon"},{"Country":"中国","countryCode":"D","USAF":"54342","NAME":"辽宁 沈阳","urlSuffOfRp5":"Shenyang"},{"Country":"中国","countryCode":"D","USAF":"54161","NAME":"吉林 长春","urlSuffOfRp5":"Changchun_(airport)"},{"Country":"中国","countryCode":"D","USAF":"54273","NAME":"吉林 桦甸","urlSuffOfRp5":"Huadian"},{"Country":"中国","countryCode":"D","USAF":"50953","NAME":"黑龙江 哈尔滨","urlSuffOfRp5":"Harbin_(airport)"},{"Country":"中国","countryCode":"D","USAF":"50353","NAME":"黑龙江 呼玛","urlSuffOfRp5":"Huma"},{"Country":"中国","countryCode":"D","USAF":"50136","NAME":"黑龙江 漠河","urlSuffOfRp5":"Xilinji"},{"Country":"中国","countryCode":"D","USAF":"50434","NAME":"内蒙古 图里河","urlSuffOfRp5":"Tulihe"},{"Country":"中国","countryCode":"D","USAF":"50527","NAME":"内蒙古 海拉尔","urlSuffOfRp5":"Zhengyang"},{"Country":"中国","countryCode":"D","USAF":"50727","NAME":"内蒙古 阿尔山","urlSuffOfRp5":"Arxan"},{"Country":"中国","countryCode":"D","USAF":"52908","NAME":"青海 五道梁","urlSuffOfRp5":"Udaolyan"},{"Country":"中国","countryCode":"D","USAF":"52323","NAME":"甘肃 马鬃山","urlSuffOfRp5":"Mazong_Shan"},{"Country":"中国","countryCode":"D","USAF":"51076","NAME":"新疆 阿勒泰","urlSuffOfRp5":"Aletai"},{"Country":"中国","countryCode":"D","USAF":"51573","NAME":"新疆 吐鲁番","urlSuffOfRp5":"Turfan"},{"Country":"中国","countryCode":"D","USAF":"51463","NAME":"新疆 乌鲁木齐","urlSuffOfRp5":"Urumqi"},{"Country":"中国","countryCode":"D","USAF":"51542","NAME":"新疆 巴音布鲁克","urlSuffOfRp5":"Baianbulak"},{"Country":"中国","countryCode":"D","USAF":"53463","NAME":"内蒙古 呼和浩特","urlSuffOfRp5":"Hohhot"},{"Country":"中国","countryCode":"D","USAF":"54511","NAME":"北京市 北京","urlSuffOfRp5":"Beijing,_Peking"},{"Country":"中国","countryCode":"D","USAF":"53614","NAME":"宁夏 银川","urlSuffOfRp5":"Yinchuan"},{"Country":"中国","countryCode":"D","USAF":"53698","NAME":"河北 石家庄","urlSuffOfRp5":"Shijiazhuang"},{"Country":"中国","countryCode":"D","USAF":"53772","NAME":"山西 太原","urlSuffOfRp5":"Taiyuan_(airport)"},{"Country":"中国","countryCode":"D","USAF":"52866","NAME":"青海 西宁","urlSuffOfRp5":"Xining"},{"Country":"中国","countryCode":"D","USAF":"54823","NAME":"山东 济南","urlSuffOfRp5":"Jinan"},{"Country":"中国","countryCode":"D","USAF":"57083","NAME":"河南 郑州","urlSuffOfRp5":"Zhengzhou"},{"Country":"中国","countryCode":"D","USAF":"57131","NAME":"陕西 西安","urlSuffOfRp5":"Xi'an"},{"Country":"中国","countryCode":"D","USAF":"57245","NAME":"陕西 安康","urlSuffOfRp5":"Ankang"},{"Country":"中国","countryCode":"D","USAF":"57687","NAME":"湖南 长沙","urlSuffOfRp5":"Xingsha"},{"Country":"中国","countryCode":"D","USAF":"58606","NAME":"江西 南昌","urlSuffOfRp5":"Liantang"},{"Country":"中国","countryCode":"D","USAF":"57494","NAME":"湖北 武汉","urlSuffOfRp5":"Wuhan_(airport)"},{"Country":"中国","countryCode":"D","USAF":"58321","NAME":"安徽 合肥","urlSuffOfRp5":"Hefei,_Liugang_(airport)"},{"Country":"中国","countryCode":"D","USAF":"58238","NAME":"江苏 南京","urlSuffOfRp5":"Nanjing_(airport)"},{"Country":"中国","countryCode":"D","USAF":"58457","NAME":"浙江 杭州","urlSuffOfRp5":"Hangzhou_(airport)"},{"Country":"中国","countryCode":"D","USAF":"58646","NAME":"浙江 丽水","urlSuffOfRp5":"Lishui"},{"Country":"中国","countryCode":"D","USAF":"58847","NAME":"福建 福州","urlSuffOfRp5":"Fuzhou"},{"Country":"中国","countryCode":"D","USAF":"59287","NAME":"广东 广州","urlSuffOfRp5":"Guangzhou_(airport)"},{"Country":"中国","countryCode":"D","USAF":"59758","NAME":"海南 海口","urlSuffOfRp5":"Haikou"},{"Country":"中国","countryCode":"D","USAF":"59948","NAME":"海南 三亚","urlSuffOfRp5":"Sanya_(weather_station)"},{"Country":"中国","countryCode":"D","USAF":"59838","NAME":"海南 东方","urlSuffOfRp5":"Dongfang"},{"Country":"中国","countryCode":"D","USAF":"59431","NAME":"广西 南宁","urlSuffOfRp5":"Nanning_(airport)"},{"Country":"中国","countryCode":"D","USAF":"56966","NAME":"云南 元江","urlSuffOfRp5":"Lijiang"},{"Country":"中国","countryCode":"D","USAF":"56778","NAME":"云南 昆明","urlSuffOfRp5":"Kunming"},{"Country":"中国","countryCode":"D","USAF":"57816","NAME":"贵州 贵阳","urlSuffOfRp5":"Guiyang"},{"Country":"中国","countryCode":"D","USAF":"57516","NAME":"重庆市 重庆","urlSuffOfRp5":"Chongqing,_Jiulongpo_(airport)"},{"Country":"中国","countryCode":"D","USAF":"56187","NAME":"四川 成都","urlSuffOfRp5":"Chengdu_(AWS)"},{"Country":"中国","countryCode":"D","USAF":"55591","NAME":"西藏 拉萨","urlSuffOfRp5":"Lhasa"},{"Country":"中国","countryCode":"D","USAF":"58437","NAME":"安徽 黄山","urlSuffOfRp5":"Kuan_Shan"},{"Country":"中国","countryCode":"D","USAF":"58968","NAME":"台湾 台北","urlSuffOfRp5":"Taipei"},{"Country":"中国","countryCode":"D","USAF":"45007","NAME":"香港","urlSuffOfRp5":"Hong_Kong_(airport)"},{"Country":"中国","countryCode":"D","USAF":"45011","NAME":"澳门","urlSuffOfRp5":"Taipa_(airport)"},{"Country":"俄罗斯","countryCode":"Z","USAF":"31137","NAME":"萨哈共和国 TOKO","urlSuffOfRp5":"Toko"},{"Country":"俄罗斯","countryCode":"Z","USAF":"24688","NAME":"萨哈共和国 奥伊米亚康","urlSuffOfRp5":"Oymyakon"},{"Country":"俄罗斯","countryCode":"Z","USAF":"24585","NAME":"萨哈共和国 乌斯季涅拉","urlSuffOfRp5":"Ust-Nera"},{"Country":"俄罗斯","countryCode":"Z","USAF":"24588","NAME":"萨哈共和国 YURTY","urlSuffOfRp5":"Yurty"},{"Country":"俄罗斯","countryCode":"Z","USAF":"24691","NAME":"萨哈共和国 DELYANKIR","urlSuffOfRp5":"Delyankir"},{"Country":"俄罗斯","countryCode":"Z","USAF":"24266","NAME":"萨哈共和国 上扬斯克","urlSuffOfRp5":"Verkhoyansk"},{"Country":"俄罗斯","countryCode":"Z","USAF":"24684","NAME":"萨哈共和国 阿加亚坎","urlSuffOfRp5":"Agayakan"},{"Country":"俄罗斯","countryCode":"Z","USAF":"24382","NAME":"萨哈共和国 乌斯季莫马(霍努)","urlSuffOfRp5":"Ust-Moma"},{"Country":"俄罗斯","countryCode":"Z","USAF":"24959","NAME":"萨哈共和国 雅库茨克","urlSuffOfRp5":"Yakutsk"},{"Country":"俄罗斯","countryCode":"Z","USAF":"24477","NAME":"萨哈共和国 IEMA","urlSuffOfRp5":"Iema"},{"Country":"俄罗斯","countryCode":"Z","USAF":"25428","NAME":"楚科奇自治区 奥莫隆","urlSuffOfRp5":"Omolon"},{"Country":"俄罗斯","countryCode":"Z","USAF":"25700","NAME":"马加丹州 Эльген","urlSuffOfRp5":"Taskan"},{"Country":"俄罗斯","countryCode":"Z","USAF":"24507","NAME":"克拉斯诺亚尔斯克边疆区 图拉","urlSuffOfRp5":"Tura"},{"Country":"塔吉克斯坦","countryCode":"Z","USAF":"38875","NAME":"山地巴达赫尚自治州 喀拉库勒","urlSuffOfRp5":"Karakul,_Tajikistan"},{"Country":"吉尔吉斯斯坦","countryCode":"Z","USAF":"38358","NAME":"楚河州 苏萨梅尔","urlSuffOfRp5":"Suusamyr"},{"Country":"加拿大","countryCode":"Z","USAF":"71917","NAME":"努纳武特地区 尤里卡","urlSuffOfRp5":"Eureka_(airport)"},{"Country":"美国","countryCode":"Z","USAF":"70194","NAME":"阿拉斯加州 育空堡","urlSuffOfRp5":"Yukon_(airport)"},{"Country":"美国","countryCode":"Z","USAF":"72613","NAME":"新罕布什尔州 华盛顿山","urlSuffOfRp5":"Mount_Washington_(AWS)"},{"Country":"美国","countryCode":"Z","USAF":"72747","NAME":"明尼苏达州 国际瀑布城","urlSuffOfRp5":"Falls_International_(airport)"},{"Country":"丹麦","countryCode":"Z","USAF":"04419","NAME":"格陵兰 顶峰营","urlSuffOfRp5":""},{"Country":"挪威","countryCode":"Z","USAF":"01065","NAME":"芬马克郡 卡拉绍克","urlSuffOfRp5":"Karasjok"},{"Country":"塔吉克斯坦","countryCode":"Z","USAF":"38878","NAME":"山地巴达赫尚自治州 穆尔加布","urlSuffOfRp5":"Murgab"},{"Country":"南极","countryCode":"Z","USAF":"89606","NAME":"东方站(Vostok)","urlSuffOfRp5":"Vostok_Station"}];
+
+    let date = new Date().toISOString();
+    let dateAndTimeArr = date.split('T');
+    let dateArr = dateAndTimeArr[0].split('-');
+    let y = dateArr[0];
+    let m = dateArr[1];
+    let d = dateArr[2];
+    //获取实时伦敦时间小时数
+    let timeArr = dateAndTimeArr[1].split(':');
+    let hRealtime = timeArr[0];
+
+    function getHour(){
+        let forceHour = document.getElementById('force20');
+        let h = (forceHour.checked) ? 12 : hRealtime;
+        return h;
+    }
+
+
+    function fillTable(){
+        let tb = document.getElementById('tb');
+        let count = arrOfStations.length;
+
+        for(let i=0; i<count; i++){
+            let tr = document.createElement('tr');
+            tb.appendChild(tr);
+
+            //第1列：序号
+            let td0 = document.createElement('td');
+            td0.innerText = (i+1).toString();
+            td0.style.height = '60px';
+            td0.style.backgroundColor = '#000000';
+            td0.style.color = '#ffffff'; //默认白色字体
+            td0.style.border = '1px solid #ffffff';
+            tr.appendChild(td0);
+
+            //第2列：站号
+            let td1 = document.createElement('td');
+            td1.innerText = arrOfStations[i].USAF.toString();
+            td1.style.backgroundColor = '#000000';
+            td1.style.color = '#ffff00'; //默认白色字体
+            td1.style.border = '1px solid #ffffff';
+            tr.appendChild(td1);
+
+            //第3列：站名
+            let td2 = document.createElement('td');
+            td2.innerText = arrOfStations[i].NAME;
+            //设置td样式
+            td2.style.textAlign = 'right';
+            td2.style.backgroundColor = '#000000';
+            td2.style.color = '#ffffff'; //默认白色字体
+            td2.style.border = '1px solid #ffffff';
+            let countryCode = arrOfStations[i].countryCode;
+            if(countryCode === 'A'){
+                td2.style.color = '#00B0F0';
+            }else if(countryCode === 'B'){
+                td2.style.color = '#92D050';
+            }else if(countryCode === 'C'){
+                td2.style.color = '#8EA9DB';
+            }else if(countryCode === 'D'){
+                td2.style.color = '#FFFFFF';
+            }else if(countryCode === 'Z'){
+                td2.style.color = '#FF0000';
+            }
+            tr.appendChild(td2);
+
+            //Ogimet逐时(UTC时间不同，显示截止小时数也不同)
+            let td4 = document.createElement('td');
+            tr.appendChild(td4);
+            let btn2 = document.createElement('button');
+            btn2.innerText = 'Ogimet逐时';
+            btn2.setAttribute('tabindex', i + 1);
+            btn2.onfocus = () => {
+                btn2.style.color = '#ffffff';
+                btn2.style.backgroundColor = '#3a0ca3';
+            }
+            btn2.onclick = () => {
+                btn2.style.backgroundColor = '#f72585';
+            }
+            btn2.onblur = () => {
+                btn2.style.color = '#000000';
+                btn2.style.backgroundColor = '#4cc9f0';
+            }
+            td4.appendChild(btn2);
+            td4.onclick = () => {window.open(getOgimetUrlH(i), '_blank')};
+
+            //rp5逐时
+            let td9 = document.createElement('td');
+            tr.appendChild(td9);
+            let btn7 = document.createElement('button');
+            btn7.innerText = 'rp5逐时';
+            td9.appendChild(btn7);
+            td9.onclick = () => {window.open(getRp5UrlH(i), '_blank')};
+
+            //Pogodaiklimat月均
+            let td8 = document.createElement('td');
+            tr.appendChild(td8);
+            let btn6 = document.createElement('button');
+            btn6.innerText = 'Pogodaiklimat月均';
+            td8.appendChild(btn6);
+            td8.onclick = () => {window.open(getPogodaiklimatUrlMonthAvg(i), '_blank')};
+
+            //Pogodaiklimat气候
+            let td7 = document.createElement('td');
+            tr.appendChild(td7);
+            let btn5 = document.createElement('button');
+            btn5.innerText = 'Pogodaiklimat气候';
+            td7.appendChild(btn5);
+            td7.onclick = () => {window.open(getPogodaiklimatUrlClimate(i), '_blank')};
+
+            //Ogimet逐日(UTC时间不同，结果也不同)
+            let td3 = document.createElement('td');
+            tr.appendChild(td3);
+            let btn1 = document.createElement('button');
+            btn1.innerText = 'Ogimet逐日';
+            td3.appendChild(btn1);
+            td3.onclick = () => {window.open(getOgimetUrlD(i), '_blank')};
+
+            //Pogodaiklimat逐日。注意这个页面有预设时区，每日起始时间不一定是北京时间的00:00或02:00，虽然高低温逻辑是对的(相比ogimet的逐日页面)
+            let td5 = document.createElement('td');
+            tr.appendChild(td5);
+            let btn3 = document.createElement('button');
+            btn3.innerText = 'Pogodaiklimat逐日';
+            td5.appendChild(btn3);
+            td5.onclick = () => {window.open(getPogodaiklimatUrlD(i), '_blank')};
+
+            //Pogodaiklimat逐时
+            let td6 = document.createElement('td');
+            tr.appendChild(td6);
+            let btn4 = document.createElement('button');
+            btn4.innerText = 'Pogodaiklimat逐时';
+            td6.appendChild(btn4);
+            td6.onclick = () => {window.open(getPogodaiklimatUrlH(i), '_blank')};
+
+            setBtnStyle([btn1, btn2, btn3, btn4, btn5, btn6, btn7]);
+        }
+    }
+
+    function setBtnStyle(btnArr){
+        btnArr.forEach((e) => {
+            e.style.color = '#000000';
+            e.style.backgroundColor = '#4cc9f0';
+            e.addEventListener('mouseover', () => {
+                e.style.color = '#ffffff';
+                e.style.backgroundColor = '#3a0ca3';
+                e.style.cursor = 'pointer';
+            });
+            e.addEventListener('mousedown', () => {
+                e.style.backgroundColor = '#f72585';
+            });
+            e.addEventListener('mouseleave', () => {
+                e.style.color = '#000000';
+                e.style.backgroundColor = '#4cc9f0';
+            });
+        });
+    }
+
+    function getOgimetUrlD(c){
+        let url = "https://ogimet.com/cgi-bin/gsynres?ind=" + arrOfStations[c].USAF.toString() + "&ord=REV&enviar=Ver&ndays=30&ano=" + y + "&mes="
+    + m + "&day=" + d + "&hora=" + getHour();
+        return url;
+    }
+    function getOgimetUrlH(c){
+        let url = "https://ogimet.com/cgi-bin/gsynres?ind=" + arrOfStations[c].USAF.toString() + "&decoded=yes&ndays=7&ano=" + y + "&mes="
+    + m + "&day=" + d + "&hora=" + getHour();
+        return url;
+    }
+
+    function getPogodaiklimatUrlD(c){
+        let url = "http://www.pogodaiklimat.ru/monitor.php?id=" + arrOfStations[c].USAF.toString();
+        return url;
+    }
+    function getPogodaiklimatUrlH(c){
+        let url = "http://www.pogodaiklimat.ru/weather.php?id=" + arrOfStations[c].USAF.toString();
+        return url;
+    }
+    function getPogodaiklimatUrlClimate(c){
+        let url = "http://www.pogodaiklimat.ru/climate.php?id=" + arrOfStations[c].USAF.toString();
+        return url;
+    }
+    function getPogodaiklimatUrlMonthAvg(c){
+        let url = "http://www.pogodaiklimat.ru/history/" + arrOfStations[c].USAF.toString() + ".htm";
+        return url;
+    }
+    function getRp5UrlH(c){
+        let url = "https://rp5.ru/Weather_archive_in_" + arrOfStations[c].urlSuffOfRp5;
+        return url;
+    }
+
+    fillTable();
+</script>
+</html>

@@ -1,0 +1,5 @@
+关于本地静态页面在不使用Node.js的情况下如何在.js文件中引用外部js文件(比如index.js内要引用out.js中的内容)
+1.out.js文件必须是 exports const variable = ... 形式
+2.在index.js文件中需要使用 import { variable } from .../.../out.js 句式导入外部文件
+3.最重要的是！！！在index.html文件中，index.js的引用script的属性内 type=module)
+4.必须要服务器，虽然不用Node.js，但还是需要服务器，否则在双击本地.html文件在浏览器中打开后，会遇到CORS错误，import外部.js文件无效
