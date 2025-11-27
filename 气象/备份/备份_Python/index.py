@@ -53,7 +53,7 @@ for o in sortedArr:
         if isinstance(o[k], float) and math.isinf(o[k]):
             o[k] = ''
         if k == 'prefix' and isinstance(o[k], str) and len(o[k]) > 0:
-            o['cn_name'] = o['prefix'] + '_' + o['cn_name']
+            o['cn_name'] = o['prefix'] + o['cn_name']
 
 def arr_east_asia():
     eaArr = [e for e in sortedArr if e['east_asia'] == 'Y']

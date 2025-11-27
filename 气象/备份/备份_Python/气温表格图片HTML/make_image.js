@@ -82,7 +82,7 @@ function loadDataToTable(sourceKey) {
 
     // Adjust Title Row colspan to span the whole table minus the date cells
     titleCell.colSpan = Math.max(1, columns.length - 2);
-    titleCell.innerHTML = `${base_title}<span style="color: #4cc9f0">(${sourceKey})</span>`;
+    titleCell.innerHTML = `${base_title}<span style="color: #e0aaff">(${sourceKey})</span>`;
 
     // --- RENDER HEADERS ---
     columns.forEach(colName => {
@@ -122,7 +122,6 @@ function loadDataToTable(sourceKey) {
         let tempE_Coor = tbody[i].querySelectorAll('td')[4];
         let tempE_elev = tbody[i].querySelectorAll('td')[5];
         tempE.innerHTML = wrapIcons(whichSource[i]['icon1']) + tempE.innerText + wrapIcons(whichSource[i]['icon2']);
-        //tempE.innerHTML = `<span class="diamond">${whichSource[i]['icon1']}</span>${tempE.innerText}<span class="diamond">${whichSource[i]['icon2']}</span>`;
         tempE_Coor.innerText = transformCoor(tempE_Coor.innerText);
         tempE_elev.innerText = tempE_elev.innerText + 'm';
     }
@@ -461,10 +460,10 @@ function transformCoor(nStr){
 
 function wrapIcons(str){
     let result = '';
-    result = str.replace('💎', '<span class="icon-diamond">💎</span>')
-        .replace('⚡', '<span class="icon-lightning">⚡</span>')
-        .replace('❄️', '<span class="icon-snow">❄️</span>')
-        .replace('▼', '<span style="color: #f72585">▼</span>')
-        .replace('▲', '<span style="color: #f72585">▲</span>')
+    result = str.replace('💎', '<span class="icon-diamond" style="font-size: 28px">💎</span>')
+        .replace('⚡', '<span class="icon-lightning" style="font-size: 16px">⚡</span>')
+        .replace('❄️', '<span class="icon-snow" style="font-size: 16px">❄️</span>')
+        .replace('▼', '<span style="color: #f72585; font-size: 16px">▼</span>')
+        .replace('▲', '<span style="color: #f72585; font-size: 16px">▲</span>')
     return result;
 }
