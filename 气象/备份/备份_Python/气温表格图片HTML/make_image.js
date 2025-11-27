@@ -1,6 +1,12 @@
 import { array_of_stations_by_different_filters } from './stations_data.js';
 
 const myDesiredColumns = ["cn_name", "min", "max", "avg", "latitude", "elev"];
+const base_title = '冷极大PK';
+const myDesiredCN_names = ['地点', '最低气温', '最高气温', '平均气温', '纬度', '海拔']
+const defaultNameColor = '#7785ac';
+const countryColors = [{'country':'蒙古','hexCode':'#4cc9f0'},{'country':'俄罗斯','hexCode':'#aaf683'},{'country':'中国','hexCode':'#ffffff'}]
+const temperatureRange = [-110, 60];
+const extremeColors = {'dark': '#0000cc', 'bright': '#ffff00'};
 
 // DOM Elements
 const sourceSelect = document.getElementById('data-source');
@@ -29,95 +35,162 @@ btnLoad.addEventListener('click', () => {
 });
 
 function loadDataToTable(sourceKey) {
-    const data = selectColumns(my_toFixed(array_of_stations_by_different_filters[sourceKey]), myDesiredColumns);
+    const mySortBys = [
+        { key: 'east_asia',   order: 'desc' },  // 先判断是否是东亚站点
+        { key: 'settlement', order: 'desc' }, // 再判断是否是定居点
+    ];
+    let whichSource = multiAttributeSortSafe(array_of_stations_by_different_filters[sourceKey], mySortBys); //sort一定要在data前面，先排序，再保留固定列，后面whichsource还有用
+    const data = replaceAttributeNames( selectColumns(my_toFixed(whichSource), myDesiredColumns), myDesiredCN_names );
     
     // Clear existing content
     headerRow.innerHTML = '';
     tableBody.innerHTML = '';
     
+    // --- NEW CODE START: FIX COLUMN WIDTHS ---
+    const colGroup = document.getElementById('table-colgroup');
+    colGroup.innerHTML = ''; // Clear previous widths
+
+    // Define your desired widths here. 
+    // You have 6 columns. Total should be 100%.
+    // Based on your CSS, you wanted cols 2,3,4 to be 20%.
+    const columnWidths = [
+        "26%", // 1. Name
+        "17%", // 2. Min (User CSS wanted 20%)
+        "17%", // 3. Max (User CSS wanted 20%)
+        "17%", // 4. Avg (User CSS wanted 20%)
+        "11%", // 5. Lat
+        "12%"  // 6. Elev
+    ];
+
+    columnWidths.forEach(width => {
+        const col = document.createElement('col');
+        col.style.width = width;
+        colGroup.appendChild(col);
+    });
+    // --- NEW CODE END ---
+
     if (!data || data.length === 0) {
         tableBody.innerHTML = '<tr><td colspan="6">No Data</td></tr>';
         return;
     }
 
-    // Set Date
-    dateCell.innerText = `Date: ${new Date().toLocaleDateString()} (${sourceKey})`;
+    // Set Date 北京时间
+    dateCell.innerText = getCurrentDateByOffset(8);
 
     // Get Columns from first row
     const columns = Object.keys(data[0]);
 
     // Adjust Title Row colspan to span the whole table minus the date cells
     titleCell.colSpan = Math.max(1, columns.length - 2);
+    titleCell.innerHTML = `${base_title}<span style="color: #4cc9f0">(${sourceKey})</span>`;
 
     // --- RENDER HEADERS ---
     columns.forEach(colName => {
         const th = document.createElement('th');
-        th.innerText = colName;
-        
-        // Add Resizer Handle
-        const resizer = document.createElement('div');
-        resizer.classList.add('resizer');
-        th.appendChild(resizer);
-        
-        // Add Resize Logic
-        attachResizeEvent(th, resizer);
-
+        if( colName === myDesiredCN_names[1] || colName === myDesiredCN_names[2] || colName === myDesiredCN_names[3] ){
+            th.innerText = colName + '℃';
+        }else{
+            th.innerText = colName;
+        }
         headerRow.appendChild(th);
     });
 
-    // --- RENDER ROWS ---
+    // --- 数值填色 ---
     data.forEach(row => {
         const tr = document.createElement('tr');
         columns.forEach(col => {
             const td = document.createElement('td');
             td.innerText = row[col];
             // Add class for styling (optional, but requested)
-            td.classList.add(`col-${col}`); 
+            if(col === myDesiredCN_names[1] || col === myDesiredCN_names[2] || col === myDesiredCN_names[3]){
+                if(row[col] != "" && Number(row[col]) > temperatureRange[0] && Number(row[col]) < temperatureRange[1]){
+                    setTemperatureStyle(td, row[col]);
+                }
+            }
+
+            td.classList.add(`col-${col}`);
             tr.appendChild(td);
         });
+        
         tableBody.appendChild(tr);
     });
-}
 
-// --- 3. RESIZE FUNCTION (Improved) ---
-function attachResizeEvent(th, resizer) {
-    // Variables to track state
-    let startX = 0;
-    let startWidth = 0;
+    //地名填色,文字替换
+    let tbody = document.querySelector('#table-body').querySelectorAll('tr');
+    for(let i=0; i<tbody.length; i++){
+        let tempE = tbody[i].querySelectorAll('td')[0];
+        let tempE_Coor = tbody[i].querySelectorAll('td')[4];
+        let tempE_elev = tbody[i].querySelectorAll('td')[5];
+        tempE.innerHTML = wrapIcons(whichSource[i]['icon1']) + tempE.innerText + wrapIcons(whichSource[i]['icon2']);
+        //tempE.innerHTML = `<span class="diamond">${whichSource[i]['icon1']}</span>${tempE.innerText}<span class="diamond">${whichSource[i]['icon2']}</span>`;
+        tempE_Coor.innerText = transformCoor(tempE_Coor.innerText);
+        tempE_elev.innerText = tempE_elev.innerText + 'm';
+    }
+    for(let i=0; i<tbody.length; i++){
+        let tempE = tbody[i].querySelectorAll('td')[0];
 
-    const onMouseDown = (e) => {
-        e.preventDefault(); // Prevent text selection
-        resizer.classList.add('resizing');
-        
-        startX = e.pageX;
-        startWidth = th.offsetWidth;
+        if(whichSource[i]['country'] == countryColors[0]['country']){tempE.style.color = countryColors[0]['hexCode'];}
+        else if(whichSource[i]['country'] == countryColors[1]['country']){tempE.style.color = countryColors[1]['hexCode'];}
+        else if(whichSource[i]['country'] == countryColors[2]['country']){tempE.style.color = countryColors[2]['hexCode'];}
+        else{tempE.style.color = defaultNameColor;}
+    }
 
-        // Attach listeners to DOCUMENT, not the element.
-        // This ensures dragging continues even if mouse leaves the header area.
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp);
-    };
+    // --- NEW CODE START: RESIZE FONTS ---
+    // We select all TD elements we just created and check their fit
+    const allTds = document.querySelectorAll('#table-body td');
+    
+    allTds.forEach(td => {
+        // Only resize if the cell actually has text
+        if(td.innerText.trim() !== "") {
+            fitTextToCell(td);
+        }
+    });
+    // --- NEW CODE END ---
 
-    const onMouseMove = (e) => {
-        // Calculate movement
-        const currentX = e.pageX;
-        const diffX = currentX - startX;
-        
-        // Apply new width
-        // We use requestAnimationFrame for smoother rendering
-        requestAnimationFrame(() => {
-            th.style.width = `${startWidth + diffX}px`;
-        });
-    };
+    let ea1 = [], ea2 = [], ea3 = [], o1 = [], o2 = [], o3 = [];
+    whichSource.forEach(o => {
+        if(o['min'] !== ''){
+            if(o['min'] > temperatureRange[0] && o['min'] < temperatureRange[1]){
+                if(o['east_asia'] !== ''){ ea1.push(o['min']) }else{ o1.push(o['min']) }
+            }
+        }
+        if(o['max'] !== ''){
+            if(o['max'] > temperatureRange[0] && o['max'] < temperatureRange[1]){
+                if(o['east_asia'] !== ''){ ea2.push(o['max']) }else{ o2.push(o['max']) }
+            }
+        }
+        if(o['avg'] !== ''){
+            if(o['avg'] > temperatureRange[0] && o['avg'] < temperatureRange[1]){
+                if(o['east_asia'] !== ''){ ea3.push(o['avg']) }else{ o3.push(o['avg']) }
+            }
+        }
+    });
+    let ea1x = Math.min(...ea1);
+    let ea1y = Math.max(...ea1);
+    let ea2x = Math.min(...ea2);
+    let ea2y = Math.max(...ea2);
+    let ea3x = Math.min(...ea3);
+    let ea3y = Math.max(...ea3);
+    let o1x = Math.min(...o1);
+    let o1y = Math.max(...o1);
+    let o2x = Math.min(...o2);
+    let o2y = Math.max(...o2);
+    let o3x = Math.min(...o3);
+    let o3y = Math.max(...o3);
 
-    const onMouseUp = () => {
-        resizer.classList.remove('resizing');
-        // Clean up listeners
-        document.removeEventListener('mousemove', onMouseMove);
-        document.removeEventListener('mouseup', onMouseUp);
-    };
-
-    resizer.addEventListener('mousedown', onMouseDown);
+    const trs = document.querySelectorAll('#table-body tr');
+    trs.forEach((tr, i) => {
+        let td = trs.querySelectorAll('#td');
+        if(whichSource[i]['east_asia'] !== ''){
+            if(td[1].innerText !== ''){ if( Number(td[1].innerText.trim()) === ea1x || Number(td[1].innerText.trim()) === ea1y ){ setExtremeColor(td); } }
+            if(td[2].innerText !== ''){ if( Number(td[2].innerText.trim()) === ea2x || Number(td[2].innerText.trim()) === ea2y ){ setExtremeColor(td); } }
+            if(td[3].innerText !== ''){ if( Number(td[3].innerText.trim()) === ea3x || Number(td[3].innerText.trim()) === ea3y ){ setExtremeColor(td); } }
+        }else{
+            if(td[1].innerText !== ''){ if( Number(td[1].innerText.trim()) === o1x || Number(td[1].innerText.trim()) === o1y ){ setExtremeColor(td); } }
+            if(td[2].innerText !== ''){ if( Number(td[2].innerText.trim()) === o2x || Number(td[2].innerText.trim()) === o2y ){ setExtremeColor(td); } }
+            if(td[3].innerText !== ''){ if( Number(td[3].innerText.trim()) === o3x || Number(td[3].innerText.trim()) === o3y ){ setExtremeColor(td); } }
+        }
+    });
 }
 
 // --- 4. EXPORT IMAGE LOGIC ---
@@ -169,9 +242,229 @@ function my_toFixed(arrOfObj){
     arrOfObj.forEach((o) => {
         if(o['min'] !== ''){o['min'] = o['min'].toFixed(1);}
         if(o['max'] !== ''){o['max'] = o['max'].toFixed(1);}
-        if(o['avg'] !== ''){o['avg'] = o['avg'].toFixed(1);}
+        if(o['avg'] !== ''){o['avg'] = o['avg'].toFixed(2);}
         if(o['latitude'] !== ''){o['latitude'] = o['latitude'].toFixed(2);}
         if(o['elev'] !== ''){o['elev'] = o['elev'].toFixed(0);}
     });
     return arrOfObj;
+}
+
+function replaceAttributeNames(dataArray, newNames) {
+  return dataArray.map(obj => {
+    const values = Object.values(obj);
+    const oldKeys = Object.keys(obj);
+    const newObj = {};
+
+    oldKeys.forEach((key, index) => {
+      const newKey = newNames[index] || key;
+      newObj[newKey] = values[index];
+    });
+
+    return newObj;
+  });
+}
+
+/**
+ * Returns the current date in "YYYY-MM-DD" format for a specific timezone offset.
+ * @param {number} offset - The timezone offset in hours (e.g., -5 for EST, 1 for CET).
+ */
+function getCurrentDateByOffset(offset) {
+  const now = new Date();
+  const targetTime = now.getTime() + (offset * 60 * 60 * 1000);
+  const targetDate = new Date(targetTime);
+  const year = targetDate.getUTCFullYear();
+  const month = String(targetDate.getUTCMonth() + 1).padStart(2, '0'); // Months are 0-11
+  const day = String(targetDate.getUTCDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * Sets the background and font color of a table cell based on temperature.
+ * @param {HTMLElement} tdElement - The table cell element (td).
+ * @param {number|string} tempValue - The temperature value.
+ */
+function setTemperatureStyle(tdElement, tempValue) {
+  /* 1. Validation: Ignore empty strings or null/undefined
+  if (tempValue === "" || tempValue === null || tempValue === undefined) {
+    return;
+  }
+  */
+
+  const val = Number(tempValue);
+
+  /* 2. Validation: Ignore non-numbers
+  if (isNaN(val)) {
+    return;
+  }
+  */
+
+  // 3. Validation: Ignore values outside range (-90, 60)
+  // (Assuming strict exclusion of -90 and 60 based on prompt phrasing)
+  if (val <= -90 || val >= 60) {
+    return;
+  }
+
+  // --- TASK 1: Set Background Color ---
+  let bgColor = "";
+
+  if (val <= -75) {
+    bgColor = "#ffffff";
+  } else if (val >= 54) {
+    bgColor = "#000000";
+  } else if (val > 0 && val < 1) {
+    // Special gap case defined in prompt
+    bgColor = "#6dcfea";
+  } else if (val <= 0) {
+    // NEGATIVE RANGE & ZERO (> -75 and <= 0)
+    // Logic: The prompt follows a pattern where the hex corresponds to the Ceiling of the value.
+    // Example: > -75 and <= -74 (Ceil -74) -> Index 0
+    // Example: > -1 and <= 0 (Ceil 0) -> Last Index
+    
+    const negHexList = [
+      "#fff4f9", "#fee9f3", "#fedfed", "#fdd4e7", "#fdc9e1", // -74 to -70
+      "#fdbedb", "#fcb3d5", "#fca8ce", "#fb9dc8", "#fb92c2", // -69 to -65
+      "#fb87bc", "#fa7cb6", "#fa72b0", "#f967aa", "#f95ca4", // -64 to -60
+      "#f9519e", "#f84698", "#f83b91", "#f7308b", "#f72585", // -59 to -55
+      "#f02488", "#ea228a", "#e3218d", "#dd1f8f", "#d61e92", // -54 to -50
+      "#cf1d94", "#c91b97", "#c21a99", "#bc189c", "#b5179e", // -49 to -45
+      "#ae16a1", "#a814a3", "#a113a6", "#9b11a8", "#9410ab", // -44 to -40
+      "#8d0fad", "#860db0", "#800cb2", "#790ab5", "#7209b7", // -39 to -35
+      "#6c09b5", "#670ab3", "#610ab1", "#5c0baf", "#560bad", // -34 to -30
+      "#530bac", "#500bab", "#4e0caa", "#4b0ca9", "#480ca8", // -29 to -25
+      "#450ca7", "#420ca6", "#400ca5", "#3d0ca4", "#3a0ca3", // -24 to -20
+      "#3b15ab", "#3c1db2", "#3d26ba", "#3e2ec1", "#3f37c9", // -19 to -15
+      "#403fd0", "#4148d8", "#4150df", "#4259e7", "#4361ee", // -14 to -10
+      "#446bee", "#4576ee", "#4680ef", "#478bef", "#4895ef", // -9  to -5
+      "#499fef", "#4aaaef", "#4ab4f0", "#4bbff0", "#4cc9f0"  // -4  to 0
+    ];
+
+    // Calculate index: -74 maps to 0. 0 maps to 74.
+    const index = Math.ceil(val) + 74;
+    // Safety check to ensure we pick a color if valid
+    if (index >= 0 && index < negHexList.length) {
+      bgColor = negHexList[index];
+    }
+
+  } else {
+    // POSITIVE RANGE (>= 1 and < 54)
+    // Logic: The prompt follows a pattern where the hex corresponds to the Floor of the value.
+    // Example: >= 1 and < 2 (Floor 1) -> Index 0
+    
+    const posHexList = [
+      "#8fd6e4", "#b0dcdd", "#d2e3d7", "#f3e9d1", "#f0e5c8", // 1 to 5
+      "#eee0bf", "#ebdcb5", "#e9d7ac", "#e6d3a3", "#e3d39a", // 6 to 10
+      "#e0d290", "#ded287", "#dbd17d", "#d8d174", "#d1ce6e", // 11 to 15
+      "#cacc67", "#c4c961", "#bdc75a", "#b6c454", "#aebe44", // 16 to 20
+      "#a6b834", "#9eb224", "#96ac14", "#8ea604", "#a3aa03", // 21 to 25
+      "#b7ae02", "#ccb302", "#e0b701", "#f5bb00", "#efab01", // 26 to 30
+      "#e99b01", "#e38a02", "#dd7a02", "#d76a03", "#d25f02", // 31 to 35
+      "#cd5302", "#c94801", "#c43c01", "#bf3100", "#ae2b03", // 36 to 40
+      "#9d2506", "#8b2008", "#7a1a0b", "#69140e", "#601410", // 41 to 45
+      "#571412", "#4e1514", "#451516", "#3c1518", "#301113", // 46 to 50
+      "#240d0e", "#18080a", "#0c0405"                        // 51 to 53
+    ];
+
+    // Calculate index: 1 maps to 0. 53 maps to 52.
+    const index = Math.floor(val) - 1;
+    if (index >= 0 && index < posHexList.length) {
+      bgColor = posHexList[index];
+    }
+  }
+  
+  // Apply Background
+  if (bgColor) tdElement.style.backgroundColor = bgColor;
+
+
+  // --- TASK 2: Set Font Color ---
+  // Condition for Black Text: val <= -55 OR (-5 < val < 35)
+  // Condition for White Text: (-55 < val <= -5) OR val >= 35
+  
+  let fontColor = "";
+  if (val <= -55 || (val > -5 && val < 35)) {
+    fontColor = "#000000";
+  } else {
+    fontColor = "#ffffff";
+  }
+  
+  // Apply Font Color
+  tdElement.style.color = fontColor;
+}
+
+/**
+ * Auto-shrinks font size to fit text within the cell width.
+ * Must be called AFTER the table is rendered in the DOM.
+ */
+function fitTextToCell(td) {
+    // 1. Get the current font size defined in CSS (e.g., 42px)
+    const style = window.getComputedStyle(td);
+    const currentSize = parseFloat(style.fontSize);
+    
+    // 2. Measure widths
+    // scrollWidth = The total length of the text (including hidden overflow)
+    // clientWidth = The visible width of the cell
+    const contentWidth = td.scrollWidth;
+    const visibleWidth = td.clientWidth;
+
+    // 3. If text is wider than the cell, calculate new size
+    if (contentWidth > visibleWidth) {
+        // Calculate the ratio (e.g., if text is 200px and cell is 100px, ratio is 0.5)
+        const ratio = visibleWidth / contentWidth;
+        
+        // Multiply: Current Size * Ratio * Buffer (0.9 to leave a little breathing room)
+        const newSize = currentSize * ratio * 0.90;
+
+        // Apply new size, but don't let it get smaller than 12px (readability)
+        td.style.fontSize = Math.max(12, newSize) + "px";
+    }
+}
+
+function multiAttributeSortSafe(data, criteria) {
+  return [...data].sort((a, b) => {
+    for (const { key, order } of criteria) {
+      const valA = a[key];
+      const valB = b[key];
+      const direction = order === 'desc' ? -1 : 1;
+
+      // Handle String Comparison (Case Insensitive)
+      if (typeof valA === 'string' && typeof valB === 'string') {
+        const compareResult = valA.localeCompare(valB);
+        if (compareResult !== 0) {
+          return compareResult * direction;
+        }
+      } 
+      // Handle Numbers / Booleans
+      else {
+        if (valA < valB) return -1 * direction;
+        if (valA > valB) return 1 * direction;
+      }
+    }
+    return 0;
+  });
+}
+
+function setExtremeColor(ele){
+    let v = Number(ele.innerText.trim());
+    if( v <= -55 || (v > 0 && v < 35) ){
+        ele.style.color = extremeColors['dark'];
+    }
+    if( (v > -55 && v <= 0) || v >= 35 ){
+        ele.style.color = extremeColors['bright'];
+    }
+}
+
+function transformCoor(nStr){
+    let p = Number(nStr) >= 0 ? 'N' : 'S';
+    return (Math.abs(Number(nStr)).toFixed(2)).toString() + ' °' + p;
+}
+
+
+function wrapIcons(str){
+    let result = '';
+    result = str.replace('💎', '<span class="icon-diamond">💎</span>')
+        .replace('⚡', '<span class="icon-lightning">⚡</span>')
+        .replace('❄️', '<span class="icon-snow">❄️</span>')
+        .replace('▼', '<span style="color: #f72585">▼</span>')
+        .replace('▲', '<span style="color: #f72585">▲</span>')
+    return result;
 }

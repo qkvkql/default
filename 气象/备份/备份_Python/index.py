@@ -63,7 +63,7 @@ def arr_east_asia():
 output_path = "D:/文档/Python/气温表格图片HTML/stations_data.js"
 json_all_stations = json.dumps(sortedArr, indent=4)
 json_ea_stations = json.dumps(arr_east_asia(), indent=4)
-js_all_stations = f'export const array_of_stations_by_different_filters = {{\n"all": {json_all_stations}, \n"ea": {json_ea_stations}}};'
+js_all_stations = f'export const array_of_stations_by_different_filters = {{\n"汇总": {json_all_stations}, \n"东亚": {json_ea_stations}}};'
 with open(output_path, "w", encoding="utf-8") as f:
     f.write(js_all_stations)
 

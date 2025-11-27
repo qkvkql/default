@@ -1,7 +1,6 @@
-My requirements:
-Help me write a VBA code to set background color(by hex color code, but not RGB color code!) for selected ranges of cells, according to the number value in the cell. The value is about temperature
+Help me write a function in Javascript to set style for temperature value in table td. The function receives an argument of the temperature value, ignore empty string "" value and ignore values that is outside range of (-90, 60):
 
-The background color and temperature value range rules I made is in the following:
+Task 1. Set background color:
 if temperature Value <= -75, set the cell background color to #ffffff,
 if temperature Value >  -75  and temperature Value <=  -74 , set the cell background color to  #fff4f9 ,
 if temperature Value >  -74  and temperature Value <=  -73 , set the cell background color to  #fee9f3 ,
@@ -133,6 +132,10 @@ if temperature Value >=  51  and temperature Value <  52 , set the cell backgrou
 if temperature Value >=  52  and temperature Value <  53 , set the cell background color to  #18080a ,
 if temperature Value >=  53  and temperature Value <  54 , set the cell background color to  #0c0405 ,
 if temperature Value >= 54, set the cell background color to #000000.
+
+Task 2:
+If the temperature value <= -55 OR (the temperature value > -5 and the temperature value < 35), set the font color to #000000,
+if (the temperature value > -55 and the temperature value <= -5) OR the temperature value >= 35, set the font color to #ffffff.
 
 How to handle non-value cell:
 If any cell within selected ranges doesn't have a number value or it contains other character string like alphabet, just ignore the cell and keep on the next cell.
