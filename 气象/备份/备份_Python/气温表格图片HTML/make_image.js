@@ -7,6 +7,7 @@ const defaultNameColor = '#7785ac';
 const countryColors = [{'country':'蒙古','hexCode':'#4cc9f0'},{'country':'俄罗斯','hexCode':'#aaf683'},{'country':'中国','hexCode':'#ffffff'}]
 const temperatureRange = [-110, 60];
 const extremeColors = {'dark': '#0000cc', 'bright': '#ffff00'};
+const th_ev = [-55, 0, 35]; //给极值数值上色时，对应的颜色亮暗分界气温
 
 // DOM Elements
 const sourceSelect = document.getElementById('data-source');
@@ -176,20 +177,19 @@ function loadDataToTable(sourceKey) {
     let o2y = Math.max(...o2);
     let o3x = Math.min(...o3);
     let o3y = Math.max(...o3);
-
-    const trs = document.querySelectorAll('#table-body tr');
-    trs.forEach((tr, i) => {
-        let td = trs.querySelectorAll('#td');
+    
+    for(let i=0; i<tbody.length; i++){
+        let td = tbody[i].querySelectorAll('td');
         if(whichSource[i]['east_asia'] !== ''){
-            if(td[1].innerText !== ''){ if( Number(td[1].innerText.trim()) === ea1x || Number(td[1].innerText.trim()) === ea1y ){ setExtremeColor(td); } }
-            if(td[2].innerText !== ''){ if( Number(td[2].innerText.trim()) === ea2x || Number(td[2].innerText.trim()) === ea2y ){ setExtremeColor(td); } }
-            if(td[3].innerText !== ''){ if( Number(td[3].innerText.trim()) === ea3x || Number(td[3].innerText.trim()) === ea3y ){ setExtremeColor(td); } }
+            if(td[1].innerText !== ''){ if( Number(td[1].innerText.trim()) === ea1x || Number(td[1].innerText.trim()) === ea1y ){ setExtremeColor(td[1], th_ev); } }
+            if(td[2].innerText !== ''){ if( Number(td[2].innerText.trim()) === ea2x || Number(td[2].innerText.trim()) === ea2y ){ setExtremeColor(td[2], th_ev); } }
+            if(td[3].innerText !== ''){ if( Number(td[3].innerText.trim()) === ea3x || Number(td[3].innerText.trim()) === ea3y ){ setExtremeColor(td[3], th_ev); } }
         }else{
-            if(td[1].innerText !== ''){ if( Number(td[1].innerText.trim()) === o1x || Number(td[1].innerText.trim()) === o1y ){ setExtremeColor(td); } }
-            if(td[2].innerText !== ''){ if( Number(td[2].innerText.trim()) === o2x || Number(td[2].innerText.trim()) === o2y ){ setExtremeColor(td); } }
-            if(td[3].innerText !== ''){ if( Number(td[3].innerText.trim()) === o3x || Number(td[3].innerText.trim()) === o3y ){ setExtremeColor(td); } }
+            if(td[1].innerText !== ''){ if( Number(td[1].innerText.trim()) === o1x || Number(td[1].innerText.trim()) === o1y ){ setExtremeColor(td[1], th_ev); } }
+            if(td[2].innerText !== ''){ if( Number(td[2].innerText.trim()) === o2x || Number(td[2].innerText.trim()) === o2y ){ setExtremeColor(td[2], th_ev); } }
+            if(td[3].innerText !== ''){ if( Number(td[3].innerText.trim()) === o3x || Number(td[3].innerText.trim()) === o3y ){ setExtremeColor(td[3], th_ev); } }
         }
-    });
+    }
 }
 
 // --- 4. EXPORT IMAGE LOGIC ---
@@ -442,12 +442,12 @@ function multiAttributeSortSafe(data, criteria) {
   });
 }
 
-function setExtremeColor(ele){
+function setExtremeColor(ele, arr){
     let v = Number(ele.innerText.trim());
-    if( v <= -55 || (v > 0 && v < 35) ){
+    if( v <= arr[0] || (v > arr[1] && v < arr[2]) ){
         ele.style.color = extremeColors['dark'];
     }
-    if( (v > -55 && v <= 0) || v >= 35 ){
+    if( (v > arr[0] && v <= arr[1]) || v >= arr[2] ){
         ele.style.color = extremeColors['bright'];
     }
 }
@@ -457,13 +457,16 @@ function transformCoor(nStr){
     return (Math.abs(Number(nStr)).toFixed(2)).toString() + ' °' + p;
 }
 
-
 function wrapIcons(str){
     let result = '';
     result = str.replace('💎', '<span class="icon-diamond" style="font-size: 28px">💎</span>')
-        .replace('⚡', '<span class="icon-lightning" style="font-size: 16px">⚡</span>')
-        .replace('❄️', '<span class="icon-snow" style="font-size: 16px">❄️</span>')
-        .replace('▼', '<span style="color: #f72585; font-size: 16px">▼</span>')
-        .replace('▲', '<span style="color: #f72585; font-size: 16px">▲</span>')
+        .replace('▼', '<span style="color: #f72585; font-size: 24px">▼</span>')
+        .replace('▲', '<span style="color: #f72585; font-size: 24px">▲</span>')
+        .replace('🧊', '<span class="ice-cube" style="font-size: 16px">🧊</span>')
+        .replace('⚡', '<span class="icon-lightning" style="font-size: 20px">⚡</span>')
+        .replace('↓', '<span style="color: #f72585; font-size: 20px">↓</span>')
+        .replace('❄️', '<span style="font-size: 16px">❄️</span>')
+        .replace('♦️', '<span class="icon-lightning" style="font-size: 28px">⚡</span>')
+        .replace('🔵', '<span class="ice-cube" style="font-size: 24px">🧊</span>')
     return result;
 }

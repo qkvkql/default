@@ -70,7 +70,7 @@ thead { background-color: #000000; }
     border-bottom: 2px solid #555;
 }
 #title-cell { padding: 14px 4px; color: #ffffff; text-align: center; font-size: 60px}
-#date-cell { text-align: left; padding: 4px; background-color: #ffffff; color:#000000; font-size: 38px; }
+#date-cell { text-align: left; padding: 4px; background-color: #0b132b; color:#ffffff; font-size: 38px; }
 
 th {
     position: relative; /* Anchor for resizer */
@@ -157,4 +157,12 @@ tbody tr:hover { background-color: #111; }
 }
 .icon-snow {
   filter: brightness(0) invert(27%) sepia(51%) saturate(2878%) hue-rotate(310deg) brightness(104%) contrast(97%);
+}
+.ice-cube {
+  /* 
+     1. hue-rotate(30deg): Shifts the native Cyan (~200°) to Royal Blue (~230°)
+     2. saturate(3): Forces the pale ice to become vivid
+     3. brightness(0.9): Darkens it slightly to match the depth of #4361ee
+  */
+  filter: hue-rotate(30deg) saturate(3) brightness(0.9);
 }
