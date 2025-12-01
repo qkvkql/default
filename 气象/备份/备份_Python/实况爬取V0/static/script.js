@@ -35,7 +35,7 @@ async function runScript(endpoint) {
 
 // Event Listeners
 btnA.addEventListener('click', () => runScript('/export_to_html'));
-btnB.addEventListener('click', () => runScript('/scrape_weather'));
+btnB.addEventListener('click', () => runScript('/scrape_wmo'));
 
 // Clear Console Logic
 btnClear.addEventListener('click', () => {

@@ -16,9 +16,9 @@ def home():
 def export_to_html():
     return run_script('export_to_html.py')
 
-@app.route('/scrape_weather', methods=['POST'])
-def scrape_weather():
-    return run_script('scrape_weather.py')
+@app.route('/scrape_wmo', methods=['POST'])
+def scrape_wmo():
+    return run_script('scrape_wmo.py')
 
 # --- NEW ROUTE: STOP ---
 @app.route('/stop', methods=['POST'])

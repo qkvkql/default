@@ -14,8 +14,8 @@ from DrissionPage import ChromiumPage
 
 # ******** ******** ******** ******** 配置 ******** ******** ******** ********
 max_for_compare = 10
-path = "D:/文档/GIT SYNC/default/气象/For_Python_站点信息和记录.xlsx"
-output_path = "D:/文档/Python/气温表格图片HTML/scraped_data.json"
+station_list_path = "D:/文档/GIT SYNC/default/气象/For_Python_站点信息和记录.xlsx"
+output_path = "scraped_data.json"
 rp5_stations = {
     '44224': {
         'en_name': 'Tsetsen-Uul',
@@ -36,10 +36,12 @@ def get_utc_datetime_parts():
         # "mm": now.strftime("%M") 分钟
     }
 dt = get_utc_datetime_parts()
+# target_date = '2025-11-29'
 target_date =dt['YYYY'] + '-' + dt['MM'] + '-' + dt['DD'] # 当前UTC时区日期
 
 # ******** ******** ******** ******** 读取站点列表 ******** ******** ******** ********
-workbook = openpyxl.load_workbook(path)
+workbook = openpyxl.load_workbook(station_list_path)
+# sheet = workbook['仅供测试']
 sheet = workbook['站点信息和记录']
 rows = list(sheet.values)
 station_list = [] #站点列表
@@ -330,7 +332,7 @@ def get_temperature_from_ogimet_latest_3h(wmo, tz): #中国和蒙古20-20时区�
 #循环爬取，爬取多个ogimet站点数据
 def scrape_ogimet_by_usaf(usaf_list):
     results = []
-    
+    bad_list = []
     print(f"Starting scrape maximum reach {len(usaf_list)} URLs...")
 
     for ele in station_list:
@@ -352,6 +354,10 @@ def scrape_ogimet_by_usaf(usaf_list):
             
             # Save the result
             results.append(data)
+
+            # 单独拎出 -999站点
+            if (data['min'] == -999) or (data['max'] == -999) or (data['avg'] == -999):
+                bad_list.append(data['wmo'])
             
             # IMPORTANT: Wait a bit between requests to be polite to the server
             # Random sleep between 1 and 3 seconds is usually safe
@@ -365,12 +371,13 @@ def scrape_ogimet_by_usaf(usaf_list):
 
     for e in results:
         print(f'{e['wmo']}\t{e['min']}\t{e['max']}\t{e['avg']}')
-    return results #返回对象数组，后面写入文件要用到
+    return {'scrapedArr': results, 'bad_list': bad_list} #返回对象数组，后面写入文件要用到
 
 # ******** ******** ******** ******** 结果导出 ******** ******** ******** ********
-def exportJSON(arr_to_export): # 导出为JSON
-    temp_json = json.dumps(arr_to_export, indent=4)
-    json_out = f'{{"scraped_data": {temp_json}}}'
+def exportJSON(resultArr, bad_list): # 导出为JSON
+    result_json = json.dumps(resultArr, indent=4)
+    bad_json = json.dumps(bad_list, indent=4)
+    json_out = f'{{"scraped_data": {result_json}, "bad_list": {bad_json}}}'
     # js_all_stations = f'export const array_of_stations_by_different_filters = {{\n"汇总": {json_all_stations}, \n"东亚": {json_ea_stations}}};'
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(json_out)
@@ -379,6 +386,7 @@ def exportJSON(arr_to_export): # 导出为JSON
 # ******** ******** ******** ******** 执行 ******** ******** ******** ********
 if __name__ == "__main__":
     # print(len(station_list))
-    # print(get_temperature_from_ogimet_latest_3h('30781', 12))
-    # scrape_ogimet_by_usaf(ogimet_list)
-    exportJSON(scrape_ogimet_by_usaf(ogimet_list))
+    # print(get_temperature_from_ogimet_latest_3h('30781', 12)) #爬取单站
+    # scrape_ogimet_by_usaf(ogimet_list) #循环爬取
+    resultObj = scrape_ogimet_by_usaf(ogimet_list)
+    exportJSON( resultObj['scrapedArr'], resultObj['bad_list'] )

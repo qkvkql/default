@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Python Project Controller</title>
+    <link rel="stylesheet" href="/static/console.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Left Panel: Buttons -->
+        <div class="panel controls">
+            <h1>Control Panel</h1>
+            <div class="button-group">
+                <button id="btn-scrape" class="cmd-btn" onclick="runScript('scrape')">
+                    1. Run Scrape WMO
+                </button>
+                <button id="btn-bad" class="cmd-btn" onclick="runScript('bad_stations')">
+                    2. Open Bad Stations
+                </button>
+                <button id="btn-export" class="cmd-btn" onclick="runScript('export')">
+                    3. Export to HTML
+                </button>
+                <button id="btn-mongolia" class="cmd-btn" onclick="runScript('add_to_mongolia')">
+                    4. Add to Mongolia
+                </button>
+            </div>
+            
+            <hr>
+            
+            <div class="button-group danger-zone">
+                <button id="btn-stop" class="stop-btn" onclick="stopScript()">
+                    5. 🛑 STOP PROCESS
+                </button>
+                <button id="btn-clear" class="clear-btn" onclick="clearConsole()">
+                    6. Clear Console
+                </button>
+            </div>
+
+            <hr>
+
+            <div class="button-group">
+                <button id="btn-view" class="view-btn" onclick="openVisualization()">
+                    6. 🔗 Open Visualization
+                </button>
+            </div>
+            
+            <div id="status-indicator">Idle</div>
+        </div>
+
+        <!-- Right Panel: Console Output -->
+        <div class="panel terminal">
+            <div class="terminal-header">
+                <span>>_ Terminal Output</span>
+            </div>
+            <div id="console-output"></div>
+        </div>
+    </div>
+
+    <script src="/static/console.js"></script>
+</body>
+</html>

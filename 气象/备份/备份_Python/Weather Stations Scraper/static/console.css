@@ -1,0 +1,120 @@
+:root {
+    --bg-color: #121212;
+    --panel-bg: #1e1e1e;
+    --text-color: #e0e0e0;
+    --accent-blue: #2196F3;
+    --accent-red: #ff4d4d;
+    --accent-green: #4CAF50;
+    --terminal-font: 'Courier New', Courier, monospace;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.container {
+    display: flex;
+    width: 95%;
+    height: 90%;
+    gap: 20px;
+}
+
+.panel {
+    background-color: var(--panel-bg);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+}
+
+/* Left Controls */
+.controls {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 250px;
+    max-width: 350px;
+}
+
+h1 { margin-top: 0; font-size: 24px; color: white; text-align: center; }
+
+.button-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+button {
+    padding: 15px;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+}
+
+button:active { transform: scale(0.98); }
+
+.cmd-btn { background-color: #333; color: white; border-left: 5px solid var(--accent-blue); }
+.cmd-btn:hover { background-color: #444; }
+
+.stop-btn { background-color: #3a1c1c; color: var(--accent-red); border: 1px solid var(--accent-red); }
+.stop-btn:hover { background-color: var(--accent-red); color: white; }
+
+.clear-btn { background-color: #333; color: #ccc; }
+.clear-btn:hover { background-color: #555; }
+
+.view-btn { background-color: var(--accent-green); color: white; text-align: center; }
+.view-btn:hover { background-color: #45a049; }
+
+#status-indicator {
+    margin-top: auto;
+    text-align: center;
+    padding: 10px;
+    background-color: #000;
+    border-radius: 4px;
+    color: #666;
+    font-weight: bold;
+}
+
+/* Right Terminal */
+.terminal {
+    flex: 3;
+    display: flex;
+    flex-direction: column;
+    background-color: #000;
+    border: 1px solid #333;
+    padding: 0;
+    overflow: hidden;
+}
+
+.terminal-header {
+    background-color: #333;
+    padding: 8px 15px;
+    font-size: 14px;
+    color: #aaa;
+    border-bottom: 1px solid #444;
+}
+
+#console-output {
+    flex-grow: 1;
+    padding: 15px;
+    overflow-y: auto;
+    font-family: var(--terminal-font);
+    font-size: 14px;
+    white-space: pre-wrap; /* Allows formatting */
+    color: #0f0;
+}
+
+.log-line { margin: 2px 0; }
+.log-sys { color: #aaa; font-style: italic; }

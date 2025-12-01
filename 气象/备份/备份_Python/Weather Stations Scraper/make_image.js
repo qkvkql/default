@@ -25,6 +25,11 @@ Object.keys(array_of_stations_by_different_filters).forEach(key => {
     sourceSelect.appendChild(option);
 });
 
+// select 标签 value 发生变化时就立刻 加载数据，无需点击确定
+sourceSelect.addEventListener('change', () => {
+    loadDataToTable(sourceSelect.value);
+});
+
 // Load the first dataset by default on startup
 window.onload = () => {
     loadDataToTable(sourceSelect.value);
@@ -40,7 +45,14 @@ function loadDataToTable(sourceKey) {
         { key: 'east_asia',   order: 'desc' },  // 先判断是否是东亚站点
         { key: 'settlement', order: 'desc' }, // 再判断是否是定居点
     ];
-    let whichSource = multiAttributeSortSafe(array_of_stations_by_different_filters[sourceKey], mySortBys); //sort一定要在data前面，先排序，再保留固定列，后面whichsource还有用
+
+    // --- FIX START: Create a Deep Copy of the data ---
+    // This prevents the original data from being converted to strings permanently.
+    let originalData = array_of_stations_by_different_filters[sourceKey];
+    let deepCopyData = JSON.parse(JSON.stringify(originalData));
+
+    let whichSource = multiAttributeSortSafe(deepCopyData, mySortBys); //修改后的whichSource
+    //let whichSource = multiAttributeSortSafe(array_of_stations_by_different_filters[sourceKey], mySortBys); //sort一定要在data前面，先排序，再保留固定列，后面whichsource还有用
     const data = replaceAttributeNames( selectColumns(my_toFixed(whichSource), myDesiredColumns), myDesiredCN_names );
     
     // Clear existing content
@@ -193,6 +205,7 @@ function loadDataToTable(sourceKey) {
 }
 
 // --- 4. EXPORT IMAGE LOGIC ---
+/*
 document.getElementById('btn-export').addEventListener('click', () => {
     const tableEl = document.getElementById('data-table');
     
@@ -213,6 +226,7 @@ document.getElementById('btn-export').addEventListener('click', () => {
         link.click();
     });
 });
+*/
 
 /**
  * Creates a new array containing only the specified columns.
