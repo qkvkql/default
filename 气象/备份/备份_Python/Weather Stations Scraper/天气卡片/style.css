@@ -1,0 +1,209 @@
+:root {
+    --text-primary: #ffffff;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: #000046;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 20px;
+    color: var(--text-primary);
+}
+
+/* Control Panel */
+.control-panel {
+    margin-bottom: 20px;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+select {
+    appearance: none;
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 16px;
+    backdrop-filter: blur(10px);
+    cursor: pointer;
+    outline: none;
+    text-align: center;
+}
+select option {
+    background-color: #333;
+    color: white;
+}
+
+/* Main Card Container */
+.weather-card {
+    width: 100%;
+    max-width: 400px; /* iPhone Pro width */
+    height: 700px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 50px 20px 20px 20px;
+    transition: background 1s ease;
+    
+    /* Default Background */
+    background: linear-gradient(180deg, #1cb5e0 0%, #000046 100%);
+}
+
+/* Dynamic Themes */
+.weather-card.cold {
+    background: linear-gradient(180deg, #2980b9 0%, #2c3e50 100%);
+}
+.weather-card.freezing {
+    background: linear-gradient(180deg, #a1c4fd 0%, #c2e9fb 100%);
+    color: #1a2a3a; /* Dark text for icy background */
+}
+.weather-card.warm {
+    background: linear-gradient(180deg, #ff7e5f 0%, #feb47b 100%);
+}
+
+/* Header Section */
+.weather-header {
+    text-align: center;
+    margin-bottom: 40px;
+    width: 100%;
+}
+
+h2#cityName {
+    font-size: 32px;
+    font-weight: 600;
+    margin-bottom: 5px;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+#subLocation {
+    font-size: 18px;
+    font-weight: 400;
+    opacity: 0.8;
+    margin-bottom: 20px;
+}
+
+/* --- NEW STYLES FOR CENTER RANGE --- */
+.main-range {
+    font-size: 42px; /* Large but fits the width */
+    font-weight: 600;
+    margin: 10px 0;
+    letter-spacing: -1px;
+    white-space: nowrap;
+}
+
+.avg-display {
+    font-size: 18px;
+    font-weight: 500;
+    opacity: 0.9;
+    padding: 5px 15px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 15px;
+    display: inline-block;
+    backdrop-filter: blur(5px);
+}
+
+/* Details Grid */
+.details-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    width: 100%;
+    margin-top: auto; /* Pushes grid to bottom */
+}
+
+.detail-tile {
+    background: rgba(255, 255, 255, 0.1); 
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border-radius: 20px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 110px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+}
+
+.detail-tile.full-width {
+    grid-column: span 2;
+    height: 80px;
+    justify-content: center;
+    align-items: flex-start;
+}
+
+.tile-header {
+    font-size: 12px;
+    font-weight: 600;
+    opacity: 0.7;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    text-transform: uppercase;
+}
+
+.tile-value {
+    font-size: 26px;
+    font-weight: 500;
+}
+
+.tile-value.small {
+    font-size: 16px;
+    line-height: 1.4;
+}
+
+.unit {
+    font-size: 16px;
+    opacity: 0.8;
+}
+
+/* Fix text color visibility on freezing theme */
+.weather-card.freezing .detail-tile {
+    background: rgba(255, 255, 255, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    color: #1a2a3a;
+}
+.weather-card.freezing select {
+    color: #333;
+    background: rgba(255, 255, 255, 0.6);
+}
+
+/* Update the selector to include input[type="date"] so they share styles */
+select, input[type="date"] {
+    appearance: none;
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 16px;
+    backdrop-filter: blur(10px);
+    cursor: pointer;
+    outline: none;
+    font-family: inherit;
+    text-align: center;
+}
+
+/* Specific fix for the Date Picker Calendar Icon (Make it white) */
+input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1); /* Turns black icon to white */
+    cursor: pointer;
+    opacity: 0.8;
+}

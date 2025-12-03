@@ -1,1 +1,0 @@
-python app.py 启动服务器打开前端console页面(第一版)

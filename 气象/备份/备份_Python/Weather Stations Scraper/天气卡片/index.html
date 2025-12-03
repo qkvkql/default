@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Card</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Control Panel -->
+    <div class="control-panel">
+        <label>选择站点:</label>
+        <select id="locationSelector">
+            <!-- Options populated by JS -->
+        </select>
+        <!-- NEW: Date Input -->
+        <input type="date" id="datePicker">
+    </div>
+
+    <!-- Main Weather Card -->
+    <div class="weather-card" id="weatherCard">
+        
+        <!-- Header Section -->
+        <div class="weather-header">
+            <h2 id="cityName">Location Name</h2>
+            <p id="subLocation">State</p>
+            
+            <!-- CHANGED: Main Focus is the Range -->
+            <div class="main-range" id="tempRange">
+                --° ~ --°
+            </div>
+
+            <!-- CHANGED: Average is smaller -->
+            <div class="avg-display">
+                平均: <span id="avgTemp">--</span><span style="font-size:12px">℃</span>
+            </div>
+        </div>
+
+        <!-- Details Grid (Glass Tiles) -->
+        <div class="details-grid">
+            
+            <!-- Detail Item: Elevation -->
+            <div class="detail-tile">
+                <div class="tile-header">
+                    <span class="icon">⛰️</span> 海拔
+                </div>
+                <div class="tile-value">
+                    <span id="elevation">--</span> <span class="unit">米</span>
+                </div>
+            </div>
+
+            <!-- Detail Item: Coordinates -->
+            <div class="detail-tile">
+                <div class="tile-header">
+                    <span class="icon">🧭</span> 位置
+                </div>
+                <div class="tile-value small">
+                    <div id="lat">N --</div>
+                    <div id="lon">W --</div>
+                </div>
+            </div>
+
+            <!-- Detail Item: Date -->
+            <div class="detail-tile full-width">
+                <div class="tile-header">
+                    <span class="icon">📅</span> 日期
+                </div>
+                <div id="dateText" class="tile-value">
+                    2025-12-02
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Script Module -->
+    <script type="module" src="script.js"></script>
+</body>
+</html>
