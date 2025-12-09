@@ -14,6 +14,8 @@ import openpyxl
 import random
 import re
 from DrissionPage import ChromiumPage
+import pandas as pd
+from io import StringIO
 
 # ******** ******** ******** ******** 读取配置文件 ******** ******** ******** ********
 with open('config.json', 'r', encoding='utf-8') as file:
@@ -70,7 +72,7 @@ def get_utc_datetime_parts():
         # "mm": now.strftime("%M") 分钟
     }
 dt = get_utc_datetime_parts()
-# target_date = '2025-12-01'
+# target_date = '2025-12-05'
 target_date =dt['YYYY'] + '-' + dt['MM'] + '-' + dt['DD'] # 当前UTC时区日期
 current_year_str = datetime.now().year # 获取当前年份，后面转换日期可能要用到
 
@@ -112,7 +114,7 @@ if rows:
     station_list = [o for o in station_list if o['id'] is not None and o['cn_name'] is not None] #得到初始 station_list, 默认一定是按list id排序的
 else:
     print("The sheet of station list is empty.")
-accessible_list = [e['USAF'] for e in station_list if e['source'] == 'ogimet' or e['source'] == 'rp5'] # station list for ogimet use
+accessible_list = [e['USAF'] for e in station_list if e['source'] is not None and e['use'] is not None] # station list for ogimet use
 
 # ogimet_1 = [{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"ogimet","USAF":44212,"rp5":"Ulaangom","timezone":12},{"source":"ogimet","USAF":44221,"rp5":"Gandan_Huryee","timezone":12},{"source":"ogimet","USAF":44224,"rp5":"Tsetsen-Uul","timezone":12},{"source":"ogimet","USAF":44225,"rp5":"Tosontsengel","timezone":12},{"source":"ogimet","USAF":44203,"rp5":"Rinchinlhumbe","timezone":12},{"source":"ogimet","USAF":44292,"rp5":"Ulan_Bator","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"ogimet","USAF":44291,"rp5":"Ulan_Bator,_Songiin_(airport)","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"ogimet","USAF":44275,"rp5":"Bayanbulag","timezone":12},{"source":"ogimet","USAF":44284,"rp5":"Galut","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"ogimet","USAF":44265,"rp5":"Baitag","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"ogimet","USAF":44277,"rp5":"Altai,_Mongolia","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"ogimet","USAF":44207,"rp5":"Hatgal","timezone":12},{"source":"ogimet","USAF":44231,"rp5":"Moron","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"ogimet","USAF":44215,"rp5":"Umnu-Gobi","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"ogimet","USAF":44213,"rp5":"Baruunturuun","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"ogimet","USAF":44263,"rp5":"Jargalant","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"ogimet","USAF":44229,"rp5":"Tariat","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"ogimet","USAF":31702,"rp5":"Obluchye","timezone":15},{"source":"ogimet","USAF":31532,"rp5":"Cekunda","timezone":15},{"source":"ogimet","USAF":31478,"rp5":"Sofiysk","timezone":15},{"source":"ogimet","USAF":31329,"rp5":"Ekimchan","timezone":12},{"source":"ogimet","USAF":31348,"rp5":"Burukan","timezone":15},{"source":"ogimet","USAF":30673,"rp5":"Mogocha","timezone":12},{"source":"rp5","USAF":30565,"rp5":"Ust-Karenga","timezone":12},{"source":"ogimet","USAF":30664,"rp5":"Tungokochen","timezone":12},{"source":"ogimet","USAF":30636,"rp5":"Barguzin","timezone":12},{"source":"ogimet","USAF":30622,"rp5":"Kachug","timezone":12},{"source":"ogimet","USAF":36104,"rp5":"Saryg-Sep","timezone":12},{"source":"ogimet","USAF":36096,"rp5":"Kyzyl","timezone":12},{"source":"ogimet","USAF":36307,"rp5":"Erzin","timezone":12},{"source":"ogimet","USAF":36259,"rp5":"Kosh-Agach","timezone":12},{"source":"ogimet","USAF":30781,"rp5":"Uryupino","timezone":12},{"source":"ogimet","USAF":36535,"rp5":"Kokpekty","timezone":12},{"source":"ogimet","USAF":36566,"rp5":"Markakol_Lake","timezone":12},{"source":"ogimet","USAF":47005,"rp5":"Samjiyon","timezone":12},{"source":"ogimet","USAF":54342,"rp5":"Shenyang","timezone":12},{"source":"","USAF":54252,"rp5":"","timezone":12},{"source":"ogimet","USAF":54161,"rp5":"Changchun_(airport)","timezone":12},{"source":"ogimet","USAF":54273,"rp5":"Huadian","timezone":12},{"source":"ogimet","USAF":50953,"rp5":"Harbin_(airport)","timezone":12},{"source":"","USAF":50673,"rp5":"","timezone":12},{"source":"ogimet","USAF":50353,"rp5":"Huma","timezone":12},{"source":"","USAF":50246,"rp5":"","timezone":12},{"source":"","USAF":50247,"rp5":"","timezone":12},{"source":"ogimet","USAF":50136,"rp5":"Xilinji","timezone":12},{"source":"","USAF":50137,"rp5":"","timezone":12},{"source":"","USAF":50431,"rp5":"","timezone":12},{"source":"ogimet","USAF":50434,"rp5":"Tulihe","timezone":12},{"source":"","USAF":50425,"rp5":"","timezone":12},{"source":"","USAF":50524,"rp5":"","timezone":12},{"source":"ogimet","USAF":50527,"rp5":"Zhengyang","timezone":12},{"source":"","USAF":50525,"rp5":"","timezone":12},{"source":"","USAF":50526,"rp5":"","timezone":12},{"source":"ogimet","USAF":50727,"rp5":"Arxan","timezone":12},{"source":"","USAF":53392,"rp5":"","timezone":12},{"source":"","USAF":55294,"rp5":"","timezone":12},{"source":"","USAF":56034,"rp5":"","timezone":12},{"source":"ogimet","USAF":52908,"rp5":"Udaolyan","timezone":12},{"source":"ogimet","USAF":52323,"rp5":"Mazong_Shan","timezone":12},{"source":"","USAF":52101,"rp5":"","timezone":12},{"source":"","USAF":51186,"rp5":"","timezone":12},{"source":"ogimet","USAF":51076,"rp5":"Aletai","timezone":12},{"source":"ogimet","USAF":51573,"rp5":"Turfan","timezone":12},{"source":"ogimet","USAF":51463,"rp5":"Urumqi","timezone":12},{"source":"ogimet","USAF":51542,"rp5":"Baianbulak","timezone":12},{"source":"","USAF":51437,"rp5":"","timezone":12},{"source":"ogimet","USAF":53463,"rp5":"Hohhot","timezone":12},{"source":"ogimet","USAF":54511,"rp5":"Beijing,_Peking","timezone":12},{"source":"","USAF":54517,"rp5":"","timezone":12},{"source":"ogimet","USAF":53614,"rp5":"Yinchuan","timezone":12},{"source":"ogimet","USAF":53698,"rp5":"Shijiazhuang","timezone":12},{"source":"ogimet","USAF":53772,"rp5":"Taiyuan_(airport)","timezone":12},{"source":"ogimet","USAF":52866,"rp5":"Xining","timezone":12},{"source":"ogimet","USAF":54823,"rp5":"Jinan","timezone":12},{"source":"ogimet","USAF":57083,"rp5":"Zhengzhou","timezone":12},{"source":"ogimet","USAF":57131,"rp5":"Xi'an","timezone":12},{"source":"ogimet","USAF":57245,"rp5":"Ankang","timezone":12},{"source":"ogimet","USAF":57687,"rp5":"Xingsha","timezone":12},{"source":"ogimet","USAF":58606,"rp5":"Liantang","timezone":12},{"source":"ogimet","USAF":57494,"rp5":"Wuhan_(airport)","timezone":12},{"source":"ogimet","USAF":58321,"rp5":"Hefei,_Liugang_(airport)","timezone":12},{"source":"ogimet","USAF":58238,"rp5":"Nanjing_(airport)","timezone":12},{"source":"ogimet","USAF":58457,"rp5":"Hangzhou_(airport)","timezone":12},{"source":"ogimet","USAF":58646,"rp5":"Lishui","timezone":12},{"source":"ogimet","USAF":58847,"rp5":"Fuzhou","timezone":12},{"source":"ogimet","USAF":59287,"rp5":"Guangzhou_(airport)","timezone":12},{"source":"ogimet","USAF":59758,"rp5":"Haikou","timezone":12},{"source":"ogimet","USAF":59948,"rp5":"Sanya_(weather_station)","timezone":12},{"source":"ogimet","USAF":59838,"rp5":"Dongfang","timezone":12},{"source":"ogimet","USAF":59431,"rp5":"Nanning_(airport)","timezone":12},{"source":"ogimet","USAF":56966,"rp5":"Lijiang","timezone":12},{"source":"ogimet","USAF":56778,"rp5":"Kunming","timezone":12},{"source":"ogimet","USAF":57816,"rp5":"Guiyang","timezone":12},{"source":"ogimet","USAF":57516,"rp5":"Chongqing,_Jiulongpo_(airport)","timezone":12},{"source":"","USAF":57413,"rp5":"","timezone":12},{"source":"ogimet","USAF":56187,"rp5":"Chengdu_(AWS)","timezone":12},{"source":"ogimet","USAF":55591,"rp5":"Lhasa","timezone":12},{"source":"","USAF":52267,"rp5":"","timezone":12},{"source":"","USAF":53478,"rp5":"","timezone":12},{"source":"","USAF":58367,"rp5":"","timezone":12},{"source":"","USAF":58826,"rp5":"","timezone":12},{"source":"","USAF":58623,"rp5":"","timezone":12},{"source":"","USAF":57778,"rp5":"","timezone":12},{"source":"","USAF":52889,"rp5":"","timezone":12},{"source":"","USAF":50341,"rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"ogimet","USAF":58437,"rp5":"Kuan_Shan","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":"","rp5":"","timezone":12},{"source":"","USAF":58968,"rp5":"Taipei","timezone":12},{"source":"","USAF":45007,"rp5":"Hong_Kong_(airport)","timezone":12},{"source":"","USAF":45011,"rp5":"Taipa_(airport)","timezone":12},{"source":"ogimet","USAF":31137,"rp5":"Toko","timezone":12},{"source":"ogimet","USAF":24688,"rp5":"Oymyakon","timezone":15},{"source":"ogimet","USAF":24585,"rp5":"Ust-Nera","timezone":15},{"source":"ogimet","USAF":24588,"rp5":"Yurty","timezone":15},{"source":"ogimet","USAF":24691,"rp5":"Delyankir","timezone":15},{"source":"ogimet","USAF":24266,"rp5":"Verkhoyansk","timezone":15},{"source":"ogimet","USAF":24684,"rp5":"Agayakan","timezone":15},{"source":"ogimet","USAF":24382,"rp5":"Ust-Moma","timezone":15},{"source":"ogimet","USAF":24959,"rp5":"Yakutsk","timezone":12},{"source":"ogimet","USAF":24477,"rp5":"Iema","timezone":15},{"source":"ogimet","USAF":25428,"rp5":"Omolon","timezone":15},{"source":"ogimet","USAF":25700,"rp5":"Taskan","timezone":15},{"source":"ogimet","USAF":24507,"rp5":"Tura","timezone":12}]
 
@@ -401,6 +403,216 @@ def get_daily_temperature_ogimet(wmo, tz): #中国和蒙古20-20时区是12，�
         # Close the browser
         #driver.quit()
 
+
+def get_table_list_rp5(wmo):
+    url = get_rp5_hourly_url(wmo)
+    # url = "https://rp5.ru/Weather_archive_in_Tsetsen-U"
+    
+    # print(f"Initializing DrissionPage for: {url}")
+    # print("Prerequisites: pip install DrissionPage pandas lxml html5lib")
+    
+    try:
+        page = ChromiumPage()
+        page.get(url)
+        # print("Page loaded.")
+
+        # ---------------------------------------------------------
+        # AUTOMATION STEP: Select '7 days' and click 'Select'
+        # ---------------------------------------------------------
+        
+        days_radio = page.ele('css:input[name="pe"][value="7"]')
+        if days_radio:
+            days_radio.click(by_js=True)
+            # print("Selected '7 days' range.")
+        else:
+            print("Warning: '7 days' radio button not found.")
+        
+        select_btn = page.ele('.archButton')
+        if select_btn:
+            select_btn.click()
+            # print("Clicked 'Select' button. Waiting for data to load...")
+            time.sleep(5) # Wait for table reload
+        else:
+            print("Warning: 'Select' button not found.")
+
+        # ---------------------------------------------------------
+        # PARSING
+        # ---------------------------------------------------------
+        
+        table_ele = page.ele('#archiveTable')
+        if not table_ele:
+            print("Error: Table #archiveTable not found.")
+            return []
+
+        # Read HTML
+        # wrap in StringIO to avoid pandas warning
+        dfs = pd.read_html(StringIO(table_ele.html), header=0)
+        if not dfs:
+            print("No table found.")
+            return []
+            
+        df = dfs[0]
+        
+        # ---------------------------------------------------------
+        # DATA CLEANING & TRANSFORMATION
+        # ---------------------------------------------------------
+        
+        # 1. Normalize Header Names
+        new_cols = []
+        for col in df.columns:
+            if isinstance(col, tuple):
+                new_cols.append(str(col[0])) 
+            else:
+                new_cols.append(str(col))
+        df.columns = new_cols
+        
+        # 2. Rename Columns by Index
+        #    Col 0 -> Date
+        #    Col 1 -> Time (Requirement: Column 2 is Time)
+        col_mapper = {df.columns[0]: 'Date'}
+        if len(df.columns) > 1:
+            col_mapper[df.columns[1]] = 'Time'
+        
+        df = df.rename(columns=col_mapper)
+        
+        # 3. Handle Rowspans (Date is often spanned in HTML)
+        #    Forward fill the Date column to populate empty cells from rowspan
+        df['Date'] = df['Date'].ffill()
+        
+        # 4. Construct Final DataFrame
+        final_df = pd.DataFrame()
+        final_df['Date'] = df['Date']
+        
+        # Add Time column if it exists, otherwise empty
+        if 'Time' in df.columns:
+            final_df['Time'] = df['Time']
+        else:
+            final_df['Time'] = ""
+        
+        # Helper to find column ignoring case or extra symbols
+        def get_col_data(source_df, name):
+            # 1. Try exact match
+            if name in source_df.columns:
+                return source_df[name]
+            # 2. Try match with suffix (e.g. "T, °C" matches "T")
+            for c in source_df.columns:
+                if c.startswith(name + ",") or c == name:
+                    return source_df[c]
+            return None
+
+        # Add T, Tn, Tx
+        for col_name in ['T', 'Tn', 'Tx']:
+            col_data = get_col_data(df, col_name)
+            if col_data is not None:
+                final_df[col_name] = col_data
+            else:
+                final_df[col_name] = ""
+
+        # 5. Advanced Date Formatting
+        # Handles "YYYY-Month-DD" and "Month DD, Weekday" formats
+        # Infers year for rows where it is missing (assuming descending time order)
+        
+        dates = []
+        current_year = None
+        last_month = None
+        
+        # Iterate to process dates contextually
+        for idx, row in final_df.iterrows():
+            raw_date = str(row['Date']).strip()
+            # Clean non-breaking spaces and extra whitespace
+            raw_date = re.sub(r'\s+', ' ', raw_date)
+            
+            if not raw_date or raw_date.lower() == 'nan':
+                dates.append("")
+                continue
+                
+            dt = None
+            
+            # Strategy 1: Check if date contains a 4-digit year (e.g. "08.12.2025")
+            year_match = re.search(r'\b(20\d{2})\b', raw_date)
+            
+            if year_match:
+                try:
+                    # Try parsing with dayfirst=True (common in RP5)
+                    dt = pd.to_datetime(raw_date, dayfirst=True)
+                    current_year = dt.year
+                    last_month = dt.month
+                except:
+                    # If pandas fails, force the regex year
+                    current_year = int(year_match.group(1))
+                    pass
+            
+            # Strategy 2: If no year found, it's likely "Month DD, Weekday" (e.g. "December 7, Sunday")
+            if dt is None:
+                if current_year is None:
+                    # Fallback: Use current system year if we haven't seen a year yet
+                    current_year = pd.Timestamp.now().year
+                    
+                try:
+                    # Clean string: remove weekday part if present
+                    # "December 7, Sunday" -> "December 7"
+                    date_part = raw_date.split(',')[0].strip()
+                    
+                    # Parse using the known current_year
+                    # %B = Full month name (December), %d = Day
+                    dt = pd.to_datetime(f"{date_part} {current_year}", format='%B %d %Y')
+                    
+                    # Detect Year Rollover (New Year's Eve)
+                    # If we are going backwards in time (descending rows):
+                    # If previous row was Jan (1) and current is Dec (12), we went back a year.
+                    if last_month is not None:
+                        # Logic: If month jumped "forward" significantly in a descending list, it's a year wrap
+                        # e.g. from Jan (1) -> Dec (12)
+                        if last_month < dt.month and (dt.month - last_month) > 6:
+                            current_year -= 1
+                            dt = dt.replace(year=current_year)
+                    
+                    last_month = dt.month
+                except Exception:
+                    # If parsing fails, just keep original
+                    pass
+            
+            if dt is not None:
+                dates.append(dt.strftime('%d/%m/%Y'))
+            else:
+                dates.append(raw_date)
+
+        final_df['Date'] = dates
+
+        # 6. Time Format: "HH" -> "HH:MM"
+        def format_time_custom(val):
+            try:
+                s_val = str(val).strip()
+                if not s_val or s_val.lower() == 'nan':
+                    return ""
+                # If it looks like a number (e.g. 17 or 17.0), convert to int and append :00
+                num = float(s_val)
+                return f"{int(num):02d}:00"
+            except Exception:
+                # Fallback for non-numeric values
+                return str(val)
+
+        final_df['Time'] = final_df['Time'].apply(format_time_custom)
+
+        # 7. Fill NaNs with empty string
+        final_df = final_df.fillna("")
+
+        # 8. Convert to List of Objects
+        result_list = final_df.to_dict('records')
+        
+        # print(f"Processing complete. Extracted {len(result_list)} rows.")
+        
+        # Print sample to demonstrate format
+        # print("\nSample Output (First 2 rows):")
+        # print(json.dumps(result_list[:2], indent=2))
+        
+        # Return the list
+        return result_list
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return []
+
 #从rp5最新逐时页面为【一个】交换站获取数据
 def get_daily_temperature_rp5(wmo, tz):
     min = -999
@@ -425,6 +637,21 @@ def get_daily_temperature_rp5(wmo, tz):
             break  # Stop looping once found lat and lng
     rp5_offset = get_timezone_offset(rp5_lat, rp5_lng)
 
+    if not get_table_list_rp5(wmo):
+        print(f'{wmo}\t页面异常(连接失败，加载失败，被目标站点屏蔽等)')
+        return {'wmo': '', 'min': '', 'max': '', 'avg': ''}
+    rp5_table = get_table_list_rp5(wmo)
+    # print(rp5_table)
+    for o in rp5_table:
+        temp_dt = transfer_datetime_to_utc_date(o['Date'], o['Time'], rp5_offset)
+        o['Date'] = temp_dt['date']
+        o['Time'] = temp_dt['time']
+    
+    """
+    for o in rp5_table:
+        print(o['Date'], o['Time'], o['T'], o['Tn'], o['Tx'])
+    """
+
     temperature_dict = {
         'temperature_of_HHmm_arr': [],
         'temperature_of_HHmm_3h_arr': [],
@@ -433,116 +660,52 @@ def get_daily_temperature_rp5(wmo, tz):
     }
 
     try:
-        url = get_rp5_hourly_url(wmo)
-        page.get(url)
-        rows = page.ele('#archiveTable').eles('tag:tr')[1:]
-
         is_perfect_data_like_china_station = False
         count_3h_valid_value_for_avg = 0
-        for row in rows:
-            cols = row.eles('tag:td')
-            
-            #如果td[1]包含字母,则td[0]是一个日期
-            if re.match(r'\w+', cols[0].text.strip()):
-                if is_first_date:
-                    start = 1
-                    dt_str0 = cols[0].text.strip().split(',')[0].strip()
-                    dt_str1 = re.split(r'[\n\s,]', dt_str0)
-                    dt_str = f'{dt_str1[0]}-{dt_str1[1]}-{dt_str1[2]}'
-                    # 为后续跨年判断做准备
-                    future_year = dt_str1[0]
-                    future_month_en = dt_str1[1]
+        for o in rp5_table:
+            c1 = o['Date'] # date str
+            c2 = o['Time'] # time str
+            c3 = str(o['T']) # hm value
+            c6 = str(o['Tx']) # max
+            c7 = str(o['Tn']) # min
 
-                    rp5_local_date_str = transfer_date_format('rp5', dt_str)
-                    rp5_local_time_str = cols[1].text.strip() + ':00'
-                    local_combined = f'{rp5_local_date_str} {rp5_local_time_str}'
-                    current_local_dt = datetime.strptime(local_combined, '%d/%m/%Y %H:%M')
-
-                    rp5_utc_date = transfer_datetime_to_utc_date(rp5_local_date_str, rp5_local_time_str, rp5_offset)['date']
-                    rp5_utc_time = transfer_datetime_to_utc_date(rp5_local_date_str, rp5_local_time_str, rp5_offset)['time']
-                    utc_combined = f'{rp5_utc_date} {rp5_utc_time}'
-                    current_utc_dt = datetime.strptime(utc_combined, '%d/%m/%Y %H:%M')
-                    is_first_date = False
-                else:
-                    start = 1
-                    dt_str0 = cols[0].text.strip().split(',')[0].strip()
-                    dt_str1 = re.split(r'[\n\s,]', dt_str0)
-                    
-                    # 如果上个日期的月份部分是一月，并且这个日期的月份和上个日期不同(这个日期的月份是十二月)，即跨年了
-                    if dt_str1[0] is not future_month_en:
-                        future_month_en = dt_str1[0]
-                        if future_month_en == 'January':
-                            future_year = str(int(future_year) - 1)
-                    dt_str = f'{future_year}-{dt_str1[0]}-{dt_str1[1]}'
-                    
-                    rp5_local_date_str = transfer_date_format('rp5', dt_str)
-                    rp5_local_time_str = cols[1].text.strip() + ':00'
-                    local_combined = f'{rp5_local_date_str} {rp5_local_time_str}'
-                    current_local_dt = datetime.strptime(local_combined, '%d/%m/%Y %H:%M')
-
-                    rp5_utc_date = transfer_datetime_to_utc_date(rp5_local_date_str, rp5_local_time_str, rp5_offset)['date']
-                    rp5_utc_time = transfer_datetime_to_utc_date(rp5_local_date_str, rp5_local_time_str, rp5_offset)['time']
-                    utc_combined = f'{rp5_utc_date} {rp5_utc_time}'
-                    current_utc_dt = datetime.strptime(utc_combined, '%d/%m/%Y %H:%M')
-            else:
-                start = 0
-                rp5_local_time_str = cols[0].text.strip() + ':00'
-                local_combined = f'{rp5_local_date_str} {rp5_local_time_str}'
-                current_local_dt = datetime.strptime(local_combined, '%d/%m/%Y %H:%M')
-
-                rp5_utc_date = transfer_datetime_to_utc_date(rp5_local_date_str, rp5_local_time_str, rp5_offset)['date']
-                rp5_utc_time = transfer_datetime_to_utc_date(rp5_local_date_str, rp5_local_time_str, rp5_offset)['time']
-                utc_combined = f'{rp5_utc_date} {rp5_utc_time}'
-                current_utc_dt = datetime.strptime(utc_combined, '%d/%m/%Y %H:%M')
-
-            if len(cols) >= 15:
-                c1 = rp5_utc_date # date str
-                c2 = rp5_utc_time # time str
-                temp_c3 = re.split(r'[\n\s]', cols[1 + start].text.strip())
-                c3 = temp_c3[0].strip()# hm value
-                temp_c6 = re.split(r'[\n\s]', cols[start + 15].text.strip())
-                c6 = temp_c6[0].strip() # max
-                temp_c7 = re.split(r'[\n\s]', cols[start + 14].text.strip())
-                c7 = temp_c7[0].strip() # min
-                # print(c3, c6, c7)
-
-                if check_datetime(c1, c2, target_date, tz)['in24']:
-                    if is_valid_simple_number(c3) and float(c3) > -100 and float(c3) < 60:
-                        temperature_dict['temperature_of_HHmm_arr'].append(safe_convert_to_float(c3))
-                        if check_datetime(c1, c2, target_date, tz)['03']: #均温从23:00开始考虑
-                            temperature_dict['temperature_of_HHmm_3h_arr'].append(safe_convert_to_float(c3))
-                            count_3h_valid_value_for_avg += 1
-                        if check_datetime(c1, c2, target_date, tz)['06']:
-                            temperature_dict['temperature_of_HHmm_3h_arr'].append(safe_convert_to_float(c3))
-                            count_3h_valid_value_for_avg += 1
-                        if check_datetime(c1, c2, target_date, tz)['09']:
-                            temperature_dict['temperature_of_HHmm_3h_arr'].append(safe_convert_to_float(c3))
-                            count_3h_valid_value_for_avg += 1
-                        if check_datetime(c1, c2, target_date, tz)['mid']:
-                            temperature_dict['temperature_of_HHmm_3h_arr'].append(safe_convert_to_float(c3))
-                            count_3h_valid_value_for_avg += 1
-                        if check_datetime(c1, c2, target_date, tz)['15']:
-                            temperature_dict['temperature_of_HHmm_3h_arr'].append(safe_convert_to_float(c3))
-                            count_3h_valid_value_for_avg += 1
-                        if check_datetime(c1, c2, target_date, tz)['18']:
-                            temperature_dict['temperature_of_HHmm_3h_arr'].append(safe_convert_to_float(c3))
-                            count_3h_valid_value_for_avg += 1
-                        if check_datetime(c1, c2, target_date, tz)['21']:
-                            temperature_dict['temperature_of_HHmm_3h_arr'].append(safe_convert_to_float(c3))
-                            count_3h_valid_value_for_avg += 1
-                        if check_datetime(c1, c2, target_date, tz)['end']:
-                            temperature_dict['temperature_of_HHmm_3h_arr'].append(safe_convert_to_float(c3))
-                            count_3h_valid_value_for_avg += 1
-                    if check_datetime(c1, c2, target_date, tz)['in_half_2']:
-                        if not is_perfect_data_like_china_station:
-                            if check_datetime(c1, c2, target_date, tz)['end'] and is_valid_simple_number(c6) and is_valid_simple_number(c7):
-                                is_perfect_data_like_china_station = True
-                                max = round(float(c6), 1)
-                                min = round(float(c7), 1)
-                            if is_valid_simple_number(c6):
-                                temperature_dict['temperature_of_max_arr'].append(safe_convert_to_float(c6))
-                            if is_valid_simple_number(c7):
-                                temperature_dict['temperature_of_min_arr'].append(safe_convert_to_float(c7))
+            if check_datetime(c1, c2, target_date, tz)['in24']:
+                if is_valid_simple_number(c3) and float(c3) > -100 and float(c3) < 60:
+                    temperature_dict['temperature_of_HHmm_arr'].append(safe_convert_to_float(c3))
+                    if check_datetime(c1, c2, target_date, tz)['03']: #均温从23:00开始考虑
+                        temperature_dict['temperature_of_HHmm_3h_arr'].append(safe_convert_to_float(c3))
+                        count_3h_valid_value_for_avg += 1
+                    if check_datetime(c1, c2, target_date, tz)['06']:
+                        temperature_dict['temperature_of_HHmm_3h_arr'].append(safe_convert_to_float(c3))
+                        count_3h_valid_value_for_avg += 1
+                    if check_datetime(c1, c2, target_date, tz)['09']:
+                        temperature_dict['temperature_of_HHmm_3h_arr'].append(safe_convert_to_float(c3))
+                        count_3h_valid_value_for_avg += 1
+                    if check_datetime(c1, c2, target_date, tz)['mid']:
+                        temperature_dict['temperature_of_HHmm_3h_arr'].append(safe_convert_to_float(c3))
+                        count_3h_valid_value_for_avg += 1
+                    if check_datetime(c1, c2, target_date, tz)['15']:
+                        temperature_dict['temperature_of_HHmm_3h_arr'].append(safe_convert_to_float(c3))
+                        count_3h_valid_value_for_avg += 1
+                    if check_datetime(c1, c2, target_date, tz)['18']:
+                        temperature_dict['temperature_of_HHmm_3h_arr'].append(safe_convert_to_float(c3))
+                        count_3h_valid_value_for_avg += 1
+                    if check_datetime(c1, c2, target_date, tz)['21']:
+                        temperature_dict['temperature_of_HHmm_3h_arr'].append(safe_convert_to_float(c3))
+                        count_3h_valid_value_for_avg += 1
+                    if check_datetime(c1, c2, target_date, tz)['end']:
+                        temperature_dict['temperature_of_HHmm_3h_arr'].append(safe_convert_to_float(c3))
+                        count_3h_valid_value_for_avg += 1
+                if check_datetime(c1, c2, target_date, tz)['in_half_2']:
+                    if not is_perfect_data_like_china_station:
+                        if check_datetime(c1, c2, target_date, tz)['end'] and is_valid_simple_number(c6) and is_valid_simple_number(c7):
+                            is_perfect_data_like_china_station = True
+                            max = round(float(c6), 1)
+                            min = round(float(c7), 1)
+                        if is_valid_simple_number(c6):
+                            temperature_dict['temperature_of_max_arr'].append(safe_convert_to_float(c6))
+                        if is_valid_simple_number(c7):
+                            temperature_dict['temperature_of_min_arr'].append(safe_convert_to_float(c7))
             
         if not is_perfect_data_like_china_station:
             temp_combined_arr = temperature_dict['temperature_of_max_arr'] + temperature_dict['temperature_of_min_arr'] + temperature_dict['temperature_of_HHmm_arr']
@@ -568,7 +731,7 @@ def get_daily_temperature_rp5(wmo, tz):
             # temperature_dict['temperature_of_HHmm_arr'].pop() #去掉那日开始datetime对应的3h整点气温，因为计算均温从23:00开始(20-20)
             #print(temperature_dict['temperature_of_HHmm_arr'])
             avg = calculate_average(temperature_dict['temperature_of_HHmm_3h_arr'])
-        print(f'{wmo}\t{min}\t{max}\t{avg}')
+        # print(f'{wmo}\t{min}\t{max}\t{avg}')
         return {'wmo': wmo, 'min': min, 'max': max, 'avg': avg}
 
     except Exception as e:
@@ -579,7 +742,7 @@ def get_daily_temperature_rp5(wmo, tz):
         #driver.quit()
 
 #循环爬取，爬取多个ogimet站点数据
-def scrape_ogimet_by_usaf(usaf_list):
+def scrape_by_usaf(usaf_list):
     results = []
     bad_list = []
     print(f"Starting scrape maximum reach {len(usaf_list)} URLs...")
@@ -589,18 +752,33 @@ def scrape_ogimet_by_usaf(usaf_list):
             results.append({'wmo': '', 'min': '', 'max': '', 'avg': ''})
             print(f'{ele['cn_name']}\t不是WMO交换站')
             continue
-        elif ele['source'] != 'ogimet': # 有站号但是 ogimet 不提供数据(页面无数据)
+        elif ele['source'] != 'ogimet' and ele['source'] != 'rp5': # 有站号但是 ogimet 不提供数据(页面无数据)
             results.append({'wmo': '', 'min': '', 'max': '', 'avg': ''})
-            print(f'{ele['USAF']}\t{ele['cn_name']}\togimet无数据')
+            print(f'{ele['USAF']}\t{ele['cn_name']}\t无数据')
             continue
         elif ele['use'] is None:
             results.append({'wmo': '', 'min': '', 'max': '', 'avg': ''})
             print(f'{ele['USAF']}\t{ele['cn_name']}\t被主动排除')
             continue
+        """
+        if ele['USAF'] in accessible_list:
+            if not isinstance(ele['USAF'], int):
+                results.append({'wmo': '', 'min': '', 'max': '', 'avg': ''})
+                print(f'{ele['cn_name']}\t不是WMO交换站')
+                continue
+        """
+            
         try:
             # Call your existing function
-            data = get_daily_temperature_ogimet(str(ele['USAF']), ele['timezone'])
-            
+            if ele['source'] == 'ogimet':
+                data = get_daily_temperature_ogimet(str(ele['USAF']), ele['timezone'])
+                sleep_time = random.uniform(1, 3)
+                time.sleep(sleep_time)
+            if ele['source'] == 'rp5':
+                data = get_daily_temperature_rp5(str(ele['USAF']), ele['timezone'])
+                sleep_time = random.uniform(3, 4)
+                time.sleep(sleep_time)
+                
             # Save the result
             results.append(data)
 
@@ -635,8 +813,8 @@ def exportJSON(resultArr, bad_list): # 导出为JSON
 # ******** ******** ******** ******** 执行 ******** ******** ******** ********
 if __name__ == "__main__":
     # print(len(station_list))
-    # get_daily_temperature_ogimet('44224', 12) #爬取单站 ********************************
-    # scrape_ogimet_by_usaf(accessible_list) #循环爬取
+    # get_daily_temperature_rp5('44224', 12) #爬取单站 ********************************
+    # scrape_by_usaf(accessible_list) #循环爬取
     
-    resultObj = scrape_ogimet_by_usaf(accessible_list)
+    resultObj = scrape_by_usaf(accessible_list)
     exportJSON( resultObj['scrapedArr'], resultObj['bad_list'] )

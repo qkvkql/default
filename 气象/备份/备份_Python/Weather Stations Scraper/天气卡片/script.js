@@ -3,7 +3,7 @@ import { array_of_stations_by_different_filters } from '../stations_data.js';
 import { cold_days } from './cold_days.js';
 let source_data = [];
 
-switch(0){
+switch(1){
     case 1:
         source_data = cold_days;
         break;
@@ -93,8 +93,8 @@ function updateCard(index) {
     // Handle Lat/Lon safely
     const lat = Number(data.latitude);
     const lon = Number(data.longitude);
-    els.lat.innerText = isNaN(lat) ? "纬度: --" : `纬度: ${lat.toFixed(2)}`;
-    els.lon.innerText = isNaN(lon) ? "经度: --" : `经度: ${lon.toFixed(2)}`;
+    els.lat.innerText = isNaN(lat) ? "Lat: --" : `Lat: ${lat.toFixed(2)}`;
+    els.lon.innerText = isNaN(lon) ? "Lon: --" : `Lon: ${lon.toFixed(2)}`;
 
     els.date.innerText = my_date;
 

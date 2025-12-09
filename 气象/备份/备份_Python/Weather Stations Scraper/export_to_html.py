@@ -54,8 +54,16 @@ def write_into_station_list():
         # temp_count += 1
         # print(temp_count, is_writable_row)
         if is_writable_row:  
-            sheet.cell(row = i + 2, column = c1, value = scraped[i]['min'])
-            sheet.cell(row = i + 2, column = c1 + 1, value = scraped[i]['max'])
+            if not (isinstance(scraped[i]['min'], int) and scraped[i]['min'] == -999):
+                sheet.cell(row = i + 2, column = c1, value = scraped[i]['min'])
+            else:
+                print(f"{scraped[i]['wmo']} has bad min temperature!!!")
+            
+            if not (isinstance(scraped[i]['max'], int) and scraped[i]['max'] == -999):
+                sheet.cell(row = i + 2, column = c1 + 1, value = scraped[i]['max'])
+            else:
+                print(f"{scraped[i]['wmo']} has bad max temperature!!!")
+            
             if not (isinstance(scraped[i]['avg'], int) and scraped[i]['avg'] == -999): # 均温是正常值才填写均温
                 sheet.cell(row = i + 2, column = c1 + 2, value = scraped[i]['avg'])
             else:

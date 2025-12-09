@@ -136,7 +136,7 @@ function loadDataToTable(sourceKey) {
         let tempE_elev = tbody[i].querySelectorAll('td')[5];
         tempE.innerHTML = wrapIcons(whichSource[i]['icon1']) + tempE.innerText + wrapIcons(whichSource[i]['icon2']);
         tempE_Coor.innerText = transformCoor(tempE_Coor.innerText);
-        tempE_elev.innerText = tempE_elev.innerText + 'm';
+        tempE_elev.innerText = tempE_elev.innerText === '' ? '' : tempE_elev.innerText + 'm';
     }
     for(let i=0; i<tbody.length; i++){
         let tempE = tbody[i].querySelectorAll('td')[0];
@@ -467,6 +467,9 @@ function setExtremeColor(ele, arr){
 }
 
 function transformCoor(nStr){
+    if(nStr === ''){
+        return '';
+    }
     let p = Number(nStr) >= 0 ? 'N' : 'S';
     return (Math.abs(Number(nStr)).toFixed(2)).toString() + ' °' + p;
 }
