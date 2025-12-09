@@ -46,7 +46,6 @@
                 </select>
             </div>
 
-            <!-- NEW: HEMISPHERE -->
             <div class="param-row">
                 <label>Hemisphere:</label>
                 <div class="radio-group">
@@ -129,14 +128,15 @@
                 <table class="stats-table" id="periodStatsTable">
                     <thead>
                         <tr>
-                            <th>Period Range</th>
-                            <th>Min TMIN</th>
-                            <th>Max TMIN</th>
-                            <th>Min TMAX</th>
-                            <th>Max TMAX</th>
-                            <th>Days (TMIN)</th>
-                            <th>Days (TAVG)</th>
-                            <th>Days (TMAX)</th>
+                            <!-- CLICKABLE HEADERS FOR SORTING -->
+                            <th onclick="sortPeriodTable('range')">Period Range &#8645;</th>
+                            <th onclick="sortPeriodTable('min_tmin')">Min TMIN &#8645;</th>
+                            <th onclick="sortPeriodTable('max_tmin')">Max TMIN &#8645;</th>
+                            <th onclick="sortPeriodTable('min_tmax')">Min TMAX &#8645;</th>
+                            <th onclick="sortPeriodTable('max_tmax')">Max TMAX &#8645;</th>
+                            <th onclick="sortPeriodTable('cnt_tmin')">Days (TMIN) &#8645;</th>
+                            <th onclick="sortPeriodTable('cnt_tavg')">Days (TAVG) &#8645;</th>
+                            <th onclick="sortPeriodTable('cnt_tmax')">Days (TMAX) &#8645;</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
@@ -146,7 +146,7 @@
 
         <!-- PART 3: RECORD LIST -->
         <div class="section">
-            <h2>3. Record List (Top 500 from Sorted Result)</h2>
+            <h2>3. Record List (Top 200 from Sorted Result)</h2>
             <table class="data-table" id="recordsTable">
                 <thead>
                     <tr>

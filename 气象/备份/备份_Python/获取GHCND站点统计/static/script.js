@@ -2,6 +2,11 @@ let debounceTimer;
 let currentSortBy = 'DATE';
 let currentSortDir = 'desc';
 
+// --- PERIOD SORT STATE ---
+let rawPeriodStats = []; // Store the data for client-side sort
+let periodSortCol = 'range';
+let periodSortDir = 'desc'; // desc = newest years first
+
 document.addEventListener('DOMContentLoaded', () => {
     const hiddenId = document.getElementById('stationId');
     const visualInput = document.getElementById('stationInput');
@@ -39,6 +44,7 @@ async function searchStations() {
     }, 300);
 }
 
+// --- RECORD LIST SERVER SORT ---
 function triggerServerSort(columnName) {
     if (currentSortBy === columnName) {
         currentSortDir = (currentSortDir === 'asc') ? 'desc' : 'asc';
@@ -49,14 +55,94 @@ function triggerServerSort(columnName) {
     fetchData();
 }
 
+// --- PERIOD TABLE CLIENT SORT ---
+function sortPeriodTable(column) {
+    if (periodSortCol === column) {
+        periodSortDir = (periodSortDir === 'asc') ? 'desc' : 'asc';
+    } else {
+        periodSortCol = column;
+        // Default new sorts to desc for numbers/years usually looks better
+        periodSortDir = 'desc'; 
+    }
+    renderPeriodTable();
+}
+
+function renderPeriodTable() {
+    const tbody = document.querySelector('#periodStatsTable tbody');
+    tbody.innerHTML = '';
+
+    if (rawPeriodStats.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8">No period data available.</td></tr>';
+        return;
+    }
+
+    // Sort Logic
+    rawPeriodStats.sort((a, b) => {
+        let valA, valB;
+
+        // Extract values based on column type
+        if (['range'].includes(periodSortCol)) {
+            valA = a[periodSortCol];
+            valB = b[periodSortCol];
+        } else if (['cnt_tmin', 'cnt_tavg', 'cnt_tmax'].includes(periodSortCol)) {
+            valA = a[periodSortCol];
+            valB = b[periodSortCol];
+        } else {
+            // It's a temperature object {val: -10, dates: ...}
+            // If val is '-', treat as lowest possible for sorting
+            valA = (a[periodSortCol].val === '-') ? -9999 : a[periodSortCol].val;
+            valB = (b[periodSortCol].val === '-') ? -9999 : b[periodSortCol].val;
+        }
+
+        if (valA < valB) return periodSortDir === 'asc' ? -1 : 1;
+        if (valA > valB) return periodSortDir === 'asc' ? 1 : -1;
+        return 0;
+    });
+
+    // Render HTML
+    rawPeriodStats.forEach(p => {
+        const tr = document.createElement('tr');
+        
+        const renderWithTooltip = (obj) => {
+            if (obj.val === '-' || !obj.dates || obj.dates.length === 0) {
+                return obj.val;
+            }
+            const dateText = obj.dates.length > 20 
+                ? obj.dates.slice(0, 20).join('\n') + `\n...and ${obj.dates.length - 20} more`
+                : obj.dates.join('\n');
+            
+            return `<div class="tooltip-container">
+                        ${obj.val}
+                        <span class="tooltip-note">${dateText}</span>
+                    </div>`;
+        };
+
+        tr.innerHTML = `
+            <td>${p.range}</td>
+            <td>${renderWithTooltip(p.min_tmin)}</td>
+            <td>${renderWithTooltip(p.max_tmin)}</td>
+            <td>${renderWithTooltip(p.min_tmax)}</td>
+            <td>${renderWithTooltip(p.max_tmax)}</td>
+            <td>${p.cnt_tmin}</td>
+            <td>${p.cnt_tavg}</td>
+            <td>${p.cnt_tmax}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+
+// --- MAIN FETCH ---
 async function fetchData() {
     const loading = document.getElementById('loading');
     const errorMsg = document.getElementById('errorMsg');
     const recordsTbody = document.querySelector('#recordsTable tbody');
-    const periodTbody = document.querySelector('#periodStatsTable tbody');
     
     recordsTbody.innerHTML = '';
-    periodTbody.innerHTML = '';
+    // Clear Period Table via empty array first
+    rawPeriodStats = [];
+    renderPeriodTable();
+
     errorMsg.textContent = '';
     loading.classList.remove('hidden');
 
@@ -98,13 +184,12 @@ async function fetchData() {
         updateStatRow('tavg', result.stats.TAVG);
         updateStatRow('tmax', result.stats.TMAX);
 
-        // 2. Period Summary (Updated with Counts)
+        // 2. Period Summary
         const updateSummaryCell = (id, data) => {
             const el = document.getElementById(id);
             if (data.val === '-') {
                 el.innerHTML = '-';
             } else {
-                // Display: Value (Used/Total)
                 el.innerHTML = `${data.val} <span class="stat-subtext">(${data.used}/${data.total})</span>`;
             }
         };
@@ -114,40 +199,9 @@ async function fetchData() {
         updateSummaryCell('sum-avg-max-tmin', result.period_summary.avg_max_tmin);
         updateSummaryCell('sum-avg-max-tmax', result.period_summary.avg_max_tmax);
 
-        // 3. Period List
-        if(result.period_stats.length === 0) {
-            periodTbody.innerHTML = '<tr><td colspan="8">No period data available.</td></tr>';
-        } else {
-            result.period_stats.forEach(p => {
-                const tr = document.createElement('tr');
-                
-                const renderWithTooltip = (obj) => {
-                    if (obj.val === '-' || !obj.dates || obj.dates.length === 0) {
-                        return obj.val;
-                    }
-                    const dateText = obj.dates.length > 20 
-                        ? obj.dates.slice(0, 20).join('\n') + `\n...and ${obj.dates.length - 20} more`
-                        : obj.dates.join('\n');
-                    
-                    return `<div class="tooltip-container">
-                                ${obj.val}
-                                <span class="tooltip-note">${dateText}</span>
-                            </div>`;
-                };
-
-                tr.innerHTML = `
-                    <td>${p.range}</td>
-                    <td>${renderWithTooltip(p.min_tmin)}</td>
-                    <td>${renderWithTooltip(p.max_tmin)}</td>
-                    <td>${renderWithTooltip(p.min_tmax)}</td>
-                    <td>${renderWithTooltip(p.max_tmax)}</td>
-                    <td>${p.cnt_tmin}</td>
-                    <td>${p.cnt_tavg}</td>
-                    <td>${p.cnt_tmax}</td>
-                `;
-                periodTbody.appendChild(tr);
-            });
-        }
+        // 3. Period List (Store Data & Render)
+        rawPeriodStats = result.period_stats;
+        renderPeriodTable(); // This will sort and display
 
         // 4. Record List
         if (result.records.length === 0) {

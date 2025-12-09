@@ -59,7 +59,7 @@ def get_data():
         end_date = req.get('end_date')
         month_filter = req.get('month_filter')
         period_mode = req.get('period') 
-        hemisphere = req.get('hemisphere', 'north') # Default North
+        hemisphere = req.get('hemisphere', 'north')
         
         sort_by = req.get('sort_by', 'DATE')
         sort_dir = req.get('sort_dir', 'desc')
@@ -77,11 +77,10 @@ def get_data():
         except Exception:
             return jsonify({'status': 'error', 'message': f'Station ID {station_id} not found on AWS.'})
 
-        # 3. Filter Data (Date)
+        # 3. Filter Data
         if start_date: df = df[df['DATE'] >= start_date]
         if end_date: df = df[df['DATE'] <= end_date]
         
-        # Month Filter
         if month_filter and month_filter != "0":
             if month_filter == "winter_3":
                 df = df[df['DATE'].dt.month.isin([12, 1, 2])]
@@ -93,7 +92,7 @@ def get_data():
         df = df[df['ELEMENT'].isin(['TMIN', 'TAVG', 'TMAX'])].copy()
         df['DATA_VALUE'] = df['DATA_VALUE'] / 10.0 
 
-        # Helper: Value + Dates
+        # Helper
         def get_val_and_dates(sub_df, method='min'):
             if sub_df.empty: return {'val': '-', 'dates': []}
             target_val = sub_df['DATA_VALUE'].min() if method == 'min' else sub_df['DATA_VALUE'].max()
@@ -136,19 +135,11 @@ def get_data():
 
         period_stats = []
         
-        # Collection lists for averages
-        # Format: list of values that PASSED the logic check
         list_min_tmin = []
         list_min_tmax = []
         list_max_tmin = []
         list_max_tmax = []
-
-        # Tracking total valid ranges vs total periods
-        # We start with 0 and increment.
-        # "Total" = Number of years processed
-        # "Used" = Number of years that passed the >60 check
         
-        # Initialize Counters
         count_total = 0
         count_used_min_tmin = 0
         count_used_min_tmax = 0
@@ -163,7 +154,6 @@ def get_data():
             
             count_total += 1
 
-            # Count Helper for threshold
             def get_thresh_count(elem):
                 t_val = thresh_params[elem]['val']
                 t_dir = thresh_params[elem]['dir']
@@ -175,73 +165,58 @@ def get_data():
             s_tmin_df = season_df[season_df['ELEMENT'] == 'TMIN']
             s_tmax_df = season_df[season_df['ELEMENT'] == 'TMAX']
 
-            # --- EXTREMES ---
+            # Extremes
             min_tmin_obj = get_val_and_dates(s_tmin_df, 'min')
             max_tmin_obj = get_val_and_dates(s_tmin_df, 'max')
             min_tmax_obj = get_val_and_dates(s_tmax_df, 'min')
             max_tmax_obj = get_val_and_dates(s_tmax_df, 'max')
 
-            # --- COMPLEX LOGIC FOR AVERAGES ---
-            # 1. Calculate record counts for DJF and JJA within this period
-            # DJF: Dec, Jan, Feb
+            # Complex Logic for Averages
             count_djf_tmin = season_df[(season_df['DATE'].dt.month.isin([12, 1, 2])) & (season_df['ELEMENT'] == 'TMIN')].shape[0]
             count_djf_tmax = season_df[(season_df['DATE'].dt.month.isin([12, 1, 2])) & (season_df['ELEMENT'] == 'TMAX')].shape[0]
-            
-            # JJA: Jun, Jul, Aug
             count_jja_tmin = season_df[(season_df['DATE'].dt.month.isin([6, 7, 8])) & (season_df['ELEMENT'] == 'TMIN')].shape[0]
             count_jja_tmax = season_df[(season_df['DATE'].dt.month.isin([6, 7, 8])) & (season_df['ELEMENT'] == 'TMAX')].shape[0]
 
-            # 2. Determine Validity based on Cases
-            
-            # -- Metric: Min TMIN --
-            # Case 1 (NH & P1) OR Case 4 (SH & P2) -> Check Winter (NH=DJF, SH=JJA) >= 60
-            valid_min_tmin = True # Default
+            # Min TMIN
+            valid_min_tmin = True
             if hemisphere == 'north' and period_mode == 'p1':
                 if count_djf_tmin < 60: valid_min_tmin = False
             elif hemisphere == 'south' and period_mode == 'p2':
                 if count_jja_tmin < 60: valid_min_tmin = False
-            
             if valid_min_tmin and min_tmin_obj['val'] != '-':
                 list_min_tmin.append(min_tmin_obj['val'])
                 count_used_min_tmin += 1
 
-            # -- Metric: Min TMAX --
-            # Case 1 (NH & P1) OR Case 4 (SH & P2) -> Check Winter >= 60
+            # Min TMAX
             valid_min_tmax = True
             if hemisphere == 'north' and period_mode == 'p1':
                 if count_djf_tmax < 60: valid_min_tmax = False
             elif hemisphere == 'south' and period_mode == 'p2':
                 if count_jja_tmax < 60: valid_min_tmax = False
-
             if valid_min_tmax and min_tmax_obj['val'] != '-':
                 list_min_tmax.append(min_tmax_obj['val'])
                 count_used_min_tmax += 1
 
-            # -- Metric: Max TMIN --
-            # Case 2 (NH & P2) OR Case 3 (SH & P1) -> Check Summer (NH=JJA, SH=DJF) >= 60
+            # Max TMIN
             valid_max_tmin = True
             if hemisphere == 'north' and period_mode == 'p2':
                 if count_jja_tmin < 60: valid_max_tmin = False
             elif hemisphere == 'south' and period_mode == 'p1':
                 if count_djf_tmin < 60: valid_max_tmin = False
-            
             if valid_max_tmin and max_tmin_obj['val'] != '-':
                 list_max_tmin.append(max_tmin_obj['val'])
                 count_used_max_tmin += 1
 
-            # -- Metric: Max TMAX --
-            # Case 2 (NH & P2) OR Case 3 (SH & P1) -> Check Summer >= 60
+            # Max TMAX
             valid_max_tmax = True
             if hemisphere == 'north' and period_mode == 'p2':
                 if count_jja_tmax < 60: valid_max_tmax = False
             elif hemisphere == 'south' and period_mode == 'p1':
                 if count_djf_tmax < 60: valid_max_tmax = False
-            
             if valid_max_tmax and max_tmax_obj['val'] != '-':
                 list_max_tmax.append(max_tmax_obj['val'])
                 count_used_max_tmax += 1
 
-            # Append to detail list
             period_stats.append({
                 'range': f"{year}-{year+1}",
                 'min_tmin': min_tmin_obj,
@@ -253,7 +228,6 @@ def get_data():
                 'cnt_tmax': get_thresh_count('TMAX')
             })
 
-        # --- CALCULATE AVERAGES ---
         def get_avg_data(lst, used_count):
             avg = float(round(sum(lst) / len(lst), 2)) if lst else '-'
             return {'val': avg, 'used': used_count, 'total': count_total}
@@ -270,7 +244,8 @@ def get_data():
         target_col = sort_col_map.get(sort_by, 'DATE')
         is_asc = (sort_dir == 'asc')
 
-        records_df = df.sort_values(by=target_col, ascending=is_asc).head(500)
+        # Limit to 200 records
+        records_df = df.sort_values(by=target_col, ascending=is_asc).head(200)
         records_df['DATE'] = records_df['DATE'].dt.strftime('%Y-%m-%d')
         records_list = records_df[['ID', 'DATE', 'ELEMENT', 'DATA_VALUE']].to_dict(orient='records')
 
