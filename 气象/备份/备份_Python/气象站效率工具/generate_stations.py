@@ -139,7 +139,7 @@ def load_and_process_data(file_path):
 # ==========================================
 # 4. Build HTML Page
 # ==========================================
-def generate_html(stations, output_file="station_links_copyable.html"):
+def generate_html(stations, output_file="站点大全.html"):
     
     html_content = """
 <!DOCTYPE html>
@@ -147,7 +147,7 @@ def generate_html(stations, output_file="station_links_copyable.html"):
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Station Tools</title>
+    <title>站点助手</title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f8; padding: 20px; }
         
@@ -239,8 +239,11 @@ def generate_html(stations, output_file="station_links_copyable.html"):
             <input type="checkbox" id="force12Btn" onchange="updateAllLinks()">
             Force Hour to 12:00 UTC
         </label>
+        
+        <!-- Updated Placeholder to reflect RP5 is searchable -->
         <input type="text" class="search-input" id="searchInput" onkeyup="filterStations()" 
-               placeholder="Search by Level1, Name, USAF or ID...">
+               placeholder="Search by Name, USAF, RP5, or ID...">
+               
         <div id="timeDisplay" style="color: #666; font-size: 0.9em;"></div>
     </div>
 
@@ -260,14 +263,12 @@ def generate_html(stations, output_file="station_links_copyable.html"):
         lon = str(data.get('longitude', ''))
 
         display_name = f"{level1} {cn_name}".strip()
-        search_terms = f"{id_val} {level1} {cn_name} {usaf}"
+        
+        # --- UPDATE: Added rp5 to search terms ---
+        search_terms = f"{id_val} {level1} {cn_name} {usaf} {rp5}"
 
-        # Logic for Coordinates string
-        # We need a tab character \t. In Python strings, \t works. 
-        # When put in HTML attribute, it preserves the code.
-        # When displayed in HTML with 'white-space: pre', it shows as a tab gap.
+        # Logic for Coordinates string (Tab separated for copy)
         if lat and lon:
-            # This string literally contains a tab character
             coord_val = f"{lat}\t{lon}" 
         else:
             coord_val = ""
@@ -319,16 +320,11 @@ def generate_html(stations, output_file="station_links_copyable.html"):
     <script>
         // --- 1. Copy Functionality ---
         function copyText(element) {
-            // Get the value from data-value attribute (preserves tabs)
             const textToCopy = element.getAttribute('data-value');
-            
-            if (!textToCopy || textToCopy === "-") return; // Don't copy placeholders
+            if (!textToCopy || textToCopy === "-") return;
 
             navigator.clipboard.writeText(textToCopy).then(() => {
-                // Add class for visual feedback (tooltip)
                 element.classList.add('show-tooltip');
-                
-                // Remove class after 1 second
                 setTimeout(() => {
                     element.classList.remove('show-tooltip');
                 }, 1000);
@@ -375,6 +371,7 @@ def generate_html(stations, output_file="station_links_copyable.html"):
             const input = document.getElementById('searchInput').value.toUpperCase();
             const cards = document.getElementsByClassName('card');
             for (let i = 0; i < cards.length; i++) {
+                // This data-search attribute now includes RP5
                 const searchData = cards[i].getAttribute('data-search');
                 if (searchData.toUpperCase().indexOf(input) > -1) {
                     cards[i].style.display = "";

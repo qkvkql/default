@@ -53,20 +53,28 @@ def get_ogimet_hourly_url(usaf):
     return 'https://ogimet.com/cgi-bin/gsynres?ind=' + usaf + '&decoded=yes&ndays=7&ano=' + dt['YYYY'] + '&mes=' +dt['MM'] + '&day=' + dt['DD'] + '&hora=' + dt['hh']
 def get_rp5_hourly_url(usaf):
     for o in station_list:
-        if str(o['USAF']) == usaf:
+        if str(o['USAF']) == str(usaf):
             #如果参数usaf站号不在 station_list 内, 那么循环结束也没有return 一个url, 函数最终返回的是 None，可能遇到 TypeError: startfile: filepath should be string, bytes or os.PathLike, not NoneType 
             return 'https://rp5.ru/Weather_archive_in_' + o['rp5']
 
 # ******** ******** ******** ******** 读取 打开多个页面 ******** ******** ******** ********
-def open_bad_stations(arr, source):
+def getSourceStr(wmo):
+    temp_source = ''
+    for o in station_list:
+        if str(o['USAF']) == wmo:
+            temp_source = o['source']
+            break
+    return temp_source
+
+def open_bad_stations(arr):
     for usaf in arr:
         url = ''
-        if source == 'ogimet':
+        # print(getSourceStr(usaf))
+        if getSourceStr(usaf) == 'ogimet':
             url = get_ogimet_hourly_url(usaf)
-        elif source == 'rp5':
+        elif getSourceStr(usaf) == 'rp5':
             url = get_rp5_hourly_url(usaf)
         webbrowser.open(url)
-        time.sleep(2)
+        time.sleep(3)
 # ******** ******** ******** ******** 运行 ******** ******** ******** ********
-# open_bad_stations(bad_list, 'rp5')
-open_bad_stations(bad_list, 'ogimet')
+open_bad_stations(bad_list)

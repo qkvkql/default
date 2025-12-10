@@ -421,6 +421,7 @@ def get_table_list_rp5(wmo):
         # ---------------------------------------------------------
         
         days_radio = page.ele('css:input[name="pe"][value="7"]')
+        time.sleep(3)
         if days_radio:
             days_radio.click(by_js=True)
             # print("Selected '7 days' range.")
@@ -428,6 +429,7 @@ def get_table_list_rp5(wmo):
             print("Warning: '7 days' radio button not found.")
         
         select_btn = page.ele('.archButton')
+        time.sleep(2)
         if select_btn:
             select_btn.click()
             # print("Clicked 'Select' button. Waiting for data to load...")
@@ -637,10 +639,10 @@ def get_daily_temperature_rp5(wmo, tz):
             break  # Stop looping once found lat and lng
     rp5_offset = get_timezone_offset(rp5_lat, rp5_lng)
 
-    if not get_table_list_rp5(wmo):
+    rp5_table = get_table_list_rp5(wmo)
+    if not rp5_table:
         print(f'{wmo}\t页面异常(连接失败，加载失败，被目标站点屏蔽等)')
         return {'wmo': '', 'min': '', 'max': '', 'avg': ''}
-    rp5_table = get_table_list_rp5(wmo)
     # print(rp5_table)
     for o in rp5_table:
         temp_dt = transfer_datetime_to_utc_date(o['Date'], o['Time'], rp5_offset)
@@ -813,7 +815,7 @@ def exportJSON(resultArr, bad_list): # 导出为JSON
 # ******** ******** ******** ******** 执行 ******** ******** ******** ********
 if __name__ == "__main__":
     # print(len(station_list))
-    # get_daily_temperature_rp5('44224', 12) #爬取单站 ********************************
+    # get_daily_temperature_rp5('44221', 12) #爬取单站 ********************************
     # scrape_by_usaf(accessible_list) #循环爬取
     
     resultObj = scrape_by_usaf(accessible_list)

@@ -35,7 +35,7 @@ if rows:
     headers = rows[0]
     content_rows = rows[1:]
     station_list = [dict(zip(headers, row)) for row in content_rows]
-    station_list = [o for o in station_list if isinstance(o['id'], int)]
+    station_list = [o for o in station_list if isinstance(o['id'], int) and o['cn_name'] is not None]
 else:
     print("The sheet of station list is empty.")
 
@@ -49,6 +49,25 @@ def write_into_station_list():
     c1 = 15 # station_list: column of min=15, max=16, avg=17
     # temp_count = 0
     for i, o in enumerate(station_list): # index before element
+        temp1 = 'min'
+        if str(scraped[i][temp1]) == '-999':
+            print(f'{scraped[i]['wmo']} bad value for {temp1}!')
+        if str(scraped[i][temp1]) != '-999' and str(scraped[i][temp1]) != '' and (str(o[temp1]) == 'None' or str(o[temp1]) == ''):
+            sheet.cell(row = i + 2, column = c1, value = scraped[i][temp1])
+
+        temp2 = 'max'
+        if str(scraped[i][temp2]) == '-999':
+            print(f'{scraped[i]['wmo']} bad value for {temp2}!')
+        if str(scraped[i][temp2]) != '-999' and str(scraped[i][temp2]) != '' and (str(o[temp2]) == 'None' or str(o[temp2]) == ''):
+            sheet.cell(row = i + 2, column = c1 + 1, value = scraped[i][temp2])
+
+        temp3 = 'avg'
+        if str(scraped[i][temp3]) == '-999':
+            print(f'{scraped[i]['wmo']} bad value for {temp3}!')
+        if str(scraped[i][temp3]) != '-999' and str(scraped[i][temp3]) != '' and (str(o[temp3]) == 'None' or str(o[temp3]) == ''):
+            sheet.cell(row = i + 2, column = c1 + 2, value = scraped[i][temp3])
+
+        """
         #超长判断语句
         is_writable_row = (o['USAF'] is not None) and (o['use'] is not None) and (o['min'] is None) and (o['max'] is None) and (o['avg'] is None) and ( str(scraped[i]['min']) != '' or str(scraped[i]['max']) != '' )
         # temp_count += 1
@@ -68,6 +87,7 @@ def write_into_station_list():
                 sheet.cell(row = i + 2, column = c1 + 2, value = scraped[i]['avg'])
             else:
                 print(f"{scraped[i]['wmo']} has bad average temperature!!!") # 均温是异常值不填写均温，并打印警告
+                """
     workbook.save(station_list_path) #save the file
 
 # ******** ******** ******** ******** 把 station list 数据写入 .js 文件 供前端使用 ******** ******** ******** ********
