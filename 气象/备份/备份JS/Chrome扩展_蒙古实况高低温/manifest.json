@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "蒙古实况高低温",
+  "version": "1.0",
+  "description": "获取蒙古实况页面各冷站高低温",
+  "permissions": ["activeTab", "scripting"],
+  "host_permissions": [
+    "https://weather.gov.mn/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://weather.gov.mn/observation/weather"],
+      "js": ["content.js"],
+      "css": ["styles.css"]
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "Pogodaiklimat月均温统计",
+  "version": "1.0",
+  "description": "统计pogodaiklimat各月平均气温和年平均气温",
+  "permissions": [
+    "clipboardWrite"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["http://www.pogodaiklimat.ru/history/*"],
+      "js": ["content.js"],
+      "css": ["styles.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "蒙古均温_3H",
+  "version": "1.0",
+  "description": "获取蒙古3小时整点页面各冷站日平均气温",
+  "content_scripts": [
+    {
+      "matches": ["http://119.40.97.87/currentweather/Synop/*"],
+      "js": ["content.js"]
+    }
+  ]
+}

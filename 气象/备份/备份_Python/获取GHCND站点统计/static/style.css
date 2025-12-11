@@ -52,6 +52,41 @@ tr:nth-child(even) { background-color: #f8f9fa; }
 .header-note { font-size: 0.75em; font-weight: normal; display: block; color: #ccc; }
 .summary-cell { font-weight: bold; }
 
+/* COPYABLE STYLES */
+.copyable {
+    cursor: pointer;
+    border-bottom: 1px dashed #999; /* Visual cue */
+    transition: background-color 0.2s, color 0.2s;
+}
+.copyable:hover {
+    background-color: #ffffcc; /* Light yellow highlight */
+    color: #000;
+}
+
+/* Toast Notification */
+#copyToast {
+    visibility: hidden;
+    min-width: 250px;
+    background-color: #333;
+    color: #fff;
+    text-align: center;
+    border-radius: 4px;
+    padding: 10px;
+    position: fixed;
+    z-index: 2000;
+    left: 50%;
+    bottom: 30px;
+    transform: translateX(-50%);
+    font-size: 14px;
+    opacity: 0;
+    transition: opacity 0.5s, bottom 0.5s;
+}
+#copyToast.show {
+    visibility: visible;
+    opacity: 1;
+    bottom: 50px;
+}
+
 /* Dropdown Menu */
 .filter-header { cursor: pointer; user-select: none; }
 .filter-dropdown {
@@ -75,8 +110,7 @@ tr:nth-child(even) { background-color: #f8f9fa; }
 /* Tooltips */
 .tooltip-container {
     position: relative;
-    border-bottom: 1px dotted #333;
-    cursor: help;
+    /* Removed cursor: help here because child .copyable has cursor: pointer */
     display: inline-block;
 }
 

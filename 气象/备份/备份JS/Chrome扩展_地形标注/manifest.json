@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "Topographic地图标注",
+  "version": "1.0",
+  "description": "给topographic-map.com中的内置地图添加位置标记",
+  "content_scripts": [
+    {
+      "matches": ["https://en-au.topographic-map.com/*"],
+      "js": ["content.js"],
+      "css": ["styles.css"]
+    }
+  ]
+}

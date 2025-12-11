@@ -5,7 +5,7 @@ let currentSortDir = 'desc';
 // --- PERIOD SORT STATE ---
 let rawPeriodStats = []; // Store the data for client-side sort
 let periodSortCol = 'range';
-let periodSortDir = 'desc'; // desc = newest years first
+let periodSortDir = 'desc';
 
 document.addEventListener('DOMContentLoaded', () => {
     const hiddenId = document.getElementById('stationId');
@@ -14,6 +14,30 @@ document.addEventListener('DOMContentLoaded', () => {
         visualInput.value = hiddenId.value; 
     }
 });
+
+// --- GLOBAL COPY FUNCTIONALITY ---
+document.addEventListener('click', function(e) {
+    // Check if clicked element or parent has 'copyable' class
+    const target = e.target.closest('.copyable');
+    if (target) {
+        const text = target.innerText.trim();
+        if (text && text !== '-') {
+            navigator.clipboard.writeText(text).then(() => {
+                showToast(`Copied: ${text}`);
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+            });
+        }
+    }
+});
+
+function showToast(message) {
+    const toast = document.getElementById("copyToast");
+    toast.textContent = message;
+    toast.className = "show";
+    setTimeout(function(){ toast.className = toast.className.replace("show", ""); }, 3000);
+}
+
 
 async function searchStations() {
     const input = document.getElementById('stationInput');
@@ -61,7 +85,6 @@ function sortPeriodTable(column) {
         periodSortDir = (periodSortDir === 'asc') ? 'desc' : 'asc';
     } else {
         periodSortCol = column;
-        // Default new sorts to desc for numbers/years usually looks better
         periodSortDir = 'desc'; 
     }
     renderPeriodTable();
@@ -80,7 +103,6 @@ function renderPeriodTable() {
     rawPeriodStats.sort((a, b) => {
         let valA, valB;
 
-        // Extract values based on column type
         if (['range'].includes(periodSortCol)) {
             valA = a[periodSortCol];
             valB = b[periodSortCol];
@@ -88,8 +110,7 @@ function renderPeriodTable() {
             valA = a[periodSortCol];
             valB = b[periodSortCol];
         } else {
-            // It's a temperature object {val: -10, dates: ...}
-            // If val is '-', treat as lowest possible for sorting
+            // Temperature Objects
             valA = (a[periodSortCol].val === '-') ? -9999 : a[periodSortCol].val;
             valB = (b[periodSortCol].val === '-') ? -9999 : b[periodSortCol].val;
         }
@@ -111,21 +132,22 @@ function renderPeriodTable() {
                 ? obj.dates.slice(0, 20).join('\n') + `\n...and ${obj.dates.length - 20} more`
                 : obj.dates.join('\n');
             
+            // WRAP VALUE IN COPYABLE SPAN
             return `<div class="tooltip-container">
-                        ${obj.val}
+                        <span class="copyable" title="Click to copy">${obj.val}</span>
                         <span class="tooltip-note">${dateText}</span>
                     </div>`;
         };
 
         tr.innerHTML = `
-            <td>${p.range}</td>
+            <td><span class="copyable" title="Click to copy">${p.range}</span></td>
             <td>${renderWithTooltip(p.min_tmin)}</td>
             <td>${renderWithTooltip(p.max_tmin)}</td>
             <td>${renderWithTooltip(p.min_tmax)}</td>
             <td>${renderWithTooltip(p.max_tmax)}</td>
-            <td>${p.cnt_tmin}</td>
-            <td>${p.cnt_tavg}</td>
-            <td>${p.cnt_tmax}</td>
+            <td><span class="copyable" title="Click to copy">${p.cnt_tmin}</span></td>
+            <td><span class="copyable" title="Click to copy">${p.cnt_tavg}</span></td>
+            <td><span class="copyable" title="Click to copy">${p.cnt_tmax}</span></td>
         `;
         tbody.appendChild(tr);
     });
@@ -139,7 +161,6 @@ async function fetchData() {
     const recordsTbody = document.querySelector('#recordsTable tbody');
     
     recordsTbody.innerHTML = '';
-    // Clear Period Table via empty array first
     rawPeriodStats = [];
     renderPeriodTable();
 
@@ -190,7 +211,7 @@ async function fetchData() {
             if (data.val === '-') {
                 el.innerHTML = '-';
             } else {
-                el.innerHTML = `${data.val} <span class="stat-subtext">(${data.used}/${data.total})</span>`;
+                el.innerHTML = `<span class="copyable" title="Click to copy">${data.val}</span> <span class="stat-subtext">(${data.used}/${data.total})</span>`;
             }
         };
 
@@ -199,9 +220,9 @@ async function fetchData() {
         updateSummaryCell('sum-avg-max-tmin', result.period_summary.avg_max_tmin);
         updateSummaryCell('sum-avg-max-tmax', result.period_summary.avg_max_tmax);
 
-        // 3. Period List (Store Data & Render)
+        // 3. Period List
         rawPeriodStats = result.period_stats;
-        renderPeriodTable(); // This will sort and display
+        renderPeriodTable(); 
 
         // 4. Record List
         if (result.records.length === 0) {
@@ -210,7 +231,12 @@ async function fetchData() {
             result.records.forEach(row => {
                 const tr = document.createElement('tr');
                 tr.dataset.element = row.ELEMENT; 
-                tr.innerHTML = `<td>${row.ID}</td><td>${row.DATE}</td><td>${row.ELEMENT}</td><td>${row.DATA_VALUE}</td>`;
+                tr.innerHTML = `
+                    <td><span class="copyable" title="Click to copy">${row.ID}</span></td>
+                    <td><span class="copyable" title="Click to copy">${row.DATE}</span></td>
+                    <td>${row.ELEMENT}</td>
+                    <td><span class="copyable" title="Click to copy">${row.DATA_VALUE}</span></td>
+                `;
                 recordsTbody.appendChild(tr);
             });
         }
@@ -226,22 +252,23 @@ async function fetchData() {
 function updateStatRow(prefix, data) {
     const renderCell = (obj) => {
         if (!obj || obj.val === '-') return '-';
-        if (!obj.dates || obj.dates.length === 0) return obj.val;
+        if (!obj.dates || obj.dates.length === 0) return `<span class="copyable" title="Click to copy">${obj.val}</span>`;
 
         const dateText = obj.dates.length > 20 
             ? obj.dates.slice(0, 20).join('\n') + `\n...and ${obj.dates.length - 20} more`
             : obj.dates.join('\n');
 
         return `<div class="tooltip-container">
-                    ${obj.val}
+                    <span class="copyable" title="Click to copy">${obj.val}</span>
                     <span class="tooltip-note">${dateText}</span>
                 </div>`;
     };
 
     document.getElementById(`stat-${prefix}-min`).innerHTML = renderCell(data.min);
     document.getElementById(`stat-${prefix}-max`).innerHTML = renderCell(data.max);
-    document.getElementById(`stat-${prefix}-avg`).textContent = data.avg;
-    document.getElementById(`stat-${prefix}-count`).textContent = data.count_match;
+    
+    document.getElementById(`stat-${prefix}-avg`).innerHTML = `<span class="copyable" title="Click to copy">${data.avg}</span>`;
+    document.getElementById(`stat-${prefix}-count`).innerHTML = `<span class="copyable" title="Click to copy">${data.count_match}</span>`;
 }
 
 function toggleElementFilter(event) {

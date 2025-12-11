@@ -244,7 +244,6 @@ def get_data():
         target_col = sort_col_map.get(sort_by, 'DATE')
         is_asc = (sort_dir == 'asc')
 
-        # Limit to 200 records
         records_df = df.sort_values(by=target_col, ascending=is_asc).head(200)
         records_df['DATE'] = records_df['DATE'].dt.strftime('%Y-%m-%d')
         records_list = records_df[['ID', 'DATE', 'ELEMENT', 'DATA_VALUE']].to_dict(orient='records')
