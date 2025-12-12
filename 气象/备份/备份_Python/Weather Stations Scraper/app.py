@@ -92,5 +92,5 @@ def serve_root_files(filename):
     return send_from_directory('.', filename)
 
 if __name__ == '__main__':
-    print("Starting server at http://127.0.0.1:5000")
-    app.run(debug=True, port=5000)
+    print("Starting server at http://127.0.0.1:1000")
+    app.run(debug=True, port=1000)

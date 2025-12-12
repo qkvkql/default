@@ -38,6 +38,11 @@ class StationUrlGenerators:
         # Requires USAF
         if not self.usaf: return "#"
         return f"http://www.pogodaiklimat.ru/history/{self.usaf}.htm"
+    
+    def url_pogodaiklimat_years_summary(self):
+        # Requires USAF
+        if not self.usaf: return "#"
+        return f"http://www.pogodaiklimat.ru/ysummary/{self.usaf}.htm"
 
     def url_pogodaiklimat_hour(self):
         # Requires USAF
@@ -54,6 +59,11 @@ class StationUrlGenerators:
         if not self.usaf: return "#"
         return f"https://ogimet.com/cgi-bin/gsynres?ind={self.usaf}&ord=REV&enviar=Ver&ndays=30&ano={{y}}&mes={{m}}&day={{d}}&hora={{h}}"
     
+    def url_ogimet_month(self):
+        # Requires USAF
+        if not self.usaf: return "#"
+        return f"https://ogimet.com/cgi-bin/gclimat?ind={self.usaf}&mode=0&ord=DIR&year={{y}}&mes={{m}}&months=6"
+
     def url_q_weather_day(self):
         # Requires USAF
         if not self.usaf: return "#"

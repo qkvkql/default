@@ -1,0 +1,121 @@
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    padding: 20px;
+    background-color: #f4f4f9;
+}
+
+h1, h3 {
+    color: #333;
+}
+
+/* Controls Layout */
+.controls-container {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}
+
+button {
+    padding: 10px 20px;
+    margin: 5px;
+    font-size: 16px;
+    cursor: pointer;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+button:hover {
+    background-color: #0056b3;
+}
+
+input[type="file"] {
+    font-size: 16px;
+    padding: 5px;
+}
+
+/* Section 5: Horizontal Scroll & Font Size */
+.table-wrapper {
+    width: 100%;
+    overflow-x: auto; /* Allow horizontal scroll */
+    background: white;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    border-radius: 8px;
+    min-height: 200px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 18px; /* Large font size */
+    min-width: 600px; /* Ensure table has width to trigger scroll if needed */
+}
+
+th, td {
+    padding: 12px 15px;
+    border: 1px solid #ddd;
+    text-align: left;
+    white-space: nowrap; /* Prevent wrapping for better horizontal scrolling */
+}
+
+/* Header Styling & Sort Cursor */
+th {
+    background-color: #2c3e50;
+    color: white;
+    cursor: pointer; /* Clickable headers */
+    user-select: none;
+    position: relative;
+}
+
+th:hover {
+    background-color: #1a252f;
+}
+
+/* Sort indicators */
+th::after {
+    content: ' \21F3'; /* Up/Down arrow */
+    font-size: 0.8em;
+    opacity: 0.5;
+    margin-left: 5px;
+}
+
+th.asc::after {
+    content: ' \2191'; /* Up arrow */
+    opacity: 1;
+}
+
+th.desc::after {
+    content: ' \2193'; /* Down arrow */
+    opacity: 1;
+}
+
+.placeholder {
+    padding: 20px;
+    color: #777;
+    font-style: italic;
+}
+
+.error-msg {
+    color: red;
+    font-weight: bold;
+    padding: 20px;
+}
+
+/* Add this to your existing CSS */
+#sheet-control select {
+    padding: 8px;
+    font-size: 16px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    min-width: 200px;
+    background-color: white;
+}
+
+#sheet-control label {
+    margin-right: 10px;
+    font-size: 16px;
+}

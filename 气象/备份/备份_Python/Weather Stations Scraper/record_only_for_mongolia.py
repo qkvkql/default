@@ -52,6 +52,7 @@ with open(mongolia_json_path, "w", encoding="utf-8") as f:
 workbook_mn = openpyxl.load_workbook(mongolia_records_path)
 sheet_mongolia_min = workbook_mn[ws_names[0]]
 sheet_mongolia_max = workbook_mn[ws_names[1]]
+sheet_mongolia_avg = workbook_mn[ws_names[2]]
 
 # 获取、准备日期、时间字符串
 def get_utc_datetime_parts():
@@ -64,17 +65,29 @@ def get_utc_datetime_parts():
         # "mm": now.strftime("%M") 分钟
     }
 dt = get_utc_datetime_parts()
-# target_date = '2025/11/27'
+# target_date = '2025/12/12'
 target_date = dt['YYYY'] + '/' + dt['MM'] + '/' + dt['DD'] # 当前UTC时区日期
 
 has_the_date = False
 sheet_name = ''
 def fill_value(page):
     global sheet_name
-    sheet_name = ws_names[0] if page == 'min' else ws_names[1]
+    if page == 'min':
+        sheet_name = ws_names[0]
+    elif page == 'max':
+        sheet_name = ws_names[1]
+    elif page == 'avg':
+        sheet_name = ws_names[2]    
+    # sheet_name = ws_names[0] if page == 'min' else ws_names[1]
 
     # 读: 低温存档
-    sheet = sheet_mongolia_min if page == 'min' else sheet_mongolia_max
+    if page == 'min':
+        sheet = sheet_mongolia_min
+    elif page == 'max':
+        sheet = sheet_mongolia_max
+    elif page == 'avg':
+        sheet = sheet_mongolia_avg    
+    # sheet = sheet_mongolia_min if page == 'min' else sheet_mongolia_max
     rows = list(sheet.values)
     filtered_rows = []
     if rows:
@@ -94,15 +107,24 @@ def fill_value(page):
         date_cell = sheet.cell(row = i + 2, column = 1)
         if date_cell.value.strftime('%Y/%m/%d') == target_date: # 如果表格中已存在某个日期字符串
             has_the_date = True
-            if o['东戈壁'] is not None: # 如果该日期已填数据
+            if o['东戈壁'] is not None: # 如果该日期已填数据,即使没记录到气温也会有一个“无”字，不存在为空的情况
                 print(f'{sheet_name}： ALREADY  filled for the date(---- {target_date} ----) before, Check if the date is you want!!!')
             else:
                 for index, ele in enumerate(mongolia_arr):
-                    sheet.cell(row = i + 2, column = index + 2, value = ele['min'] if page == 'min' else ele['max'])
+                    temp_value = ''
+                    if page == 'min':
+                        temp_value = ele['min']
+                    elif page == 'max':
+                        temp_value = ele['max']
+                    elif page == 'avg':
+                        temp_value = ele['avg']
+                    sheet.cell(row = i + 2, column = index + 2, value = temp_value)
+                    # sheet.cell(row = i + 2, column = index + 2, value = ele['min'] if page == 'min' else ele['max'])
                 workbook_mn.save(mongolia_records_path) #save the file
                 print(f'{sheet_name}: SUCCESSFULLY  filled data for the date (---- {target_date} ----)!')
 
 fill_value('min')
 fill_value('max')
+fill_value('avg')
 if not has_the_date:
-    print(f'Warning: Fill more date into the sheet({sheet_name}) for the first and then come back here to fill data!!!')
+    print(f'Warning: Fill more date into the sheet({sheet_name}) at first, and then come back here to fill data!!!')

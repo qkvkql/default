@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel Viewer</title>
+    <!-- CSS is linked here (assuming you have your style.css in static/) -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+    <div class="controls-container">
+        <h1>Excel Viewer</h1>
+
+        <!-- Section: Often Used Files -->
+        <div class="predefined-buttons">
+            <h3>Often Used Files:</h3>
+            <div id="button-group">
+                {% for key in file_keys %}
+                    <!-- Using type="button" prevents accidental form submission -->
+                    <button type="button" class="quick-btn" onclick="loadPredefined('{{ key }}')">{{ key }}</button>
+                {% endfor %}
+            </div>
+        </div>
+
+        <hr>
+
+        <!-- Section: Manual File Upload -->
+        <div class="custom-upload">
+            <h3>Select Any File:</h3>
+            <input type="file" id="fileInput" accept=".xlsx, .xlsm, .xls">
+            <button id="submitFileBtn" onclick="uploadFile()">View Selected File</button>
+        </div>
+
+        <!-- Section: Sheet Selector (Hidden by default) -->
+        <div id="sheet-control" style="display:none; margin-top: 20px; padding: 10px; background: #eee; border-radius: 4px;">
+            <label for="sheetSelect" style="font-size: 16px; font-weight: bold; margin-right: 10px;">Select Sheet:</label>
+            <select id="sheetSelect" onchange="switchSheet()" style="font-size: 16px; padding: 5px; min-width: 200px;"></select>
+        </div>
+    </div>
+
+    <!-- Section: Data Table -->
+    <div id="table-container" class="table-wrapper">
+        <p class="placeholder">Select a file to view content...</p>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
