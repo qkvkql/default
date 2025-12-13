@@ -3,45 +3,105 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Excel Viewer</title>
-    <!-- CSS is linked here (assuming you have your style.css in static/) -->
+    <title>浏览器看表</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .short-input { width: 150px; }
+        
+        /* NEW STYLES FOR CHECKBOX AREA */
+        #export-container {
+            background: white;
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            display: none; /* Hidden until file loaded */
+        }
+        #checkbox-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+            max-height: 150px;
+            overflow-y: auto;
+            margin-bottom: 15px;
+            border: 1px solid #eee;
+            padding: 10px;
+        }
+        .checkbox-item {
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+    </style>
 </head>
 <body>
 
     <div class="controls-container">
         <h1>Excel Viewer</h1>
 
-        <!-- Section: Often Used Files -->
+        <!-- SEARCH & FILTER SECTION -->
+        <div class="search-container" style="background: #e9ecef; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+            <div style="margin-bottom: 10px;">
+                <label for="searchInput"><strong>Global Search:</strong></label>
+                <input type="text" id="searchInput" placeholder="Search all columns..." 
+                       style="width: 300px; padding: 8px; font-size: 16px;" disabled>
+            </div>
+            <div id="advanced-filters"></div>
+            <div style="margin-top: 10px; margin-bottom: 15px;">
+                <button id="addFilterBtn" onclick="addFilterRow()" style="background-color: #17a2b8; font-size: 14px; padding: 5px 10px;" disabled>
+                    <span style="font-weight:bold; font-size:16px;">+</span> Add Column Filter
+                </button>
+            </div>
+            <button id="submitSearchBtn" onclick="triggerSearch()" style="background-color: #28a745; width: 100%; padding: 10px;" disabled>
+                Submit Search & Filters
+            </button>
+        </div>
+
+        <!-- PREDEFINED FILES -->
         <div class="predefined-buttons">
             <h3>Often Used Files:</h3>
             <div id="button-group">
                 {% for key in file_keys %}
-                    <!-- Using type="button" prevents accidental form submission -->
-                    <button type="button" class="quick-btn" onclick="loadPredefined('{{ key }}')">{{ key }}</button>
+                    <button type="button" class="quick-btn" onclick="setModeAndLoad('predefined', '{{ key }}')">{{ key }}</button>
                 {% endfor %}
             </div>
         </div>
 
         <hr>
 
-        <!-- Section: Manual File Upload -->
+        <!-- MANUAL UPLOAD -->
         <div class="custom-upload">
             <h3>Select Any File:</h3>
             <input type="file" id="fileInput" accept=".xlsx, .xlsm, .xls">
-            <button id="submitFileBtn" onclick="uploadFile()">View Selected File</button>
+            <button id="submitFileBtn" onclick="setModeAndLoad('upload', null)">View Selected File</button>
         </div>
 
-        <!-- Section: Sheet Selector (Hidden by default) -->
+        <!-- SHEET SELECTOR -->
         <div id="sheet-control" style="display:none; margin-top: 20px; padding: 10px; background: #eee; border-radius: 4px;">
             <label for="sheetSelect" style="font-size: 16px; font-weight: bold; margin-right: 10px;">Select Sheet:</label>
             <select id="sheetSelect" onchange="switchSheet()" style="font-size: 16px; padding: 5px; min-width: 200px;"></select>
         </div>
     </div>
 
-    <!-- Section: Data Table -->
+    <!-- NEW: EXPORT SECTION -->
+    <div id="export-container">
+        <h3>Copy Data (TSV):</h3>
+        <p style="font-size:12px; color:#666; margin-bottom:5px;">Check columns to include in copy:</p>
+        
+        <!-- Checkboxes will be injected here -->
+        <div id="checkbox-list"></div>
+
+        <!-- Copy Button -->
+        <button id="copyTsvBtn" onclick="copyToClipboard()" style="background-color: #6610f2; width: 200px; padding: 10px;" disabled>
+            Copy Selected Columns
+        </button>
+        <span id="copyStatus" style="margin-left:10px; font-weight:bold; color:green; display:none;">Copied!</span>
+    </div>
+
+    <!-- TABLE OUTPUT -->
     <div id="table-container" class="table-wrapper">
-        <p class="placeholder">Select a file to view content...</p>
+        <p class="placeholder">Please select a file to start.</p>
     </div>
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>

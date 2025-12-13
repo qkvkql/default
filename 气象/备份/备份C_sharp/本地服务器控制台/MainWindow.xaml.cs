@@ -78,7 +78,7 @@ namespace PythonManager
             });
 
             Projects.Add(new ProjectModel { 
-                Name = "浏览器看表", 
+                Name = "View Table in Browser", 
                 FolderPath = @"D:\文档\Python\浏览器看表", 
                 Command = "python app.py", 
                 Port = 1003 

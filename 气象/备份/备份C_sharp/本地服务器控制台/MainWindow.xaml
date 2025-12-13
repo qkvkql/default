@@ -1,31 +1,25 @@
 ﻿<Window x:Class="PythonManager.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Python Command Center" Height="700" Width="1000"
+        Title="Python Command Center" Height="800" Width="1150"
         Background="#1E1E1E" WindowStartupLocation="CenterScreen">
-    
+
     <Window.Resources>
-        <!-- === UPDATED BUTTON STYLE === -->
+        <!-- === BUTTON STYLE === -->
         <Style x:Key="ModernBtn" TargetType="Button">
             <Setter Property="Background" Value="#333333"/>
             <Setter Property="Foreground" Value="White"/>
-            <Setter Property="FontSize" Value="22"/> <!-- Large Font -->
+            <Setter Property="FontSize" Value="18"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
-            
-            <!-- CHANGED: 30px width-wise, 20px height-wise -->
-            <Setter Property="Padding" Value="30,20"/> 
-            
-            <!-- CHANGED: Force the button to be tall -->
-            <Setter Property="MinHeight" Value="65"/> 
-            <Setter Property="MinWidth" Value="140"/>
-            
+            <Setter Property="Padding" Value="15,10"/>
+            <Setter Property="MinHeight" Value="50"/> 
+            <Setter Property="MinWidth" Value="100"/>
             <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Margin" Value="10,0"/>
+            <Setter Property="Margin" Value="5"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <!-- CHANGED: Rounder corners for taller buttons -->
-                        <Border Background="{TemplateBinding Background}" CornerRadius="12">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="8">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
@@ -41,65 +35,105 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <!-- === TOOLTIP STYLE === -->
+        <Style TargetType="ToolTip">
+            <Setter Property="Background" Value="#252526"/>
+            <Setter Property="Foreground" Value="#EEEEEE"/>
+            <Setter Property="BorderBrush" Value="#444444"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Padding" Value="10"/>
+            <Setter Property="HasDropShadow" Value="True"/>
+        </Style>
     </Window.Resources>
 
-    <Grid Margin="30">
+    <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
         <!-- Header -->
-        <TextBlock Text="Project Dashboard" Foreground="White" FontSize="36" FontWeight="Bold" Margin="0,0,0,30"/>
+        <TextBlock Text="Project Blocks" Foreground="White" FontSize="32" FontWeight="Bold" Margin="10,0,0,20"/>
 
-        <!-- Project List -->
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+        <!-- Project Grid -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <ItemsControl Name="ProjectList">
+                
+                <!-- This changes the List to a Grid/Flow Layout -->
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel Orientation="Horizontal" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <!-- Card Design -->
-                        <Border Background="#252526" CornerRadius="15" Margin="0,0,0,25" Padding="25">
-                            <Border.Effect>
-                                <DropShadowEffect Color="Black" BlurRadius="20" ShadowDepth="4" Opacity="0.4"/>
-                            </Border.Effect>
+                        <!-- CUBIC BLOCK DESIGN -->
+                        <!-- Width and Height set to make it a square/block -->
+                        <Border Background="#252526" CornerRadius="15" Margin="10" Padding="20"
+                                Width="340" Height="300">
                             
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
+                            <!-- Shadow Effect -->
+                            <Border.Effect>
+                                <DropShadowEffect Color="Black" BlurRadius="15" ShadowDepth="5" Opacity="0.4"/>
+                            </Border.Effect>
 
-                                <!-- Info Area -->
-                                <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding Name}" Foreground="White" FontSize="24" FontWeight="SemiBold"/>
-                                    <TextBlock Text="{Binding FolderPath}" Foreground="#AAAAAA" FontSize="16" Margin="0,10,0,0" TextTrimming="CharacterEllipsis"/>
-                                    
-                                    <!-- Tags Area -->
-                                    <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-                                        <Border Background="#333333" CornerRadius="6" Padding="10,4" Margin="0,0,10,0">
-                                            <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="Port: " Foreground="#888888" FontSize="15"/>
-                                                <TextBlock Text="{Binding Port}" Foreground="#CCCCCC" FontSize="15" FontWeight="Bold"/>
-                                            </StackPanel>
-                                        </Border>
-                                        <Border Background="#333333" CornerRadius="6" Padding="10,4">
-                                            <TextBlock Text="{Binding Command}" Foreground="#888888" FontSize="15" FontStyle="Italic"/>
-                                        </Border>
+                            <!-- HOVER TOOLTIP (The Hidden Information) -->
+                            <Border.ToolTip>
+                                <ToolTip>
+                                    <StackPanel MaxWidth="400">
+                                        <TextBlock Text="Project Details" FontWeight="Bold" FontSize="16" Margin="0,0,0,10" Foreground="#50CD50"/>
+                                        
+                                        <TextBlock Text="Path:" Foreground="#AAAAAA" FontWeight="Bold"/>
+                                        <TextBlock Text="{Binding FolderPath}" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                                        
+                                        <TextBlock Text="Command:" Foreground="#AAAAAA" FontWeight="Bold"/>
+                                        <TextBlock Text="{Binding Command}" TextWrapping="Wrap" Margin="0,0,0,10" FontFamily="Consolas"/>
+                                        
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="Port: " Foreground="#AAAAAA" FontWeight="Bold"/>
+                                            <TextBlock Text="{Binding Port}" Foreground="White"/>
+                                        </StackPanel>
                                     </StackPanel>
-                                </StackPanel>
+                                </ToolTip>
+                            </Border.ToolTip>
+                            
+                            <!-- Block Content -->
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
 
-                                <!-- Status Label -->
-                                <Border Grid.Column="1" VerticalAlignment="Center" Margin="40,0">
-                                    <TextBlock Text="{Binding Status}" Foreground="{Binding StatusColor}" 
-                                               FontSize="20" FontWeight="Bold" Width="120" TextAlignment="Center"/>
+                                <!-- 1. Name (Top, Centered, Large) -->
+                                <TextBlock Grid.Row="0" Text="{Binding Name}" Foreground="White" 
+                                           FontSize="26" FontWeight="Bold" TextAlignment="Center" 
+                                           TextWrapping="Wrap" VerticalAlignment="Center"/>
+
+                                <!-- 2. Status (Middle) -->
+                                <Border Grid.Row="1" Margin="0,20">
+                                    <StackPanel HorizontalAlignment="Center">
+                                        <!-- REMOVED LetterSpacing HERE -->
+                                        <TextBlock Text="STATUS" Foreground="#666666" FontSize="12" 
+                                                   FontWeight="Bold" HorizontalAlignment="Center"/>
+                                        
+                                        <TextBlock Text="{Binding Status}" Foreground="{Binding StatusColor}" 
+                                                   FontSize="22" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                    </StackPanel>
                                 </Border>
 
-                                <!-- Buttons Area -->
-                                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                                    <Button Content="Start" Click="BtnStart_Click" Style="{StaticResource ModernBtn}" IsEnabled="{Binding CanStart}"/>
-                                    <Button Content="Stop" Click="BtnStop_Click" Style="{StaticResource ModernBtn}" IsEnabled="{Binding IsRunning}"/>
-                                </StackPanel>
+                                <!-- 3. Buttons (Bottom) -->
+                                <Grid Grid.Row="2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Button Grid.Column="0" Content="Start" Click="BtnStart_Click" Style="{StaticResource ModernBtn}" IsEnabled="{Binding CanStart}"/>
+                                    <Button Grid.Column="1" Content="Stop" Click="BtnStop_Click" Style="{StaticResource ModernBtn}" IsEnabled="{Binding IsRunning}"/>
+                                </Grid>
                             </Grid>
                         </Border>
                     </DataTemplate>

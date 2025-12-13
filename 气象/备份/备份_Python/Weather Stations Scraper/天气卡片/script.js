@@ -3,7 +3,7 @@ import { array_of_stations_by_different_filters } from '../stations_data.js';
 import { cold_days } from './cold_days.js';
 let source_data = [];
 
-switch(1){
+switch(0){
     case 1:
         source_data = cold_days;
         break;
