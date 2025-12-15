@@ -145,16 +145,16 @@ function copyToClipboard() {
                                  .map(cb => parseInt(cb.value))
                                  .sort((a, b) => a - b);
 
+    // --- PART A: COPY TO CLIPBOARD (Existing Logic) ---
     let tsvContent = "";
 
-    // 2. Add Header Row
+    // Header Row
     const headerRow = selectedIndices.map(idx => currentHeaders[idx]).join("\t");
     tsvContent += headerRow + "\n";
 
-    // 3. Add Data Rows (From Filtered Data)
+    // Data Rows
     currentTableRows.forEach(row => {
         const rowData = selectedIndices.map(idx => {
-            // Handle null/undefined and clean tabs/newlines from data so TSV doesn't break
             let val = row[idx];
             if (val === null || val === undefined) val = "";
             val = String(val).replace(/\t/g, " ").replace(/\n/g, " "); 
@@ -163,7 +163,6 @@ function copyToClipboard() {
         tsvContent += rowData + "\n";
     });
 
-    // 4. Write to Clipboard
     navigator.clipboard.writeText(tsvContent).then(() => {
         const status = document.getElementById('copyStatus');
         status.style.display = "inline";
@@ -171,8 +170,31 @@ function copyToClipboard() {
     }).catch(err => {
         alert("Failed to copy: " + err);
     });
-}
 
+    // --- PART B: UPDATE TABLE DISPLAY (New Logic) ---
+    
+    // 1. Create new Headers array containing ONLY selected headers
+    const newHeaders = selectedIndices.map(idx => currentHeaders[idx]);
+
+    // 2. Create new Rows array containing ONLY selected cell values
+    const newRows = currentTableRows.map(row => {
+        return selectedIndices.map(idx => row[idx]);
+    });
+
+    // 3. Update Global Variables
+    currentHeaders = newHeaders;
+    currentTableRows = newRows;
+
+    // 4. Re-render the Table (Now shows only selected columns)
+    renderTable();
+
+    // 5. Re-render the Export Checkboxes
+    // (Since the visible columns changed, the checkboxes must match the new table)
+    renderExportCheckboxes();
+    
+    // 6. Reset Sort Direction since the column indices have shifted
+    sortDirection = {};
+}
 
 // --- MAIN LOGIC ---
 

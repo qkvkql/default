@@ -58,7 +58,7 @@ select option {
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 50px 20px 20px 20px;
+    padding: 100px 20px 100px 20px;
     transition: background 1s ease;
     
     /* Default Background */
@@ -100,7 +100,7 @@ h2#cityName {
 
 /* --- NEW STYLES FOR CENTER RANGE --- */
 .main-range {
-    font-size: 42px; /* Large but fits the width */
+    font-size: 56px; /* Large but fits the width */
     font-weight: 600;
     margin: 10px 0;
     letter-spacing: -1px;
@@ -108,7 +108,7 @@ h2#cityName {
 }
 
 .avg-display {
-    font-size: 18px;
+    font-size: 24px;
     font-weight: 500;
     opacity: 0.9;
     padding: 5px 15px;
