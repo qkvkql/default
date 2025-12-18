@@ -2,10 +2,17 @@ let debounceTimer;
 let currentSortBy = 'DATE';
 let currentSortDir = 'desc';
 
-// --- PERIOD SORT STATE ---
-let rawPeriodStats = []; // Store the data for client-side sort
+// --- PERIOD SORT & VISIBILITY STATE ---
+let rawPeriodStats = [];
 let periodSortCol = 'range';
 let periodSortDir = 'desc';
+
+let periodColVisibility = {
+    min_tmin: true,
+    max_tmin: true,
+    min_tmax: true,
+    max_tmax: true
+};
 
 document.addEventListener('DOMContentLoaded', () => {
     const hiddenId = document.getElementById('stationId');
@@ -15,18 +22,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// --- GLOBAL COPY FUNCTIONALITY ---
+// --- COPY FUNCTION ---
 document.addEventListener('click', function(e) {
-    // Check if clicked element or parent has 'copyable' class
     const target = e.target.closest('.copyable');
     if (target) {
         const text = target.innerText.trim();
         if (text && text !== '-') {
             navigator.clipboard.writeText(text).then(() => {
                 showToast(`Copied: ${text}`);
-            }).catch(err => {
-                console.error('Failed to copy: ', err);
-            });
+            }).catch(err => { console.error('Failed to copy: ', err); });
         }
     }
 });
@@ -38,7 +42,7 @@ function showToast(message) {
     setTimeout(function(){ toast.className = toast.className.replace("show", ""); }, 3000);
 }
 
-
+// --- SEARCH ---
 async function searchStations() {
     const input = document.getElementById('stationInput');
     const dataList = document.getElementById('stationOptions');
@@ -79,7 +83,7 @@ function triggerServerSort(columnName) {
     fetchData();
 }
 
-// --- PERIOD TABLE CLIENT SORT ---
+// --- PERIOD TABLE FUNCTIONS ---
 function sortPeriodTable(column) {
     if (periodSortCol === column) {
         periodSortDir = (periodSortDir === 'asc') ? 'desc' : 'asc';
@@ -90,37 +94,51 @@ function sortPeriodTable(column) {
     renderPeriodTable();
 }
 
+function updatePeriodColumns() {
+    periodColVisibility.min_tmin = document.getElementById('chk_min_tmin').checked;
+    periodColVisibility.max_tmin = document.getElementById('chk_max_tmin').checked;
+    periodColVisibility.min_tmax = document.getElementById('chk_min_tmax').checked;
+    periodColVisibility.max_tmax = document.getElementById('chk_max_tmax').checked;
+    renderPeriodTable();
+}
+
 function renderPeriodTable() {
     const tbody = document.querySelector('#periodStatsTable tbody');
     tbody.innerHTML = '';
 
+    const setHeaderDisplay = (id, visible) => {
+        document.getElementById(id).style.display = visible ? '' : 'none';
+    };
+    setHeaderDisplay('th_min_tmin', periodColVisibility.min_tmin);
+    setHeaderDisplay('th_min_tmax', periodColVisibility.min_tmax);
+    setHeaderDisplay('th_max_tmin', periodColVisibility.max_tmin);
+    setHeaderDisplay('th_max_tmax', periodColVisibility.max_tmax);
+
     if (rawPeriodStats.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8">No period data available.</td></tr>';
+        let colCount = 4;
+        if (periodColVisibility.min_tmin) colCount++;
+        if (periodColVisibility.max_tmin) colCount++;
+        if (periodColVisibility.min_tmax) colCount++;
+        if (periodColVisibility.max_tmax) colCount++;
+        tbody.innerHTML = `<tr><td colspan="${colCount}">No period data available.</td></tr>`;
         return;
     }
 
-    // Sort Logic
     rawPeriodStats.sort((a, b) => {
         let valA, valB;
-
         if (['range'].includes(periodSortCol)) {
-            valA = a[periodSortCol];
-            valB = b[periodSortCol];
+            valA = a[periodSortCol]; valB = b[periodSortCol];
         } else if (['cnt_tmin', 'cnt_tavg', 'cnt_tmax'].includes(periodSortCol)) {
-            valA = a[periodSortCol];
-            valB = b[periodSortCol];
+            valA = a[periodSortCol]; valB = b[periodSortCol];
         } else {
-            // Temperature Objects
             valA = (a[periodSortCol].val === '-') ? -9999 : a[periodSortCol].val;
             valB = (b[periodSortCol].val === '-') ? -9999 : b[periodSortCol].val;
         }
-
         if (valA < valB) return periodSortDir === 'asc' ? -1 : 1;
         if (valA > valB) return periodSortDir === 'asc' ? 1 : -1;
         return 0;
     });
 
-    // Render HTML
     rawPeriodStats.forEach(p => {
         const tr = document.createElement('tr');
         
@@ -132,19 +150,20 @@ function renderPeriodTable() {
                 ? obj.dates.slice(0, 20).join('\n') + `\n...and ${obj.dates.length - 20} more`
                 : obj.dates.join('\n');
             
-            // WRAP VALUE IN COPYABLE SPAN
             return `<div class="tooltip-container">
                         <span class="copyable" title="Click to copy">${obj.val}</span>
                         <span class="tooltip-note">${dateText}</span>
                     </div>`;
         };
 
+        const getStyle = (key) => periodColVisibility[key] ? '' : 'display: none;';
+
         tr.innerHTML = `
             <td><span class="copyable" title="Click to copy">${p.range}</span></td>
-            <td>${renderWithTooltip(p.min_tmin)}</td>
-            <td>${renderWithTooltip(p.max_tmin)}</td>
-            <td>${renderWithTooltip(p.min_tmax)}</td>
-            <td>${renderWithTooltip(p.max_tmax)}</td>
+            <td style="${getStyle('min_tmin')}">${renderWithTooltip(p.min_tmin)}</td>
+            <td style="${getStyle('min_tmax')}">${renderWithTooltip(p.min_tmax)}</td>
+            <td style="${getStyle('max_tmin')}">${renderWithTooltip(p.max_tmin)}</td>
+            <td style="${getStyle('max_tmax')}">${renderWithTooltip(p.max_tmax)}</td>
             <td><span class="copyable" title="Click to copy">${p.cnt_tmin}</span></td>
             <td><span class="copyable" title="Click to copy">${p.cnt_tavg}</span></td>
             <td><span class="copyable" title="Click to copy">${p.cnt_tmax}</span></td>
@@ -160,6 +179,10 @@ async function fetchData() {
     const errorMsg = document.getElementById('errorMsg');
     const recordsTbody = document.querySelector('#recordsTable tbody');
     
+    // Get checked elements for filtering
+    const checkboxes = document.querySelectorAll('#elementFilterDropdown input[type="checkbox"]');
+    const selectedElements = Array.from(checkboxes).filter(cb => cb.checked).map(cb => cb.value);
+
     recordsTbody.innerHTML = '';
     rawPeriodStats = [];
     renderPeriodTable();
@@ -178,6 +201,8 @@ async function fetchData() {
         hemisphere: document.querySelector('input[name="hemisphere"]:checked').value,
         sort_by: currentSortBy,
         sort_dir: currentSortDir,
+        // Send selected elements for Record List filtering
+        selected_elements: selectedElements,
         tmin_val: document.getElementById('tminVal').value,
         tmin_dir: document.getElementById('tminDir').value,
         tavg_val: document.getElementById('tavgVal').value,
@@ -200,12 +225,10 @@ async function fetchData() {
             return;
         }
 
-        // 1. Global Stats
         updateStatRow('tmin', result.stats.TMIN);
         updateStatRow('tavg', result.stats.TAVG);
         updateStatRow('tmax', result.stats.TMAX);
 
-        // 2. Period Summary
         const updateSummaryCell = (id, data) => {
             const el = document.getElementById(id);
             if (data.val === '-') {
@@ -214,17 +237,14 @@ async function fetchData() {
                 el.innerHTML = `<span class="copyable" title="Click to copy">${data.val}</span> <span class="stat-subtext">(${data.used}/${data.total})</span>`;
             }
         };
-
         updateSummaryCell('sum-avg-min-tmin', result.period_summary.avg_min_tmin);
         updateSummaryCell('sum-avg-min-tmax', result.period_summary.avg_min_tmax);
         updateSummaryCell('sum-avg-max-tmin', result.period_summary.avg_max_tmin);
         updateSummaryCell('sum-avg-max-tmax', result.period_summary.avg_max_tmax);
 
-        // 3. Period List
         rawPeriodStats = result.period_stats;
         renderPeriodTable(); 
 
-        // 4. Record List
         if (result.records.length === 0) {
             recordsTbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No records found.</td></tr>';
         } else {
@@ -240,8 +260,9 @@ async function fetchData() {
                 recordsTbody.appendChild(tr);
             });
         }
-        applyElementFilter();
-
+        // Note: applyElementFilter is no longer strictly needed for hiding since server filters,
+        // but we keep the visual check sync.
+        
     } catch (err) {
         errorMsg.textContent = "Network Error: " + err;
     } finally {
@@ -275,17 +296,6 @@ function toggleElementFilter(event) {
     if(event) event.stopPropagation();
     const dropdown = document.getElementById('elementFilterDropdown');
     dropdown.classList.toggle('hidden');
-}
-
-function applyElementFilter() {
-    const checkboxes = document.querySelectorAll('#elementFilterDropdown input[type="checkbox"]');
-    const checkedValues = Array.from(checkboxes).filter(cb => cb.checked).map(cb => cb.value);
-    const tbody = document.querySelector('#recordsTable tbody');
-    const rows = tbody.querySelectorAll('tr');
-    rows.forEach(row => {
-        const rowType = row.dataset.element;
-        row.style.display = checkedValues.includes(rowType) ? '' : 'none';
-    });
 }
 
 document.addEventListener('click', function(event) {

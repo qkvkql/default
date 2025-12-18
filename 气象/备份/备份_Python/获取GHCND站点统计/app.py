@@ -63,6 +63,9 @@ def get_data():
         
         sort_by = req.get('sort_by', 'DATE')
         sort_dir = req.get('sort_dir', 'desc')
+        
+        # NEW: Get the list of elements user wants to see in the record list
+        selected_elements = req.get('selected_elements', ['TMIN', 'TAVG', 'TMAX'])
 
         thresh_params = {
             'TMIN': {'val': req.get('tmin_val'), 'dir': req.get('tmin_dir')},
@@ -89,6 +92,7 @@ def get_data():
             else:
                 df = df[df['DATE'].dt.month == int(month_filter)]
 
+        # Keep valid elements for Statistics (We use ALL 3 for global stats)
         df = df[df['ELEMENT'].isin(['TMIN', 'TAVG', 'TMAX'])].copy()
         df['DATA_VALUE'] = df['DATA_VALUE'] / 10.0 
 
@@ -99,7 +103,7 @@ def get_data():
             matches = sub_df[sub_df['DATA_VALUE'] == target_val]['DATE']
             return {'val': float(target_val), 'dates': matches.dt.strftime('%Y-%m-%d').tolist()}
 
-        # --- GLOBAL STATISTICS ---
+        # --- GLOBAL STATISTICS (Uses all data) ---
         stats = {}
         def calc_global_stats(element_name):
             sub_df = df[df['ELEMENT'] == element_name]
@@ -124,7 +128,7 @@ def get_data():
         stats['TAVG'] = calc_global_stats('TAVG')
         stats['TMAX'] = calc_global_stats('TMAX')
 
-        # --- PERIOD LOGIC ---
+        # --- PERIOD LOGIC (Uses all data) ---
         df['Season_Year'] = df['DATE'].dt.year
         if period_mode == 'p1': 
             mask = (df['DATE'].dt.month < 7) | ((df['DATE'].dt.month == 7) & (df['DATE'].dt.day < 16))
@@ -239,12 +243,20 @@ def get_data():
             'avg_max_tmax': get_avg_data(list_max_tmax, count_used_max_tmax)
         }
 
-        # --- SORTING & RECORD LIST ---
+        # --- SORTING & RECORD LIST (USES FILTER) ---
         sort_col_map = {'ID': 'ID', 'DATE': 'DATE', 'ELEMENT': 'ELEMENT', 'DATA_VALUE': 'DATA_VALUE'}
         target_col = sort_col_map.get(sort_by, 'DATE')
         is_asc = (sort_dir == 'asc')
 
-        records_df = df.sort_values(by=target_col, ascending=is_asc).head(200)
+        # 1. Apply the Element Filter to the Record List DataFrame
+        if selected_elements:
+            records_df = df[df['ELEMENT'].isin(selected_elements)].copy()
+        else:
+            records_df = df.copy() # Should not happen usually
+
+        # 2. Sort and Limit
+        records_df = records_df.sort_values(by=target_col, ascending=is_asc).head(200)
+        
         records_df['DATE'] = records_df['DATE'].dt.strftime('%Y-%m-%d')
         records_list = records_df[['ID', 'DATE', 'ELEMENT', 'DATA_VALUE']].to_dict(orient='records')
 
@@ -260,4 +272,4 @@ def get_data():
         return jsonify({'status': 'error', 'message': str(e)})
 
 if __name__ == '__main__':
-    app.run(debug=True, port=1002) # 127.0.0.1:1002
+    app.run(debug=True)

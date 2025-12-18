@@ -26,9 +26,9 @@
 
             <div class="param-row">
                 <label>Date Range:</label>
-                <input type="date" id="startDate" value="1800-01-01">
+                <input type="date" id="startDate" value="1600-01-01">
                 <span>to</span>
-                <input type="date" id="endDate" value="2027-01-01">
+                <input type="date" id="endDate" value="2100-01-01">
             </div>
 
             <div class="param-row">
@@ -124,16 +124,26 @@
 
         <div class="section">
             <h2>2c. Period Details (By Range)</h2>
+            
+            <!-- COLUMN VISIBILITY CONTROLS -->
+            <div class="column-controls">
+                <span style="font-weight:bold; margin-right:10px;">Show Columns:</span>
+                <label><input type="checkbox" id="chk_min_tmin" checked> Min TMIN</label>
+                <label><input type="checkbox" id="chk_min_tmax" checked> Min TMAX</label>
+                <label><input type="checkbox" id="chk_max_tmin" checked> Max TMIN</label>
+                <label><input type="checkbox" id="chk_max_tmax" checked> Max TMAX</label>
+                <button class="small-btn" onclick="updatePeriodColumns()">Update Table</button>
+            </div>
+
             <div style="max-height: 300px; overflow-y: auto;">
                 <table class="stats-table" id="periodStatsTable">
                     <thead>
                         <tr>
-                            <!-- CLICKABLE HEADERS FOR SORTING -->
                             <th onclick="sortPeriodTable('range')">Period Range &#8645;</th>
-                            <th onclick="sortPeriodTable('min_tmin')">Min TMIN &#8645;</th>
-                            <th onclick="sortPeriodTable('max_tmin')">Max TMIN &#8645;</th>
-                            <th onclick="sortPeriodTable('min_tmax')">Min TMAX &#8645;</th>
-                            <th onclick="sortPeriodTable('max_tmax')">Max TMAX &#8645;</th>
+                            <th id="th_min_tmin" onclick="sortPeriodTable('min_tmin')">Min TMIN &#8645;</th>
+                            <th id="th_min_tmax" onclick="sortPeriodTable('min_tmax')">Min TMAX &#8645;</th>
+                            <th id="th_max_tmin" onclick="sortPeriodTable('max_tmin')">Max TMIN &#8645;</th>
+                            <th id="th_max_tmax" onclick="sortPeriodTable('max_tmax')">Max TMAX &#8645;</th>
                             <th onclick="sortPeriodTable('cnt_tmin')">Days (TMIN) &#8645;</th>
                             <th onclick="sortPeriodTable('cnt_tavg')">Days (TAVG) &#8645;</th>
                             <th onclick="sortPeriodTable('cnt_tmax')">Days (TMAX) &#8645;</th>
@@ -153,12 +163,13 @@
                         <th onclick="triggerServerSort('ID')">ID &#8645;</th>
                         <th onclick="triggerServerSort('DATE')">Date &#8645;</th>
                         
+                        <!-- Element Filter: Note the onchange="fetchData()" -->
                         <th class="filter-header" style="position: relative;" onclick="toggleElementFilter(event)">
                             <span>Element &#9662;</span>
                             <div id="elementFilterDropdown" class="filter-dropdown hidden" onclick="event.stopPropagation()">
-                                <label><input type="checkbox" value="TMIN" checked onchange="applyElementFilter()"> TMIN</label>
-                                <label><input type="checkbox" value="TAVG" checked onchange="applyElementFilter()"> TAVG</label>
-                                <label><input type="checkbox" value="TMAX" checked onchange="applyElementFilter()"> TMAX</label>
+                                <label><input type="checkbox" value="TMIN" checked onchange="fetchData()"> TMIN</label>
+                                <label><input type="checkbox" value="TAVG" checked onchange="fetchData()"> TAVG</label>
+                                <label><input type="checkbox" value="TMAX" checked onchange="fetchData()"> TMAX</label>
                             </div>
                         </th>
                         
