@@ -116,6 +116,9 @@ td {
     overflow: hidden;
     text-overflow: ellipsis;
 }
+.star-height {
+    height: 104px;
+}
 
 td:nth-child(1){
     text-align: right;

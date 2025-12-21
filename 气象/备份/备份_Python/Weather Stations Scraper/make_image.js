@@ -28,6 +28,16 @@ Object.keys(array_of_stations_by_different_filters).forEach(key => {
 // select 标签 value 发生变化时就立刻 加载数据，无需点击确定
 sourceSelect.addEventListener('change', () => {
     loadDataToTable(sourceSelect.value);
+    const dataTds = document.querySelectorAll('.data-td');
+    if(sourceSelect.value === '明星站'){
+        dataTds.forEach(td => {
+            td.classList.add('star-height');
+        });
+    }else{
+        dataTds.forEach(td => {
+            td.classList.remove('star-height');
+        });
+    }
 });
 
 // Load the first dataset by default on startup
@@ -95,7 +105,8 @@ function loadDataToTable(sourceKey) {
 
     // Adjust Title Row colspan to span the whole table minus the date cells
     titleCell.colSpan = Math.max(1, columns.length - 2);
-    titleCell.innerHTML = `${base_title}<span style="color: #e0aaff">(${sourceKey})</span>`;
+    // titleCell.innerHTML = `${base_title}<span style="color: #e0aaff">(${sourceKey})</span>`;
+    titleCell.innerHTML = base_title;
 
     // --- RENDER HEADERS ---
     columns.forEach(colName => {
@@ -111,7 +122,7 @@ function loadDataToTable(sourceKey) {
     // --- 数值填色 ---
     data.forEach(row => {
         const tr = document.createElement('tr');
-        columns.forEach(col => {
+        columns.forEach((col, index) => {
             const td = document.createElement('td');
             td.innerText = row[col];
             // Add class for styling (optional, but requested)
@@ -122,6 +133,9 @@ function loadDataToTable(sourceKey) {
             }
 
             td.classList.add(`col-${col}`);
+            if(index === 0){
+                td.classList.add('data-td');
+            }
             tr.appendChild(td);
         });
         
@@ -134,7 +148,12 @@ function loadDataToTable(sourceKey) {
         let tempE = tbody[i].querySelectorAll('td')[0];
         let tempE_Coor = tbody[i].querySelectorAll('td')[4];
         let tempE_elev = tbody[i].querySelectorAll('td')[5];
-        tempE.innerHTML = wrapIcons(whichSource[i]['icon1']) + tempE.innerText + wrapIcons(whichSource[i]['icon2']);
+        if(sourceSelect.value !== '明星站'){
+            tempE.innerHTML = wrapIcons(whichSource[i]['icon1']) + tempE.innerText + wrapIcons(whichSource[i]['icon2']);
+        }else{
+            tempE.style.fontSize = '72px';
+            tempE.style.fontFamily = 'stkaiti';
+        }
         tempE_Coor.innerText = transformCoor(tempE_Coor.innerText);
         tempE_elev.innerText = tempE_elev.innerText === '' ? '' : tempE_elev.innerText + 'm';
     }
