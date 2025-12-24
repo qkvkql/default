@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Visitor Analytics - GHCND</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background-color: #f8f9fa; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1 { margin-top: 0; color: #333; }
+        h2 { color: #555; border-bottom: 2px solid #eee; padding-bottom: 5px; margin-top: 30px; }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .btn { padding: 8px 15px; border-radius: 4px; text-decoration: none; color: white; border: none; cursor: pointer; font-size: 14px; }
+        .btn-danger { background-color: #dc3545; }
+        .btn-primary { background-color: #007bff; }
+        .btn-secondary { background-color: #6c757d; }
+        .btn:hover { opacity: 0.9; }
+
+        /* Grid Layout for Analytics Tables */
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        table { width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 0.9em; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f1f1f1; }
+        tr:nth-child(even) { background-color: #fafafa; }
+        
+        .badge { background: #eee; padding: 2px 6px; border-radius: 10px; font-weight: bold; font-size: 0.8em; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>Visitor Analytics Dashboard</h1>
+        <div>
+            <form action="{{ url_for('clear_visitor_db') }}" method="post" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete ALL visitor logs?');">
+                <button type="submit" class="btn btn-danger">Clear History</button>
+            </form>
+            <a href="{{ url_for('home') }}" class="btn btn-primary" style="margin-left: 10px;">Back to Tool</a>
+            <a href="{{ url_for('logout') }}" class="btn btn-secondary" style="margin-left: 10px;">Logout</a>
+        </div>
+    </div>
+
+    <p style="font-size: 1.2em;">Total Visits: <strong>{{ count }}</strong> | Admin: <strong>{{ current_user.username }}</strong></p>
+
+    <!-- ANALYTICS SECTION -->
+    <h2>Aggregated Statistics (Most Frequent)</h2>
+    <div class="grid-container">
+        
+        <!-- Users -->
+        <div>
+            <h3>By User</h3>
+            <table>
+                <tr><th>User</th><th>Visits</th></tr>
+                {% for row in analytics['Users'] %}
+                <tr><td>{{ row[0] }}</td><td>{{ row[1] }}</td></tr>
+                {% endfor %}
+            </table>
+        </div>
+
+        <!-- IP -->
+        <div>
+            <h3>By IP Address</h3>
+            <table>
+                <tr><th>IP</th><th>Visits</th></tr>
+                {% for row in analytics['IPs'][:10] %} <!-- Limit to top 10 -->
+                <tr><td>{{ row[0] }}</td><td>{{ row[1] }}</td></tr>
+                {% endfor %}
+            </table>
+        </div>
+
+        <!-- Devices -->
+        <div>
+            <h3>By Device</h3>
+            <table>
+                <tr><th>Device</th><th>Visits</th></tr>
+                {% for row in analytics['Devices'] %}
+                <tr><td>{{ row[0] }}</td><td>{{ row[1] }}</td></tr>
+                {% endfor %}
+            </table>
+        </div>
+
+        <!-- OS -->
+        <div>
+            <h3>By OS</h3>
+            <table>
+                <tr><th>OS</th><th>Visits</th></tr>
+                {% for row in analytics['OS'] %}
+                <tr><td>{{ row[0] }}</td><td>{{ row[1] }}</td></tr>
+                {% endfor %}
+            </table>
+        </div>
+
+        <!-- Browsers -->
+        <div>
+            <h3>By Browser</h3>
+            <table>
+                <tr><th>Browser</th><th>Visits</th></tr>
+                {% for row in analytics['Browsers'] %}
+                <tr><td>{{ row[0] }}</td><td>{{ row[1] }}</td></tr>
+                {% endfor %}
+            </table>
+        </div>
+
+        <!-- Location -->
+        <div>
+            <h3>By Country</h3>
+            <table>
+                <tr><th>Country</th><th>Visits</th></tr>
+                {% for row in analytics['Locations'] %}
+                <tr><td>{{ row[0] }}</td><td>{{ row[1] }}</td></tr>
+                {% endfor %}
+            </table>
+        </div>
+    </div>
+
+    <!-- RAW LOGS SECTION -->
+    <h2>Recent Visitor Logs (Last 50)</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Time (UTC)</th>
+                <th>Identity</th>
+                <th>IP</th>
+                <th>Location</th>
+                <th>Device Info</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for v in visits %}
+            <tr>
+                <td>{{ v.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td><strong>{{ v.username }}</strong></td>
+                <td>{{ v.ip_address }}</td>
+                <td>{{ v.city }}, {{ v.country }}</td>
+                <td>{{ v.device_type }} / {{ v.os }} / {{ v.browser }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+</div>
+
+</body>
+</html>

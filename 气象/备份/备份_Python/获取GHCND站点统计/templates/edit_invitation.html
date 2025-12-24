@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Edit Invitation</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background-color: #f0f2f5; display: flex; justify-content: center; }
+        .container { width: 400px; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h2 { margin-top: 0; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="text"], select { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        .btn { padding: 10px; width: 100%; border: none; border-radius: 4px; cursor: pointer; color: white; margin-top: 10px; }
+        .btn-save { background-color: #28a745; }
+        .btn-cancel { background-color: #6c757d; display: block; text-align: center; text-decoration: none; margin-top: 5px; }
+        .flash { color: red; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Edit Invitation</h2>
+        
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="flash">{{ messages[0] }}</div>
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST">
+            <div class="form-group">
+                <label>Invitation Code:</label>
+                <input type="text" name="code" value="{{ inv.code }}" required>
+            </div>
+            
+            <div class="form-group">
+                <label>Platform:</label>
+                <input type="text" name="platform" value="{{ inv.platform }}" required>
+            </div>
+
+            <div class="form-group">
+                <label>Note:</label>
+                <input type="text" name="note" value="{{ inv.note }}" required>
+            </div>
+
+            <div class="form-group">
+                <label>Level Grant:</label>
+                <select name="level">
+                    <option value="basic" {% if inv.level_grant == 'basic' %}selected{% endif %}>Basic</option>
+                    <option value="advanced" {% if inv.level_grant == 'advanced' %}selected{% endif %}>Advanced</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" name="is_used" {% if inv.is_used %}checked{% endif %}> 
+                    Mark as Used
+                </label>
+                <small style="color:#666;">(Unchecking this will make the code usable again)</small>
+            </div>
+
+            <button type="submit" class="btn btn-save">Save Changes</button>
+            <a href="/invitation" class="btn btn-cancel">Cancel</a>
+        </form>
+    </div>
+</body>
+</html>

@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Manage Users</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background-color: #f0f2f5; }
+        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h2 { border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        
+        /* Table Styles */
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        
+        /* Form Styles */
+        .add-form { background: #e9ecef; padding: 15px; border-radius: 5px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 20px; }
+        input, select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        
+        /* Search Bar Styles */
+        .search-form { margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+        .search-form input { width: 250px; }
+        
+        /* Buttons */
+        .btn { padding: 6px 12px; color: white; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; font-size: 0.9em; }
+        .btn-add { background-color: #28a745; }
+        .btn-edit { background-color: #ffc107; color: #333; }
+        .btn-del { background-color: #dc3545; }
+        .btn-search { background-color: #17a2b8; }
+        .btn-clear { background-color: #6c757d; }
+        .btn-back { background-color: #007bff; float: right; }
+        
+        .nav-bar { margin-bottom: 20px; overflow: hidden; }
+        .flash { color: green; margin-bottom: 15px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="nav-bar">
+            <a href="/" class="btn btn-back">Back to Tool</a>
+        </div>
+        
+        <h2>Manage Users</h2>
+        
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="flash">{{ messages[0] }}</div>
+            {% endif %}
+        {% endwith %}
+
+        <!-- ADD USER FORM -->
+        <form action="/user/add" method="POST" class="add-form">
+            <strong>Add New User:</strong>
+            <input type="text" name="username" placeholder="Username" required>
+            <input type="password" name="password" placeholder="Password" required>
+            <select name="user_level">
+                <option value="basic">Basic</option>
+                <option value="advanced">Advanced</option>
+            </select>
+            <label>
+                <input type="checkbox" name="is_admin"> Admin?
+            </label>
+            <button type="submit" class="btn btn-add">Add User</button>
+        </form>
+
+        <hr>
+
+        <!-- SEARCH BAR -->
+        <form action="/manage_users" method="GET" class="search-form">
+            <strong>Search:</strong>
+            <input type="text" name="q" placeholder="Search by username..." value="{{ search_query }}">
+            <button type="submit" class="btn btn-search">Search</button>
+            {% if search_query %}
+                <a href="/manage_users" class="btn btn-clear">Clear</a>
+            {% endif %}
+        </form>
+
+        <!-- USER LIST -->
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Username</th>
+                    <th>Level</th>
+                    <th>Role</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if users %}
+                    {% for user in users %}
+                    <tr>
+                        <td>{{ user.id }}</td>
+                        <td>{{ user.username }}</td>
+                        <td>{{ user.user_level }}</td>
+                        <td>
+                            {% if user.is_admin %}
+                                <span style="color:red; font-weight:bold;">Admin</span>
+                            {% else %}
+                                User
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="/user/edit/{{ user.id }}" class="btn btn-edit">Edit</a>
+                            
+                            <!-- Delete Form -->
+                            <form action="/user/delete/{{ user.id }}" method="POST" style="display:inline;" onsubmit="return confirm('Delete user {{ user.username }}?');">
+                                <button type="submit" class="btn btn-del">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="5" style="text-align:center; color:#666;">No users found.</td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

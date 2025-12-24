@@ -3,34 +3,71 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced Weather Analyzer</title>
+    <title>NOAA Global Daily Statistics</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .nav-bar { display: flex; justify-content: flex-end; padding: 10px; background-color: #e9ecef; border-bottom: 1px solid #ccc; }
+        .nav-bar a { text-decoration: none; color: #007bff; margin-left: 15px; font-weight: bold; }
+        .nav-bar a:hover { text-decoration: underline; }
+        .nav-user { margin-right: auto; color: #333; font-weight: bold; }
+    </style>
 </head>
 <body>
 
+    <div class="nav-bar">
+        {% if current_user.is_authenticated %}
+            <span class="nav-user">Welcome, {{ current_user.username }}!</span>
+            {% if current_user.is_admin %}
+                <a href="/invitation">Manage Invites</a>
+            {% endif %}
+            <a href="/logout">Logout</a>
+        {% elif session.get('is_visitor_access') %}
+            <span class="nav-user">Welcome, Visitor!</span>
+            <a href="/logout">Exit Visitor Mode</a>
+        {% else %}
+            <span class="nav-user">Welcome!</span>
+        {% endif %}
+    </div>
+
     <div class="container">
-        <h1>NOAA Weather Data Interface</h1>
+        <h1>NOAA Global Daily Statistics</h1>
 
         <!-- PART 1: PARAMETERS -->
         <div class="section">
             <h2>1. Parameters</h2>
             
             <div class="param-row">
-                <label>Station Search:</label>
-                <input type="text" id="stationInput" list="stationOptions" 
-                       placeholder="Type Name or ID..." oninput="searchStations()" 
-                       autocomplete="off" style="width: 300px;">
-                <datalist id="stationOptions"></datalist>
-                <input type="hidden" id="stationId" value="RSM00030565">
+                <label>Data Source:</label>
+                <select id="dataSource" style="width: auto; max-width: 120px;">
+                    <option value="GHCND" selected>GHCND</option>
+                    <option value="GSOD">GSOD</option>
+                </select>
             </div>
 
             <div class="param-row">
+                <label>Station Search:</label>
+                <input type="text" id="stationInput" list="stationOptions" 
+                       placeholder="Type Name or ID..." oninput="searchStations()" 
+                       autocomplete="off">
+                <datalist id="stationOptions"></datalist>
+                <input type="hidden" id="stationId" value="RSM00030565">
+            </div>
+            
+            <div id="stationInfoDisplay" class="station-details"></div>
+
+            <div class="param-row">
                 <label>Date Range:</label>
-                <input type="date" id="startDate" value="1600-01-01">
+                <select id="quickDateRange" style="width: auto; max-width: 180px; margin-right: 10px;" onchange="applyQuickDateRange()">
+                    <option value="">Custom / All</option>
+                    <option value="1991-2020">1991 - 2020</option>
+                    <option value="1961-1990">1961 - 1990</option>
+                </select>
+                <input type="date" id="startDate" value="1800-01-01">
                 <span>to</span>
-                <input type="date" id="endDate" value="2100-01-01">
+                <input type="date" id="endDate" value="2100-12-31">
             </div>
 
+            <!-- ... (Month/Hemisphere/Period Dropdowns - Same as before) ... -->
             <div class="param-row">
                 <label>Month Focus:</label>
                 <select id="monthFilter">
@@ -45,44 +82,134 @@
                     <option value="11">November</option><option value="12">December</option>
                 </select>
             </div>
-
             <div class="param-row">
                 <label>Hemisphere:</label>
                 <div class="radio-group">
-                    <input type="radio" name="hemisphere" value="north" checked> North
-                    <input type="radio" name="hemisphere" value="south"> South
+                    <label style="font-weight: normal; width: auto;"><input type="radio" name="hemisphere" value="north" checked> North</label>
+                    <label style="font-weight: normal; width: auto;"><input type="radio" name="hemisphere" value="south"> South</label>
                 </div>
             </div>
-
             <div class="param-row">
                 <label>Period Mode:</label>
                 <div class="radio-group">
-                    <input type="radio" name="period" value="p1" checked> Period 1 (July 16 - July 15)
-                    <input type="radio" name="period" value="p2"> Period 2 (Jan 16 - Jan 15)
+                    <label style="font-weight: normal; width: auto;"><input type="radio" name="period" value="p1" checked> Period 1 (July 16 - July 15)</label>
+                    <label style="font-weight: normal; width: auto;"><input type="radio" name="period" value="p2"> Period 2 (Jan 16 - Jan 15)</label>
                 </div>
             </div>
 
             <div class="divider"></div>
             
+            <!-- THRESHOLDS -->
             <div class="param-grid">
                 <div class="thresh-box">
                     <strong>TMIN Threshold</strong>
-                    <input type="number" id="tminVal" value="-40" placeholder="Value (C)">
                     <select id="tminDir"><option value="lte">&le;</option><option value="gte">&ge;</option></select>
+                    <input type="number" id="tminVal" value="-50" placeholder="Value (C)">
                 </div>
                 <div class="thresh-box">
                     <strong>TAVG Threshold</strong>
-                    <input type="number" id="tavgVal" value="-35" placeholder="Value (C)">
                     <select id="tavgDir"><option value="lte">&le;</option><option value="gte">&ge;</option></select>
+                    <input type="number" id="tavgVal" value="-40" placeholder="Value (C)">
                 </div>
                 <div class="thresh-box">
                     <strong>TMAX Threshold</strong>
-                    <input type="number" id="tmaxVal" value="-30" placeholder="Value (C)">
                     <select id="tmaxDir"><option value="lte">&le;</option><option value="gte">&ge;</option></select>
+                    <input type="number" id="tmaxVal" value="-30" placeholder="Value (C)">
                 </div>
             </div>
 
+            <!-- Custom Average -->
+            <div class="param-grid" style="margin-top: 15px;">
+                <div class="thresh-box">
+                    <strong>Custom Average (Base)</strong>
+                    <label style="font-weight:normal; font-size:0.9em;">For TMIN Explosive Power</label>
+                    <input type="number" id="customAvgTmin" placeholder="Leave blank to use calculated Avg">
+                </div>
+                <div class="thresh-box">
+                    <strong>Custom Average (Base)</strong>
+                    <label style="font-weight:normal; font-size:0.9em;">For TAVG Explosive Power</label>
+                    <input type="number" id="customAvgTavg" placeholder="Leave blank to use calculated Avg">
+                </div>
+                <div class="thresh-box">
+                    <strong>Custom Average (Base)</strong>
+                    <label style="font-weight:normal; font-size:0.9em;">For TMAX Explosive Power</label>
+                    <input type="number" id="customAvgTmax" placeholder="Leave blank to use calculated Avg">
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <!-- MULTI STATION PARAMS (Only for Admin or Advanced) -->
+            {% if current_user.is_authenticated and (current_user.is_admin or current_user.user_level == 'advanced') %}
+            <div id="multiParamsArea">
+                <h3 style="margin-top:0;">Multiple Stations Search Conditions</h3>
+                
+                <div class="param-row">
+                    <label>Center Location Mode:</label>
+                    <select id="centerMode" onchange="toggleCenterLocMode()">
+                        <option value="station">By Weather Station</option>
+                        <option value="coords">By Coordinates</option>
+                    </select>
+                </div>
+
+                <div class="param-grid" id="coordsInputArea" style="display:none;">
+                    <div class="thresh-box">
+                        <strong>Center Latitude</strong>
+                        <input type="number" id="centerLat" placeholder="Decimal Deg">
+                    </div>
+                    <div class="thresh-box">
+                        <strong>Center Longitude</strong>
+                        <input type="number" id="centerLon" placeholder="Decimal Deg">
+                    </div>
+                </div>
+
+                <div class="param-row">
+                    <label>Max Distance (km):</label>
+                    <select id="maxDist">
+                        <option value="no_limit">No Limit</option>
+                        <option value="50">50</option>
+                        <option value="200">200</option>
+                        <option value="500">500</option>
+                        <option value="2000">2000</option>
+                    </select>
+                </div>
+
+                <div class="param-row">
+                    <label>Country Limit:</label>
+                    <input type="text" id="countryLimit" placeholder="e.g. RS (Russia)">
+                </div>
+
+                <div class="param-grid">
+                    <div class="thresh-box">
+                        <strong>Latitude Range</strong>
+                        <input type="number" id="latMin" placeholder="Min">
+                        <input type="number" id="latMax" placeholder="Max">
+                    </div>
+                    <div class="thresh-box">
+                        <strong>Longitude Range</strong>
+                        <input type="number" id="lonMin" placeholder="Min">
+                        <input type="number" id="lonMax" placeholder="Max">
+                    </div>
+                    <div class="thresh-box">
+                        <strong>Elevation Range</strong>
+                        <input type="number" id="elevMin" placeholder="Min">
+                        <input type="number" id="elevMax" placeholder="Max">
+                    </div>
+                </div>
+
+                <div class="param-row" id="wbanRow" style="display:none;">
+                    <label>WBAN Limit (GSOD):</label>
+                    <div class="radio-group">
+                        <label style="font-weight: normal; width: auto;"><input type="radio" name="wbanLimit" value="no" checked> No Limit</label>
+                        <label style="font-weight: normal; width: auto;"><input type="radio" name="wbanLimit" value="99999"> Limit to 99999</label>
+                    </div>
+                </div>
+                <div class="divider"></div>
+            </div>
+            {% endif %}
+
             <button class="submit-btn" onclick="fetchData()">Get Data & Statistics</button>
+            
             <div id="loading" class="hidden">Loading data...</div>
             <div id="errorMsg" class="error"></div>
         </div>
@@ -90,42 +217,44 @@
         <!-- PART 2: STATISTICS -->
         <div class="section">
             <h2>2a. Global Statistics</h2>
-            <table class="stats-table">
-                <thead><tr><th>Type</th><th>Min (C)</th><th>Avg (C)</th><th>Max (C)</th><th>Days Matching Threshold</th></tr></thead>
-                <tbody>
-                    <tr><td><strong>TMIN</strong></td><td id="stat-tmin-min">-</td><td id="stat-tmin-avg">-</td><td id="stat-tmin-max">-</td><td id="stat-tmin-count">-</td></tr>
-                    <tr><td><strong>TAVG</strong></td><td id="stat-tavg-min">-</td><td id="stat-tavg-avg">-</td><td id="stat-tavg-max">-</td><td id="stat-tavg-count">-</td></tr>
-                    <tr><td><strong>TMAX</strong></td><td id="stat-tmax-min">-</td><td id="stat-tmax-avg">-</td><td id="stat-tmax-max">-</td><td id="stat-tmax-count">-</td></tr>
-                </tbody>
-            </table>
+            <div class="table-responsive">
+                <table class="stats-table">
+                    <thead><tr><th>Type</th><th>Min (C)</th><th>Avg (C)</th><th>Max (C)</th><th>Explosive Power</th><th>Days Matching Threshold</th></tr></thead>
+                    <tbody>
+                        <tr><td><strong>TMIN</strong></td><td id="stat-tmin-min">-</td><td id="stat-tmin-avg">-</td><td id="stat-tmin-max">-</td><td id="stat-tmin-power">-</td><td id="stat-tmin-count">-</td></tr>
+                        <tr><td><strong>TAVG</strong></td><td id="stat-tavg-min">-</td><td id="stat-tavg-avg">-</td><td id="stat-tavg-max">-</td><td id="stat-tavg-power">-</td><td id="stat-tavg-count">-</td></tr>
+                        <tr><td><strong>TMAX</strong></td><td id="stat-tmax-min">-</td><td id="stat-tmax-avg">-</td><td id="stat-tmax-max">-</td><td id="stat-tmax-power">-</td><td id="stat-tmax-count">-</td></tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
 
         <div class="section">
             <h2>2b. Period Averages (Summary)</h2>
-            <table class="stats-table">
-                <thead>
-                    <tr>
-                        <th>Avg of (Min TMIN per Period)<br><span class="header-note">Val (Used/Total)</span></th>
-                        <th>Avg of (Min TMAX per Period)<br><span class="header-note">Val (Used/Total)</span></th>
-                        <th>Avg of (Max TMIN per Period)<br><span class="header-note">Val (Used/Total)</span></th>
-                        <th>Avg of (Max TMAX per Period)<br><span class="header-note">Val (Used/Total)</span></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td id="sum-avg-min-tmin" class="summary-cell">-</td>
-                        <td id="sum-avg-min-tmax" class="summary-cell">-</td>
-                        <td id="sum-avg-max-tmin" class="summary-cell">-</td>
-                        <td id="sum-avg-max-tmax" class="summary-cell">-</td>
-                    </tr>
-                </tbody>
-            </table>
+            <div class="table-responsive">
+                <table class="stats-table">
+                    <thead>
+                        <tr>
+                            <th>Avg of (Min TMIN per Period)<br><span class="header-note">Val (Used/Total)</span></th>
+                            <th>Avg of (Min TMAX per Period)<br><span class="header-note">Val (Used/Total)</span></th>
+                            <th>Avg of (Max TMIN per Period)<br><span class="header-note">Val (Used/Total)</span></th>
+                            <th>Avg of (Max TMAX per Period)<br><span class="header-note">Val (Used/Total)</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td id="sum-avg-min-tmin" class="summary-cell">-</td>
+                            <td id="sum-avg-min-tmax" class="summary-cell">-</td>
+                            <td id="sum-avg-max-tmin" class="summary-cell">-</td>
+                            <td id="sum-avg-max-tmax" class="summary-cell">-</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
 
         <div class="section">
             <h2>2c. Period Details (By Range)</h2>
-            
-            <!-- COLUMN VISIBILITY CONTROLS -->
             <div class="column-controls">
                 <span style="font-weight:bold; margin-right:10px;">Show Columns:</span>
                 <label><input type="checkbox" id="chk_min_tmin" checked> Min TMIN</label>
@@ -134,19 +263,59 @@
                 <label><input type="checkbox" id="chk_max_tmax" checked> Max TMAX</label>
                 <button class="small-btn" onclick="updatePeriodColumns()">Update Table</button>
             </div>
+            <div style="max-height: 400px; overflow-y: auto;">
+                <div class="table-responsive">
+                    <table class="stats-table" id="periodStatsTable">
+                        <thead>
+                            <tr>
+                                <th onclick="sortPeriodTable('range')">Period Range &#8645;</th>
+                                <th id="th_min_tmin" onclick="sortPeriodTable('min_tmin')">Min TMIN &#8645;</th>
+                                <th id="th_min_tmax" onclick="sortPeriodTable('min_tmax')">Min TMAX &#8645;</th>
+                                <th id="th_max_tmin" onclick="sortPeriodTable('max_tmin')">Max TMIN &#8645;</th>
+                                <th id="th_max_tmax" onclick="sortPeriodTable('max_tmax')">Max TMAX &#8645;</th>
+                                <th onclick="sortPeriodTable('cnt_tmin')">Days (TMIN) &#8645;</th>
+                                <th onclick="sortPeriodTable('cnt_tavg')">Days (TAVG) &#8645;</th>
+                                <th onclick="sortPeriodTable('cnt_tmax')">Days (TMAX) &#8645;</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
 
-            <div style="max-height: 300px; overflow-y: auto;">
-                <table class="stats-table" id="periodStatsTable">
+        <!-- PART 3: RECORD LIST -->
+        <div class="section">
+            <h2>3. Record List (Top <span id="limitLabel">15</span> from Sorted Result)</h2>
+            
+            <div class="record-controls">
+                <div class="control-group">
+                    <span style="font-weight:bold;">Filter Elements:</span>
+                    <label><input type="checkbox" name="rec_elem" value="TMIN" checked> TMIN</label>
+                    <label><input type="checkbox" name="rec_elem" value="TAVG" checked> TAVG</label>
+                    <label><input type="checkbox" name="rec_elem" value="TMAX" checked> TMAX</label>
+                </div>
+                <div class="control-group">
+                    <span style="font-weight:bold;">Max Records:</span>
+                    <select id="recordLimitSelect" style="width:auto; padding:5px;">
+                        <option value="15" selected>15</option>
+                        <option value="50">50</option>
+                        <option value="200">200</option>
+                    </select>
+                    <button class="small-btn" onclick="updateRecordsList()">Update Records</button>
+                </div>
+            </div>
+            <div id="sortingLoading" class="hidden" style="color: #e67e22; font-weight: bold; margin-bottom: 10px;">
+                Fetching records... please wait...
+            </div>
+            <div class="table-responsive">
+                <table class="data-table" id="recordsTable">
                     <thead>
                         <tr>
-                            <th onclick="sortPeriodTable('range')">Period Range &#8645;</th>
-                            <th id="th_min_tmin" onclick="sortPeriodTable('min_tmin')">Min TMIN &#8645;</th>
-                            <th id="th_min_tmax" onclick="sortPeriodTable('min_tmax')">Min TMAX &#8645;</th>
-                            <th id="th_max_tmin" onclick="sortPeriodTable('max_tmin')">Max TMIN &#8645;</th>
-                            <th id="th_max_tmax" onclick="sortPeriodTable('max_tmax')">Max TMAX &#8645;</th>
-                            <th onclick="sortPeriodTable('cnt_tmin')">Days (TMIN) &#8645;</th>
-                            <th onclick="sortPeriodTable('cnt_tavg')">Days (TAVG) &#8645;</th>
-                            <th onclick="sortPeriodTable('cnt_tmax')">Days (TMAX) &#8645;</th>
+                            <th onclick="triggerServerSort('ID')">ID &#8645;</th>
+                            <th onclick="triggerServerSort('DATE')">Date &#8645;</th>
+                            <th>Element</th> 
+                            <th onclick="triggerServerSort('DATA_VALUE')">Data Value (C) &#8645;</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
@@ -154,33 +323,100 @@
             </div>
         </div>
 
-        <!-- PART 3: RECORD LIST -->
+        <!-- PART 4 & 5 (Restricted) -->
+        {% if current_user.is_authenticated and (current_user.is_admin or current_user.user_level == 'advanced') %}
+
+        <!-- PART 4: MULTIPLE STATIONS -->
         <div class="section">
-            <h2>3. Record List (Top 200 from Sorted Result)</h2>
-            <table class="data-table" id="recordsTable">
-                <thead>
-                    <tr>
-                        <th onclick="triggerServerSort('ID')">ID &#8645;</th>
-                        <th onclick="triggerServerSort('DATE')">Date &#8645;</th>
-                        
-                        <!-- Element Filter: Note the onchange="fetchData()" -->
-                        <th class="filter-header" style="position: relative;" onclick="toggleElementFilter(event)">
-                            <span>Element &#9662;</span>
-                            <div id="elementFilterDropdown" class="filter-dropdown hidden" onclick="event.stopPropagation()">
-                                <label><input type="checkbox" value="TMIN" checked onchange="fetchData()"> TMIN</label>
-                                <label><input type="checkbox" value="TAVG" checked onchange="fetchData()"> TAVG</label>
-                                <label><input type="checkbox" value="TMAX" checked onchange="fetchData()"> TMAX</label>
-                            </div>
-                        </th>
-                        
-                        <th onclick="triggerServerSort('DATA_VALUE')">Data Value (C) &#8645;</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
+            <h2>4. Multiple Weather Stations (Top <span id="multiLimitLabel">15</span> Matches)</h2>
+            
+            <div class="record-controls">
+                <div class="control-group">
+                    <span style="font-weight:bold;">Max Stations:</span>
+                    <select id="multiLimitSelect" style="width:auto; padding:5px;">
+                        <option value="15" selected>15</option>
+                        <option value="50">50</option>
+                        <option value="200">200</option>
+                        <option value="500">500</option>
+                        <option value="1000">1000</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <button class="small-btn" onclick="updateMultiStations()">Update List</button>
+                    <button class="small-btn" style="background-color: #17a2b8;" onclick="copyMultiTable()">Copy Table (TSV)</button>
+                </div>
+            </div>
+
+            <div id="multiStationLoading" class="hidden" style="color: #e67e22; font-weight: bold; margin-bottom: 10px;">
+                Updating station list... please wait...
+            </div>
+
+            <div class="table-responsive">
+                <table class="data-table" id="multiStationTable">
+                    <thead>
+                        <tr>
+                            <th onclick="triggerMultiSort('id')">ID &#8645;</th>
+                            <th onclick="triggerMultiSort('name')">Name &#8645;</th>
+                            <th onclick="triggerMultiSort('lat')">Latitude &#8645;</th>
+                            <th onclick="triggerMultiSort('lon')">Longitude &#8645;</th>
+                            <th onclick="triggerMultiSort('elev')">Elevation(m) &#8645;</th>
+                            <th onclick="triggerMultiSort('dist')">Distance(km) &#8645;</th>
+                            <th onclick="triggerMultiSort('country')">Country &#8645;</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
         </div>
 
-        <!-- Toast Notification for Copy -->
+        <!-- PART 5: MULTIPLE STATIONS STATISTICS -->
+        <div class="section">
+            <h2>5. Multiple Stations Statistics (For Stations in Part 4)</h2>
+            
+            <div class="record-controls">
+                <div class="control-group" style="flex:1;">
+                    <span style="font-weight:bold;">Select Statistic:</span>
+                    <select id="multiStatSelect" style="width:auto; max-width:250px; padding:5px;">
+                        <option value="avg_tmin">Average TMIN</option>
+                        <option value="avg_tavg">Average TAVG</option>
+                        <option value="avg_tmax">Average TMAX</option>
+                        <option value="min_tmin">Minimum TMIN</option>
+                        <option value="min_tavg">Minimum TAVG</option>
+                        <option value="min_tmax">Minimum TMAX</option>
+                        <option value="max_tmin">Maximum TMIN</option>
+                        <option value="max_tavg">Maximum TAVG</option>
+                        <option value="max_tmax">Maximum TMAX</option>
+                        <option value="max_days_tmin">Max Days matching TMIN Threshold</option>
+                        <option value="max_days_tavg">Max Days matching TAVG Threshold</option>
+                        <option value="max_days_tmax">Max Days matching TMAX Threshold</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <button class="small-btn" onclick="calcMultiStats()">Calculate Stats</button>
+                    <button class="small-btn" style="background-color: #17a2b8;" onclick="copyMultiStatsTable()">Copy Table (TSV)</button>
+                </div>
+            </div>
+
+            <div id="multiStatLoading" class="hidden" style="color: #e67e22; font-weight: bold; margin-bottom: 10px;">
+                Calculating statistics for multiple stations... this may take a while...
+            </div>
+
+            <div class="table-responsive">
+                <table class="data-table" id="multiStatResultTable">
+                    <thead>
+                        <tr>
+                            <th onclick="sortMultiStatTable('id')">Station ID &#8645;</th>
+                            <th onclick="sortMultiStatTable('name')">Station Name &#8645;</th>
+                            <th onclick="triggerMultiSort('dist')">Distance(km) &#8645;</th>
+                            <th onclick="sortMultiStatTable('val')">Value &#8645;</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
         <div id="copyToast">Copied to clipboard!</div>
 
     </div>

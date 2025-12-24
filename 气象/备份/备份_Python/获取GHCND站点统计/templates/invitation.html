@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Manage Invitations</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background-color: #f0f2f5; }
+        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        input, select { padding: 8px; margin: 5px; border: 1px solid #ccc; border-radius: 4px; }
+        button { padding: 8px 15px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background-color: #0056b3; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .used { color: red; font-weight: bold; }
+        .unused { color: green; font-weight: bold; }
+        .nav-bar { margin-bottom: 20px; text-align: right; }
+        .nav-bar a { text-decoration: none; color: #007bff; margin-left: 15px; font-weight: bold; }
+        
+        /* Action Buttons */
+        .btn-edit { background-color: #ffc107; color: #333; padding: 5px 10px; text-decoration: none; border-radius: 4px; font-size: 0.9em; }
+        .btn-del { background-color: #dc3545; padding: 5px 10px; font-size: 0.9em; }
+    </style>
+    <script>
+        function updateLimit() {
+            const limit = document.getElementById('limitSelect').value;
+            const search = document.getElementById('searchInput').value;
+            window.location.href = `?limit=${limit}&q=${search}`;
+        }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <div class="nav-bar">
+            <a href="/visitor_stats">Back to Stats</a>
+            <a href="/">Back to Tool</a>
+        </div>
+        
+        <h2>Create Invitation Code</h2>
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <p style="color: green; font-weight: bold;">{{ messages[0] }}</p>
+            {% endif %}
+        {% endwith %}
+        
+        <form method="POST">
+            <input type="text" name="code" placeholder="Invitation Code" required>
+            <input type="text" name="platform" placeholder="Platform" required>
+            <input type="text" name="note" placeholder="Extra Note" required>
+            <select name="level">
+                <option value="basic">Basic Level</option>
+                <option value="advanced">Advanced Level</option>
+            </select>
+            <button type="submit">Create</button>
+        </form>
+        
+        <hr>
+        
+        <h2>Invitation List</h2>
+        
+        <div>
+            <form method="GET" style="display:inline;">
+                <input type="text" name="q" id="searchInput" placeholder="Search code/platform/note..." value="{{ search_q }}">
+                <button type="submit">Search</button>
+            </form>
+            
+            <label style="margin-left: 20px;">Limit:</label>
+            <select id="limitSelect" onchange="updateLimit()">
+                <option value="15" {% if limit==15 %}selected{% endif %}>15</option>
+                <option value="50" {% if limit==50 %}selected{% endif %}>50</option>
+                <option value="100" {% if limit==100 %}selected{% endif %}>100</option>
+                <option value="500" {% if limit==500 %}selected{% endif %}>500</option>
+            </select>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Code</th>
+                    <th>Platform</th>
+                    <th>Note</th>
+                    <th>Level</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th>Used By</th>
+                    <th>Actions</th> <!-- NEW COLUMN -->
+                </tr>
+            </thead>
+            <tbody>
+                {% for inv in invitations %}
+                <tr>
+                    <td>{{ inv.code }}</td>
+                    <td>{{ inv.platform }}</td>
+                    <td>{{ inv.note }}</td>
+                    <td>{{ inv.level_grant }}</td>
+                    <td class="{{ 'used' if inv.is_used else 'unused' }}">
+                        {{ 'Used' if inv.is_used else 'Available' }}
+                    </td>
+                    <td>{{ inv.created_at.strftime('%Y-%m-%d') }}</td>
+                    <td>{{ inv.used_by if inv.used_by else '-' }}</td>
+                    <td>
+                        <a href="/invitation/edit/{{ inv.id }}" class="btn-edit">Edit</a>
+                        <form action="/invitation/delete/{{ inv.id }}" method="POST" style="display:inline;" onsubmit="return confirm('Delete code {{ inv.code }}?');">
+                            <button type="submit" class="btn-del">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
