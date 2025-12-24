@@ -1,4 +1,5 @@
 import os
+import io
 import requests
 import pandas as pd
 import numpy as np
@@ -11,15 +12,61 @@ from flask_login import UserMixin, login_user, LoginManager, login_required, log
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 import concurrent.futures
+from dotenv import load_dotenv
+from flask_wtf.csrf import CSRFProtect, generate_csrf
+import json
+
+load_dotenv()
 
 app = Flask(__name__)
 
 # --- CONFIGURATION ---
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///visitors.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SECRET_KEY'] = 'change_this_to_a_random_secret_key_12345' 
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-change-this-key')
+app.config['WTF_CSRF_SECRET_KEY'] = os.getenv('WTF_CSRF_SECRET_KEY', app.config['SECRET_KEY'])
 
 db = SQLAlchemy(app)
+csrf = CSRFProtect(app)
+
+# --- TRANSLATIONS ---
+TRANSLATIONS = {}
+TRANSLATIONS_FILE = 'translations.json'
+if os.path.exists(TRANSLATIONS_FILE):
+    with open(TRANSLATIONS_FILE, 'r', encoding='utf-8') as f:
+        TRANSLATIONS = json.load(f)
+
+def get_translation(key, lang=None, **kwargs):
+    """Get translation for a key, with optional format parameters"""
+    if lang is None:
+        lang = session.get('language', 'en')
+    keys = key.split('.')
+    try:
+        value = TRANSLATIONS.get(lang, TRANSLATIONS.get('en', {}))
+        for k in keys:
+            value = value[k]
+        if kwargs:
+            return value.format(**kwargs)
+        return value
+    except (KeyError, TypeError, AttributeError):
+        # Fallback to English, then to key itself
+        try:
+            value = TRANSLATIONS.get('en', {})
+            for k in keys:
+                value = value[k]
+            if kwargs:
+                return value.format(**kwargs)
+            return value
+        except (KeyError, TypeError, AttributeError):
+            return key
+
+def get_current_language():
+    """Get current language from session, default to 'en'"""
+    return session.get('language', 'en')
+
+@app.context_processor
+def inject_csrf_token():
+    return dict(csrf_token=generate_csrf, t=get_translation, lang=get_current_language)
 
 # --- LOGIN MANAGER ---
 login_manager = LoginManager()
@@ -43,9 +90,15 @@ def admin_required(f):
 
 def advanced_permission_required(f):
     @wraps(f)
-    @login_required
     def decorated_function(*args, **kwargs):
-        if not (current_user.is_admin or current_user.user_level == 'advanced'):
+        # Check if user is authenticated and has advanced access
+        if current_user.is_authenticated:
+            if not (current_user.is_admin or current_user.user_level == 'advanced'):
+                return jsonify({'status': 'error', 'message': 'Permission denied.'}), 403
+        # Check if visitor has advanced access
+        elif session.get('is_visitor_access') and session.get('visitor_level') == 'advanced':
+            pass  # Allow access
+        else:
             return jsonify({'status': 'error', 'message': 'Permission denied.'}), 403
         return f(*args, **kwargs)
     return decorated_function
@@ -58,7 +111,10 @@ def auth_or_visitor_required(f):
         is_visitor = session.get('is_visitor_access')
         
         if not is_user and not is_visitor:
-            if request.is_json or 'q' in request.args:
+            # Check if this is a JSON request (POST with JSON content-type or GET with 'q' param)
+            if request.content_type and 'application/json' in request.content_type:
+                return jsonify({'status': 'error', 'message': 'Authentication required'}), 401
+            if 'q' in request.args:
                 return jsonify({'status': 'error', 'message': 'Authentication required'}), 401
             return redirect(url_for('login'))
             
@@ -159,6 +215,22 @@ load_ghcnd_stations()
 load_gsod_stations()
 
 # --- HELPER FUNCTIONS ---
+def clean_nan_for_json(obj):
+    """Recursively replace NaN values with None for JSON serialization"""
+    if isinstance(obj, dict):
+        return {k: clean_nan_for_json(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [clean_nan_for_json(item) for item in obj]
+    elif isinstance(obj, (float, np.floating)):
+        if pd.isna(obj) or np.isnan(obj):
+            return None
+        return float(obj)
+    elif isinstance(obj, (int, np.integer)):
+        return int(obj)
+    elif pd.isna(obj):
+        return None
+    return obj
+
 def haversine_vectorized(lat1, lon1, lat2_series, lon2_series):
     R = 6371
     phi1, phi2 = np.radians(lat1), np.radians(lat2_series)
@@ -173,12 +245,17 @@ def fetch_and_clean_data(source, station_id, start_date, end_date):
     if source == 'GHCND':
         url = f'https://noaa-ghcn-pds.s3.amazonaws.com/csv/by_station/{station_id}.csv'
         try:
-            df = pd.read_csv(url, parse_dates=['DATE'], usecols=['ID', 'DATE', 'ELEMENT', 'DATA_VALUE'])
+            resp = requests.get(url, timeout=15)
+            if resp.status_code == 200:
+                df = pd.read_csv(io.StringIO(resp.text), parse_dates=['DATE'], usecols=['ID', 'DATE', 'ELEMENT', 'DATA_VALUE'])
+            else:
+                return df
             if start_date: df = df[df['DATE'] >= start_date]
             if end_date: df = df[df['DATE'] <= end_date]
             df = df[df['ELEMENT'].isin(['TMIN', 'TAVG', 'TMAX'])].copy()
             df['DATA_VALUE'] = df['DATA_VALUE'] / 10.0
-        except Exception: pass
+        except Exception:
+            return pd.DataFrame()
     else:
         api_url = "https://www.ncei.noaa.gov/access/services/data/v1"
         params = {
@@ -224,11 +301,19 @@ def track_visitor():
         return
     if request.headers.getlist("X-Forwarded-For"): ip = request.headers.getlist("X-Forwarded-For")[0]
     else: ip = request.remote_addr
-    ua_string = request.headers.get('User-Agent')
-    user_agent = parse(ua_string)
+    ua_string = request.headers.get('User-Agent') or ''
     device_type = "PC"
-    if user_agent.is_mobile: device_type = "Mobile"
-    if user_agent.is_tablet: device_type = "Tablet"
+    os_family, browser_family, device_brand = "Unknown", "Unknown", "Generic"
+    try:
+        user_agent = parse(ua_string) if ua_string else None
+        if user_agent:
+            if user_agent.is_mobile: device_type = "Mobile"
+            if user_agent.is_tablet: device_type = "Tablet"
+            os_family = user_agent.os.family
+            browser_family = user_agent.browser.family
+            device_brand = user_agent.device.brand or "Generic"
+    except Exception:
+        user_agent = None
     country, city = get_ip_location(ip)
     
     identity = "Visitor"
@@ -237,7 +322,16 @@ def track_visitor():
     elif session.get('is_visitor_access'):
         identity = "Special Visitor"
 
-    new_visit = Visitor(username=identity, ip_address=ip, country=country, city=city, device_type=device_type, os=user_agent.os.family, browser=user_agent.browser.family, device_brand=user_agent.device.brand or "Generic")
+    new_visit = Visitor(
+        username=identity,
+        ip_address=ip,
+        country=country,
+        city=city,
+        device_type=device_type,
+        os=os_family,
+        browser=browser_family,
+        device_brand=device_brand
+    )
     try:
         db.session.add(new_visit)
         db.session.commit()
@@ -268,7 +362,13 @@ def signup():
         # It allows unlimited reuse.
         if invitation:
             session['is_visitor_access'] = True
-            flash("Welcome! You have basic access.")
+            # Check if this is an advanced visitor code
+            if invitation.level_grant == 'advanced':
+                session['visitor_level'] = 'advanced'
+                flash("Welcome! You have advanced access.")
+            else:
+                session['visitor_level'] = 'basic'
+                flash("Welcome! You have basic access.")
             return redirect(url_for('home'))
         else:
             flash("Invalid visitor access code.")
@@ -326,6 +426,7 @@ def logout():
     if current_user.is_authenticated:
         logout_user()
     session.pop('is_visitor_access', None)
+    session.pop('visitor_level', None)
     return redirect(url_for('login'))
 
 # --- INVITATION MANAGEMENT ---
@@ -389,6 +490,13 @@ def delete_invitation(id):
 def home():
     return render_template('index.html')
 
+@app.route('/set_language/<lang>')
+def set_language(lang):
+    """Set language preference"""
+    if lang in TRANSLATIONS:
+        session['language'] = lang
+    return redirect(request.referrer or url_for('home'))
+
 @app.route('/search_stations', methods=['GET'])
 @auth_or_visitor_required
 def search_stations():
@@ -413,13 +521,18 @@ def search_stations():
 
 @app.route('/get_data', methods=['POST'])
 @auth_or_visitor_required
+@csrf.exempt
 def get_data():
     try:
         req = request.json
+        if req is None:
+            return jsonify({'status': 'error', 'message': 'Invalid request: JSON data required'}), 400
         has_advanced_access = False
         if current_user.is_authenticated:
             if current_user.is_admin or current_user.user_level == 'advanced':
                 has_advanced_access = True
+        elif session.get('is_visitor_access') and session.get('visitor_level') == 'advanced':
+            has_advanced_access = True
         
         source = req.get('source', 'GHCND')
         station_id = req.get('station_id', '').split(' - ')[0]
@@ -589,22 +702,45 @@ def get_data():
                 
                 for _, row in temp_st_df.iterrows():
                     c_name = row['CTRY'] if source == 'GSOD' else row['ID'][:2]
+                    # Convert NaN values to None (which becomes null in JSON)
+                    lat_val = float(row['LAT']) if pd.notna(row['LAT']) else None
+                    lon_val = float(row['LON']) if pd.notna(row['LON']) else None
+                    elev_val = float(row['ELEV']) if pd.notna(row['ELEV']) else None
+                    dist_val = round(float(row['DIST']), 2) if pd.notna(row['DIST']) else None
                     multi_stations.append({
-                        'id': row['ID'], 'name': row['NAME'], 'lat': row['LAT'], 'lon': row['LON'], 'elev': row['ELEV'],
-                        'dist': round(row['DIST'], 2), 'country': c_name
+                        'id': str(row['ID']), 'name': str(row['NAME']) if pd.notna(row['NAME']) else '', 
+                        'lat': lat_val, 'lon': lon_val, 'elev': elev_val,
+                        'dist': dist_val, 'country': str(c_name) if pd.notna(c_name) else ''
                     })
 
-        return jsonify({'status': 'success', 'stats': stats, 'period_stats': period_stats, 'period_summary': period_summary, 'records': records_list, 'multi_stations': multi_stations})
+        response_data = {
+            'status': 'success', 
+            'stats': stats, 
+            'period_stats': period_stats, 
+            'period_summary': period_summary, 
+            'records': records_list, 
+            'multi_stations': multi_stations
+        }
+        # Clean NaN values before JSON serialization
+        response_data = clean_nan_for_json(response_data)
+        return jsonify(response_data)
     except Exception as e:
         import traceback; traceback.print_exc()
         return jsonify({'status': 'error', 'message': str(e)})
 
 @app.route('/get_multi_stats', methods=['POST'])
 @advanced_permission_required 
+@csrf.exempt
 def get_multi_stats():
     try:
         req = request.json
         station_ids = req.get('station_ids', [])
+        if not isinstance(station_ids, list):
+            return jsonify({'status': 'error', 'message': 'station_ids must be a list'}), 400
+        station_ids = [str(s).strip() for s in station_ids if str(s).strip()]
+        MAX_MULTI_IDS = 200
+        if len(station_ids) > MAX_MULTI_IDS:
+            return jsonify({'status': 'error', 'message': f'Max {MAX_MULTI_IDS} stations allowed'}), 400
         source = req.get('source', 'GHCND')
         metric = req.get('metric', 'avg_tavg')
         start_date = req.get('start_date')
@@ -637,7 +773,7 @@ def get_multi_stats():
 
             # Fetch Data
             df = fetch_and_clean_data(source, sid, start_date, end_date)
-            if df.empty: return {'id': sid, 'name': s_name, 'val': '-'}
+            if df.empty: return {'id': sid, 'name': s_name, 'val': '-', 'dates': []}
 
             # Filter Month
             if month_filter and month_filter != "0":
@@ -646,6 +782,7 @@ def get_multi_stats():
                 else: df = df[df['DATE'].dt.month == int(month_filter)]
 
             val = '-'
+            dates_info = []
             
             # --- METRIC LOGIC WITH TYPE CASTING ---
             
@@ -663,7 +800,9 @@ def get_multi_stats():
                 sub = df[df['ELEMENT'] == elem]
                 if not sub.empty: 
                     # Convert numpy float to python float
-                    val = float(sub['DATA_VALUE'].min())
+                    min_val = sub['DATA_VALUE'].min()
+                    val = float(min_val)
+                    dates_info = sub[sub['DATA_VALUE'] == min_val]['DATE'].dt.strftime('%Y-%m-%d').tolist()
             
             # 3. Maximums (Value)
             elif metric.startswith('max_') and 'days' not in metric:
@@ -671,7 +810,9 @@ def get_multi_stats():
                 sub = df[df['ELEMENT'] == elem]
                 if not sub.empty: 
                     # Convert numpy float to python float
-                    val = float(sub['DATA_VALUE'].max())
+                    max_val = sub['DATA_VALUE'].max()
+                    val = float(max_val)
+                    dates_info = sub[sub['DATA_VALUE'] == max_val]['DATE'].dt.strftime('%Y-%m-%d').tolist()
             
             # 4. Maximum Days (Count)
             elif 'days' in metric:
@@ -709,16 +850,21 @@ def get_multi_stats():
                     if not counts.empty:
                         # .item() safely converts numpy scalars to python scalars
                         val = int(counts.max()) 
+                        top_seasons = counts[counts == counts.max()].index.tolist()
+                        if top_seasons:
+                            dates_info = [f"{int(y)}-{int(y)+1}" for y in top_seasons]
                     else:
                         val = 0
 
-            return {'id': sid, 'name': s_name, 'val': val}
+            return {'id': sid, 'name': s_name, 'val': val, 'dates': dates_info}
 
         # Run Parallel Processing
         with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
             results = list(executor.map(process_station, station_ids))
 
-        return jsonify({'status': 'success', 'results': results})
+        # Clean NaN values before JSON serialization
+        response_data = {'status': 'success', 'results': clean_nan_for_json(results)}
+        return jsonify(response_data)
 
     except Exception as e:
         # Print error to terminal for easier debugging

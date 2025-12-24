@@ -44,6 +44,7 @@
         {% endwith %}
         
         <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="text" name="code" placeholder="Invitation Code" required>
             <input type="text" name="platform" placeholder="Platform" required>
             <input type="text" name="note" placeholder="Extra Note" required>
@@ -101,6 +102,7 @@
                     <td>
                         <a href="/invitation/edit/{{ inv.id }}" class="btn-edit">Edit</a>
                         <form action="/invitation/delete/{{ inv.id }}" method="POST" style="display:inline;" onsubmit="return confirm('Delete code {{ inv.code }}?');">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit" class="btn-del">Delete</button>
                         </form>
                     </td>

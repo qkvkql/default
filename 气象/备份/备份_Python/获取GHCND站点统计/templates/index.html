@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NOAA Global Daily Statistics</title>
+    <title>{{ t('title') }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
         .nav-bar { display: flex; justify-content: flex-end; padding: 10px; background-color: #e9ecef; border-bottom: 1px solid #ccc; }
@@ -15,29 +15,35 @@
 <body>
 
     <div class="nav-bar">
+        <div style="margin-right: auto;">
+            <select id="languageSelect" onchange="window.location.href='/set_language/' + this.value" style="padding: 5px; margin-right: 10px;">
+                <option value="en" {% if lang() == 'en' %}selected{% endif %}>English</option>
+                <option value="zh" {% if lang() == 'zh' %}selected{% endif %}>中文</option>
+            </select>
+        </div>
         {% if current_user.is_authenticated %}
-            <span class="nav-user">Welcome, {{ current_user.username }}!</span>
+            <span class="nav-user">{{ t('nav.welcome_user', username=current_user.username) }}</span>
             {% if current_user.is_admin %}
-                <a href="/invitation">Manage Invites</a>
+                <a href="/invitation">{{ t('nav.manage_invites') }}</a>
             {% endif %}
-            <a href="/logout">Logout</a>
+            <a href="/logout">{{ t('nav.logout') }}</a>
         {% elif session.get('is_visitor_access') %}
-            <span class="nav-user">Welcome, Visitor!</span>
-            <a href="/logout">Exit Visitor Mode</a>
+            <span class="nav-user">{% if session.get('visitor_level') == 'advanced' %}{{ t('nav.welcome_advanced_visitor') }}{% else %}{{ t('nav.welcome_visitor') }}{% endif %}</span>
+            <a href="/logout">{{ t('nav.exit_visitor_mode') }}</a>
         {% else %}
-            <span class="nav-user">Welcome!</span>
+            <span class="nav-user">{{ t('nav.welcome') }}!</span>
         {% endif %}
     </div>
 
     <div class="container">
-        <h1>NOAA Global Daily Statistics</h1>
+        <h1>{{ t('title') }}</h1>
 
         <!-- PART 1: PARAMETERS -->
         <div class="section">
-            <h2>1. Parameters</h2>
+            <h2>{{ t('sections.parameters') }}</h2>
             
             <div class="param-row">
-                <label>Data Source:</label>
+                <label>{{ t('params.data_source') }}</label>
                 <select id="dataSource" style="width: auto; max-width: 120px;">
                     <option value="GHCND" selected>GHCND</option>
                     <option value="GSOD">GSOD</option>
@@ -45,9 +51,9 @@
             </div>
 
             <div class="param-row">
-                <label>Station Search:</label>
+                <label>{{ t('params.station_search') }}</label>
                 <input type="text" id="stationInput" list="stationOptions" 
-                       placeholder="Type Name or ID..." oninput="searchStations()" 
+                       placeholder="{{ t('params.type_name_or_id') }}" oninput="searchStations()" 
                        autocomplete="off">
                 <datalist id="stationOptions"></datalist>
                 <input type="hidden" id="stationId" value="RSM00030565">
@@ -56,44 +62,44 @@
             <div id="stationInfoDisplay" class="station-details"></div>
 
             <div class="param-row">
-                <label>Date Range:</label>
+                <label>{{ t('params.date_range') }}</label>
                 <select id="quickDateRange" style="width: auto; max-width: 180px; margin-right: 10px;" onchange="applyQuickDateRange()">
-                    <option value="">Custom / All</option>
+                    <option value="">{{ t('params.custom_all') }}</option>
                     <option value="1991-2020">1991 - 2020</option>
                     <option value="1961-1990">1961 - 1990</option>
                 </select>
                 <input type="date" id="startDate" value="1800-01-01">
-                <span>to</span>
+                <span>{{ t('params.to') }}</span>
                 <input type="date" id="endDate" value="2100-12-31">
             </div>
 
             <!-- ... (Month/Hemisphere/Period Dropdowns - Same as before) ... -->
             <div class="param-row">
-                <label>Month Focus:</label>
+                <label>{{ t('params.month_focus') }}</label>
                 <select id="monthFilter">
-                    <option value="0">Full Year</option>
-                    <option value="winter_3">Winter 3 Months (Dec-Feb)</option>
-                    <option value="summer_3">Summer 3 Months (Jun-Aug)</option>
-                    <option value="1">January</option><option value="2">February</option>
-                    <option value="3">March</option><option value="4">April</option>
-                    <option value="5">May</option><option value="6">June</option>
-                    <option value="7">July</option><option value="8">August</option>
-                    <option value="9">September</option><option value="10">October</option>
-                    <option value="11">November</option><option value="12">December</option>
+                    <option value="0">{{ t('months.full_year') }}</option>
+                    <option value="winter_3">{{ t('months.winter_3') }}</option>
+                    <option value="summer_3">{{ t('months.summer_3') }}</option>
+                    <option value="1">{{ t('months.january') }}</option><option value="2">{{ t('months.february') }}</option>
+                    <option value="3">{{ t('months.march') }}</option><option value="4">{{ t('months.april') }}</option>
+                    <option value="5">{{ t('months.may') }}</option><option value="6">{{ t('months.june') }}</option>
+                    <option value="7">{{ t('months.july') }}</option><option value="8">{{ t('months.august') }}</option>
+                    <option value="9">{{ t('months.september') }}</option><option value="10">{{ t('months.october') }}</option>
+                    <option value="11">{{ t('months.november') }}</option><option value="12">{{ t('months.december') }}</option>
                 </select>
             </div>
             <div class="param-row">
-                <label>Hemisphere:</label>
+                <label>{{ t('params.hemisphere') }}</label>
                 <div class="radio-group">
-                    <label style="font-weight: normal; width: auto;"><input type="radio" name="hemisphere" value="north" checked> North</label>
-                    <label style="font-weight: normal; width: auto;"><input type="radio" name="hemisphere" value="south"> South</label>
+                    <label style="font-weight: normal; width: auto;"><input type="radio" name="hemisphere" value="north" checked> {{ t('hemisphere.north') }}</label>
+                    <label style="font-weight: normal; width: auto;"><input type="radio" name="hemisphere" value="south"> {{ t('hemisphere.south') }}</label>
                 </div>
             </div>
             <div class="param-row">
-                <label>Period Mode:</label>
+                <label>{{ t('params.period_mode') }}</label>
                 <div class="radio-group">
-                    <label style="font-weight: normal; width: auto;"><input type="radio" name="period" value="p1" checked> Period 1 (July 16 - July 15)</label>
-                    <label style="font-weight: normal; width: auto;"><input type="radio" name="period" value="p2"> Period 2 (Jan 16 - Jan 15)</label>
+                    <label style="font-weight: normal; width: auto;"><input type="radio" name="period" value="p1" checked> {{ t('period.period_1') }}</label>
+                    <label style="font-weight: normal; width: auto;"><input type="radio" name="period" value="p2"> {{ t('period.period_2') }}</label>
                 </div>
             </div>
 
@@ -102,71 +108,71 @@
             <!-- THRESHOLDS -->
             <div class="param-grid">
                 <div class="thresh-box">
-                    <strong>TMIN Threshold</strong>
+                    <strong>{{ t('thresholds.tmin_threshold') }}</strong>
                     <select id="tminDir"><option value="lte">&le;</option><option value="gte">&ge;</option></select>
-                    <input type="number" id="tminVal" value="-50" placeholder="Value (C)">
+                    <input type="number" id="tminVal" value="-50" placeholder="{{ t('thresholds.value_c') }}">
                 </div>
                 <div class="thresh-box">
-                    <strong>TAVG Threshold</strong>
+                    <strong>{{ t('thresholds.tavg_threshold') }}</strong>
                     <select id="tavgDir"><option value="lte">&le;</option><option value="gte">&ge;</option></select>
-                    <input type="number" id="tavgVal" value="-40" placeholder="Value (C)">
+                    <input type="number" id="tavgVal" value="-40" placeholder="{{ t('thresholds.value_c') }}">
                 </div>
                 <div class="thresh-box">
-                    <strong>TMAX Threshold</strong>
+                    <strong>{{ t('thresholds.tmax_threshold') }}</strong>
                     <select id="tmaxDir"><option value="lte">&le;</option><option value="gte">&ge;</option></select>
-                    <input type="number" id="tmaxVal" value="-30" placeholder="Value (C)">
+                    <input type="number" id="tmaxVal" value="-30" placeholder="{{ t('thresholds.value_c') }}">
                 </div>
             </div>
 
             <!-- Custom Average -->
             <div class="param-grid" style="margin-top: 15px;">
                 <div class="thresh-box">
-                    <strong>Custom Average (Base)</strong>
-                    <label style="font-weight:normal; font-size:0.9em;">For TMIN Explosive Power</label>
-                    <input type="number" id="customAvgTmin" placeholder="Leave blank to use calculated Avg">
+                    <strong>{{ t('thresholds.custom_average_base') }}</strong>
+                    <label style="font-weight:normal; font-size:0.9em;">{{ t('thresholds.for_tmin_explosive') }}</label>
+                    <input type="number" id="customAvgTmin" placeholder="{{ t('thresholds.leave_blank_avg') }}">
                 </div>
                 <div class="thresh-box">
-                    <strong>Custom Average (Base)</strong>
-                    <label style="font-weight:normal; font-size:0.9em;">For TAVG Explosive Power</label>
-                    <input type="number" id="customAvgTavg" placeholder="Leave blank to use calculated Avg">
+                    <strong>{{ t('thresholds.custom_average_base') }}</strong>
+                    <label style="font-weight:normal; font-size:0.9em;">{{ t('thresholds.for_tavg_explosive') }}</label>
+                    <input type="number" id="customAvgTavg" placeholder="{{ t('thresholds.leave_blank_avg') }}">
                 </div>
                 <div class="thresh-box">
-                    <strong>Custom Average (Base)</strong>
-                    <label style="font-weight:normal; font-size:0.9em;">For TMAX Explosive Power</label>
-                    <input type="number" id="customAvgTmax" placeholder="Leave blank to use calculated Avg">
+                    <strong>{{ t('thresholds.custom_average_base') }}</strong>
+                    <label style="font-weight:normal; font-size:0.9em;">{{ t('thresholds.for_tmax_explosive') }}</label>
+                    <input type="number" id="customAvgTmax" placeholder="{{ t('thresholds.leave_blank_avg') }}">
                 </div>
             </div>
 
             <div class="divider"></div>
 
             <!-- MULTI STATION PARAMS (Only for Admin or Advanced) -->
-            {% if current_user.is_authenticated and (current_user.is_admin or current_user.user_level == 'advanced') %}
+            {% if (current_user.is_authenticated and (current_user.is_admin or current_user.user_level == 'advanced')) or (session.get('is_visitor_access') and session.get('visitor_level') == 'advanced') %}
             <div id="multiParamsArea">
-                <h3 style="margin-top:0;">Multiple Stations Search Conditions</h3>
+                <h3 style="margin-top:0;">{{ t('multi_station.search_conditions') }}</h3>
                 
                 <div class="param-row">
-                    <label>Center Location Mode:</label>
+                    <label>{{ t('multi_station.center_location_mode') }}</label>
                     <select id="centerMode" onchange="toggleCenterLocMode()">
-                        <option value="station">By Weather Station</option>
-                        <option value="coords">By Coordinates</option>
+                        <option value="station">{{ t('multi_station.by_weather_station') }}</option>
+                        <option value="coords">{{ t('multi_station.by_coordinates') }}</option>
                     </select>
                 </div>
 
                 <div class="param-grid" id="coordsInputArea" style="display:none;">
                     <div class="thresh-box">
-                        <strong>Center Latitude</strong>
-                        <input type="number" id="centerLat" placeholder="Decimal Deg">
+                        <strong>{{ t('multi_station.center_latitude') }}</strong>
+                        <input type="number" id="centerLat" placeholder="{{ t('multi_station.decimal_deg') }}">
                     </div>
                     <div class="thresh-box">
-                        <strong>Center Longitude</strong>
-                        <input type="number" id="centerLon" placeholder="Decimal Deg">
+                        <strong>{{ t('multi_station.center_longitude') }}</strong>
+                        <input type="number" id="centerLon" placeholder="{{ t('multi_station.decimal_deg') }}">
                     </div>
                 </div>
 
                 <div class="param-row">
-                    <label>Max Distance (km):</label>
+                    <label>{{ t('multi_station.max_distance_km') }}</label>
                     <select id="maxDist">
-                        <option value="no_limit">No Limit</option>
+                        <option value="no_limit">{{ t('multi_station.no_limit') }}</option>
                         <option value="50">50</option>
                         <option value="200">200</option>
                         <option value="500">500</option>
@@ -175,51 +181,51 @@
                 </div>
 
                 <div class="param-row">
-                    <label>Country Limit:</label>
-                    <input type="text" id="countryLimit" placeholder="e.g. RS (Russia)">
+                    <label>{{ t('multi_station.country_limit') }}</label>
+                    <input type="text" id="countryLimit" placeholder="{{ t('multi_station.country_example') }}">
                 </div>
 
                 <div class="param-grid">
                     <div class="thresh-box">
-                        <strong>Latitude Range</strong>
-                        <input type="number" id="latMin" placeholder="Min">
-                        <input type="number" id="latMax" placeholder="Max">
+                        <strong>{{ t('multi_station.latitude_range') }}</strong>
+                        <input type="number" id="latMin" placeholder="{{ t('multi_station.min') }}">
+                        <input type="number" id="latMax" placeholder="{{ t('multi_station.max') }}">
                     </div>
                     <div class="thresh-box">
-                        <strong>Longitude Range</strong>
-                        <input type="number" id="lonMin" placeholder="Min">
-                        <input type="number" id="lonMax" placeholder="Max">
+                        <strong>{{ t('multi_station.longitude_range') }}</strong>
+                        <input type="number" id="lonMin" placeholder="{{ t('multi_station.min') }}">
+                        <input type="number" id="lonMax" placeholder="{{ t('multi_station.max') }}">
                     </div>
                     <div class="thresh-box">
-                        <strong>Elevation Range</strong>
-                        <input type="number" id="elevMin" placeholder="Min">
-                        <input type="number" id="elevMax" placeholder="Max">
+                        <strong>{{ t('multi_station.elevation_range') }}</strong>
+                        <input type="number" id="elevMin" placeholder="{{ t('multi_station.min') }}">
+                        <input type="number" id="elevMax" placeholder="{{ t('multi_station.max') }}">
                     </div>
                 </div>
 
                 <div class="param-row" id="wbanRow" style="display:none;">
-                    <label>WBAN Limit (GSOD):</label>
+                    <label>{{ t('multi_station.wban_limit') }}</label>
                     <div class="radio-group">
-                        <label style="font-weight: normal; width: auto;"><input type="radio" name="wbanLimit" value="no" checked> No Limit</label>
-                        <label style="font-weight: normal; width: auto;"><input type="radio" name="wbanLimit" value="99999"> Limit to 99999</label>
+                        <label style="font-weight: normal; width: auto;"><input type="radio" name="wbanLimit" value="no" checked> {{ t('multi_station.no_limit') }}</label>
+                        <label style="font-weight: normal; width: auto;"><input type="radio" name="wbanLimit" value="99999"> {{ t('multi_station.limit_to_99999') }}</label>
                     </div>
                 </div>
                 <div class="divider"></div>
             </div>
             {% endif %}
 
-            <button class="submit-btn" onclick="fetchData()">Get Data & Statistics</button>
+            <button class="submit-btn" onclick="fetchData()">{{ t('params.get_data') }}</button>
             
-            <div id="loading" class="hidden">Loading data...</div>
+            <div id="loading" class="hidden">{{ t('params.loading_data') }}</div>
             <div id="errorMsg" class="error"></div>
         </div>
 
         <!-- PART 2: STATISTICS -->
         <div class="section">
-            <h2>2a. Global Statistics</h2>
+            <h2>{{ t('sections.global_statistics') }}</h2>
             <div class="table-responsive">
                 <table class="stats-table">
-                    <thead><tr><th>Type</th><th>Min (C)</th><th>Avg (C)</th><th>Max (C)</th><th>Explosive Power</th><th>Days Matching Threshold</th></tr></thead>
+                    <thead><tr><th>{{ t('tables.type') }}</th><th>{{ t('tables.min_c') }}</th><th>{{ t('tables.avg_c') }}</th><th>{{ t('tables.max_c') }}</th><th>{{ t('tables.explosive_power') }}</th><th>{{ t('tables.days_matching_threshold') }}</th></tr></thead>
                     <tbody>
                         <tr><td><strong>TMIN</strong></td><td id="stat-tmin-min">-</td><td id="stat-tmin-avg">-</td><td id="stat-tmin-max">-</td><td id="stat-tmin-power">-</td><td id="stat-tmin-count">-</td></tr>
                         <tr><td><strong>TAVG</strong></td><td id="stat-tavg-min">-</td><td id="stat-tavg-avg">-</td><td id="stat-tavg-max">-</td><td id="stat-tavg-power">-</td><td id="stat-tavg-count">-</td></tr>
@@ -230,15 +236,15 @@
         </div>
 
         <div class="section">
-            <h2>2b. Period Averages (Summary)</h2>
+            <h2>{{ t('sections.period_averages') }}</h2>
             <div class="table-responsive">
                 <table class="stats-table">
                     <thead>
                         <tr>
-                            <th>Avg of (Min TMIN per Period)<br><span class="header-note">Val (Used/Total)</span></th>
-                            <th>Avg of (Min TMAX per Period)<br><span class="header-note">Val (Used/Total)</span></th>
-                            <th>Avg of (Max TMIN per Period)<br><span class="header-note">Val (Used/Total)</span></th>
-                            <th>Avg of (Max TMAX per Period)<br><span class="header-note">Val (Used/Total)</span></th>
+                            <th>{{ t('tables.avg_min_tmin_period') }}<br><span class="header-note">{{ t('tables.val_used_total') }}</span></th>
+                            <th>{{ t('tables.avg_min_tmax_period') }}<br><span class="header-note">{{ t('tables.val_used_total') }}</span></th>
+                            <th>{{ t('tables.avg_max_tmin_period') }}<br><span class="header-note">{{ t('tables.val_used_total') }}</span></th>
+                            <th>{{ t('tables.avg_max_tmax_period') }}<br><span class="header-note">{{ t('tables.val_used_total') }}</span></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -254,28 +260,28 @@
         </div>
 
         <div class="section">
-            <h2>2c. Period Details (By Range)</h2>
+            <h2>{{ t('sections.period_details') }}</h2>
             <div class="column-controls">
-                <span style="font-weight:bold; margin-right:10px;">Show Columns:</span>
+                <span style="font-weight:bold; margin-right:10px;">{{ t('tables.show_columns') }}</span>
                 <label><input type="checkbox" id="chk_min_tmin" checked> Min TMIN</label>
                 <label><input type="checkbox" id="chk_min_tmax" checked> Min TMAX</label>
                 <label><input type="checkbox" id="chk_max_tmin" checked> Max TMIN</label>
                 <label><input type="checkbox" id="chk_max_tmax" checked> Max TMAX</label>
-                <button class="small-btn" onclick="updatePeriodColumns()">Update Table</button>
+                <button class="small-btn" onclick="updatePeriodColumns()">{{ t('tables.update_table') }}</button>
             </div>
             <div style="max-height: 400px; overflow-y: auto;">
                 <div class="table-responsive">
                     <table class="stats-table" id="periodStatsTable">
                         <thead>
                             <tr>
-                                <th onclick="sortPeriodTable('range')">Period Range &#8645;</th>
+                                <th onclick="sortPeriodTable('range')">{{ t('tables.period_range') }} &#8645;</th>
                                 <th id="th_min_tmin" onclick="sortPeriodTable('min_tmin')">Min TMIN &#8645;</th>
                                 <th id="th_min_tmax" onclick="sortPeriodTable('min_tmax')">Min TMAX &#8645;</th>
                                 <th id="th_max_tmin" onclick="sortPeriodTable('max_tmin')">Max TMIN &#8645;</th>
                                 <th id="th_max_tmax" onclick="sortPeriodTable('max_tmax')">Max TMAX &#8645;</th>
-                                <th onclick="sortPeriodTable('cnt_tmin')">Days (TMIN) &#8645;</th>
-                                <th onclick="sortPeriodTable('cnt_tavg')">Days (TAVG) &#8645;</th>
-                                <th onclick="sortPeriodTable('cnt_tmax')">Days (TMAX) &#8645;</th>
+                                <th onclick="sortPeriodTable('cnt_tmin')">{{ t('tables.days_tmin') }} &#8645;</th>
+                                <th onclick="sortPeriodTable('cnt_tavg')">{{ t('tables.days_tavg') }} &#8645;</th>
+                                <th onclick="sortPeriodTable('cnt_tmax')">{{ t('tables.days_tmax') }} &#8645;</th>
                             </tr>
                         </thead>
                         <tbody></tbody>
@@ -286,36 +292,36 @@
 
         <!-- PART 3: RECORD LIST -->
         <div class="section">
-            <h2>3. Record List (Top <span id="limitLabel">15</span> from Sorted Result)</h2>
+            <h2>3. {{ t('sections.record_list', limit='<span id="limitLabel">15</span>')|safe }}</h2>
             
             <div class="record-controls">
                 <div class="control-group">
-                    <span style="font-weight:bold;">Filter Elements:</span>
+                    <span style="font-weight:bold;">{{ t('tables.filter_elements') }}</span>
                     <label><input type="checkbox" name="rec_elem" value="TMIN" checked> TMIN</label>
                     <label><input type="checkbox" name="rec_elem" value="TAVG" checked> TAVG</label>
                     <label><input type="checkbox" name="rec_elem" value="TMAX" checked> TMAX</label>
                 </div>
                 <div class="control-group">
-                    <span style="font-weight:bold;">Max Records:</span>
+                    <span style="font-weight:bold;">{{ t('tables.max_records') }}</span>
                     <select id="recordLimitSelect" style="width:auto; padding:5px;">
                         <option value="15" selected>15</option>
                         <option value="50">50</option>
                         <option value="200">200</option>
                     </select>
-                    <button class="small-btn" onclick="updateRecordsList()">Update Records</button>
+                    <button class="small-btn" onclick="updateRecordsList()">{{ t('tables.update_records') }}</button>
                 </div>
             </div>
             <div id="sortingLoading" class="hidden" style="color: #e67e22; font-weight: bold; margin-bottom: 10px;">
-                Fetching records... please wait...
+                {{ t('tables.fetching_records') }}
             </div>
             <div class="table-responsive">
                 <table class="data-table" id="recordsTable">
                     <thead>
                         <tr>
-                            <th onclick="triggerServerSort('ID')">ID &#8645;</th>
-                            <th onclick="triggerServerSort('DATE')">Date &#8645;</th>
-                            <th>Element</th> 
-                            <th onclick="triggerServerSort('DATA_VALUE')">Data Value (C) &#8645;</th>
+                            <th onclick="triggerServerSort('ID')">{{ t('tables.id') }} &#8645;</th>
+                            <th onclick="triggerServerSort('DATE')">{{ t('tables.date') }} &#8645;</th>
+                            <th>{{ t('tables.element') }}</th> 
+                            <th onclick="triggerServerSort('DATA_VALUE')">{{ t('tables.data_value_c') }} &#8645;</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
@@ -324,15 +330,15 @@
         </div>
 
         <!-- PART 4 & 5 (Restricted) -->
-        {% if current_user.is_authenticated and (current_user.is_admin or current_user.user_level == 'advanced') %}
+        {% if (current_user.is_authenticated and (current_user.is_admin or current_user.user_level == 'advanced')) or (session.get('is_visitor_access') and session.get('visitor_level') == 'advanced') %}
 
         <!-- PART 4: MULTIPLE STATIONS -->
         <div class="section">
-            <h2>4. Multiple Weather Stations (Top <span id="multiLimitLabel">15</span> Matches)</h2>
+            <h2>{{ t('sections.multiple_stations', limit='<span id="multiLimitLabel">15</span>')|safe }}</h2>
             
             <div class="record-controls">
                 <div class="control-group">
-                    <span style="font-weight:bold;">Max Stations:</span>
+                    <span style="font-weight:bold;">{{ t('tables.max_stations') }}</span>
                     <select id="multiLimitSelect" style="width:auto; padding:5px;">
                         <option value="15" selected>15</option>
                         <option value="50">50</option>
@@ -342,26 +348,26 @@
                     </select>
                 </div>
                 <div class="control-group">
-                    <button class="small-btn" onclick="updateMultiStations()">Update List</button>
-                    <button class="small-btn" style="background-color: #17a2b8;" onclick="copyMultiTable()">Copy Table (TSV)</button>
+                    <button class="small-btn" onclick="updateMultiStations()">{{ t('tables.update_list') }}</button>
+                    <button class="small-btn" style="background-color: #17a2b8;" onclick="copyMultiTable()">{{ t('tables.copy_table_tsv') }}</button>
                 </div>
             </div>
 
             <div id="multiStationLoading" class="hidden" style="color: #e67e22; font-weight: bold; margin-bottom: 10px;">
-                Updating station list... please wait...
+                {{ t('tables.updating_station_list') }}
             </div>
 
             <div class="table-responsive">
                 <table class="data-table" id="multiStationTable">
                     <thead>
                         <tr>
-                            <th onclick="triggerMultiSort('id')">ID &#8645;</th>
-                            <th onclick="triggerMultiSort('name')">Name &#8645;</th>
-                            <th onclick="triggerMultiSort('lat')">Latitude &#8645;</th>
-                            <th onclick="triggerMultiSort('lon')">Longitude &#8645;</th>
-                            <th onclick="triggerMultiSort('elev')">Elevation(m) &#8645;</th>
-                            <th onclick="triggerMultiSort('dist')">Distance(km) &#8645;</th>
-                            <th onclick="triggerMultiSort('country')">Country &#8645;</th>
+                            <th onclick="triggerMultiSort('id')">{{ t('tables.id') }} &#8645;</th>
+                            <th onclick="triggerMultiSort('name')">{{ t('tables.name') }} &#8645;</th>
+                            <th onclick="triggerMultiSort('lat')">{{ t('tables.latitude') }} &#8645;</th>
+                            <th onclick="triggerMultiSort('lon')">{{ t('tables.longitude') }} &#8645;</th>
+                            <th onclick="triggerMultiSort('elev')">{{ t('tables.elevation_m') }} &#8645;</th>
+                            <th onclick="triggerMultiSort('dist')">{{ t('tables.distance_km') }} &#8645;</th>
+                            <th onclick="triggerMultiSort('country')">{{ t('tables.country') }} &#8645;</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
@@ -371,44 +377,45 @@
 
         <!-- PART 5: MULTIPLE STATIONS STATISTICS -->
         <div class="section">
-            <h2>5. Multiple Stations Statistics (For Stations in Part 4)</h2>
+            <h2>{{ t('sections.multiple_stats') }}</h2>
             
             <div class="record-controls">
                 <div class="control-group" style="flex:1;">
-                    <span style="font-weight:bold;">Select Statistic:</span>
+                    <span style="font-weight:bold;">{{ t('tables.select_statistic') }}</span>
                     <select id="multiStatSelect" style="width:auto; max-width:250px; padding:5px;">
-                        <option value="avg_tmin">Average TMIN</option>
-                        <option value="avg_tavg">Average TAVG</option>
-                        <option value="avg_tmax">Average TMAX</option>
-                        <option value="min_tmin">Minimum TMIN</option>
-                        <option value="min_tavg">Minimum TAVG</option>
-                        <option value="min_tmax">Minimum TMAX</option>
-                        <option value="max_tmin">Maximum TMIN</option>
-                        <option value="max_tavg">Maximum TAVG</option>
-                        <option value="max_tmax">Maximum TMAX</option>
-                        <option value="max_days_tmin">Max Days matching TMIN Threshold</option>
-                        <option value="max_days_tavg">Max Days matching TAVG Threshold</option>
-                        <option value="max_days_tmax">Max Days matching TMAX Threshold</option>
+                        <option value="avg_tmin">{{ t('statistics.average_tmin') }}</option>
+                        <option value="avg_tavg">{{ t('statistics.average_tavg') }}</option>
+                        <option value="avg_tmax">{{ t('statistics.average_tmax') }}</option>
+                        <option value="min_tmin">{{ t('statistics.minimum_tmin') }}</option>
+                        <option value="min_tavg">{{ t('statistics.minimum_tavg') }}</option>
+                        <option value="min_tmax">{{ t('statistics.minimum_tmax') }}</option>
+                        <option value="max_tmin">{{ t('statistics.maximum_tmin') }}</option>
+                        <option value="max_tavg">{{ t('statistics.maximum_tavg') }}</option>
+                        <option value="max_tmax">{{ t('statistics.maximum_tmax') }}</option>
+                        <option value="max_days_tmin">{{ t('statistics.max_days_tmin') }}</option>
+                        <option value="max_days_tavg">{{ t('statistics.max_days_tavg') }}</option>
+                        <option value="max_days_tmax">{{ t('statistics.max_days_tmax') }}</option>
                     </select>
                 </div>
                 <div class="control-group">
-                    <button class="small-btn" onclick="calcMultiStats()">Calculate Stats</button>
-                    <button class="small-btn" style="background-color: #17a2b8;" onclick="copyMultiStatsTable()">Copy Table (TSV)</button>
+                    <button class="small-btn" onclick="calcMultiStats()">{{ t('tables.calculate_stats') }}</button>
+                    <button class="small-btn" style="background-color: #17a2b8;" onclick="copyMultiStatsTable()">{{ t('tables.copy_table_tsv') }}</button>
                 </div>
             </div>
 
             <div id="multiStatLoading" class="hidden" style="color: #e67e22; font-weight: bold; margin-bottom: 10px;">
-                Calculating statistics for multiple stations... this may take a while...
+                {{ t('tables.calculating_statistics') }}
             </div>
 
             <div class="table-responsive">
                 <table class="data-table" id="multiStatResultTable">
                     <thead>
                         <tr>
-                            <th onclick="sortMultiStatTable('id')">Station ID &#8645;</th>
-                            <th onclick="sortMultiStatTable('name')">Station Name &#8645;</th>
-                            <th onclick="triggerMultiSort('dist')">Distance(km) &#8645;</th>
-                            <th onclick="sortMultiStatTable('val')">Value &#8645;</th>
+                            <th onclick="sortMultiStatTable('id')">{{ t('tables.station_id') }} &#8645;</th>
+                            <th onclick="sortMultiStatTable('name')">{{ t('tables.station_name') }} &#8645;</th>
+                            <th onclick="triggerMultiSort('dist')">{{ t('tables.distance_km') }} &#8645;</th>
+                            <th onclick="sortMultiStatTable('val')">{{ t('tables.value') }} &#8645;</th>
+                            <th>{{ t('tables.relevant_dates_periods') }}</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
@@ -417,7 +424,7 @@
         </div>
         {% endif %}
 
-        <div id="copyToast">Copied to clipboard!</div>
+        <div id="copyToast">{{ t('messages.copied_to_clipboard') }}</div>
 
     </div>
     <script src="{{ url_for('static', filename='script.js') }}"></script>

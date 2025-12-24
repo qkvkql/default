@@ -51,6 +51,7 @@
         <!-- ADD USER FORM -->
         <form action="/user/add" method="POST" class="add-form">
             <strong>Add New User:</strong>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="text" name="username" placeholder="Username" required>
             <input type="password" name="password" placeholder="Password" required>
             <select name="user_level">
@@ -105,6 +106,7 @@
                             
                             <!-- Delete Form -->
                             <form action="/user/delete/{{ user.id }}" method="POST" style="display:inline;" onsubmit="return confirm('Delete user {{ user.username }}?');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <button type="submit" class="btn btn-del">Delete</button>
                             </form>
                         </td>

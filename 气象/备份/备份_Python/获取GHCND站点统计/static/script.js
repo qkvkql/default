@@ -180,7 +180,7 @@ function renderMultiStatTable() {
     const tbody = document.querySelector('#multiStatResultTable tbody');
     if(!tbody) return;
     tbody.innerHTML = '';
-    if (rawMultiStatsResults.length === 0) { tbody.innerHTML = `<tr><td colspan="4">No stats available.</td></tr>`; return; }
+    if (rawMultiStatsResults.length === 0) { tbody.innerHTML = `<tr><td colspan="5">No stats available.</td></tr>`; return; }
     rawMultiStatsResults.sort((a, b) => {
         let valA = a[multiStatSortCol]; let valB = b[multiStatSortCol];
         if (multiStatSortCol === 'val') { valA = (valA === '-') ? -9999 : parseFloat(valA); valB = (valB === '-') ? -9999 : parseFloat(valB); } 
@@ -191,7 +191,8 @@ function renderMultiStatTable() {
     });
     rawMultiStatsResults.forEach(row => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${row.id}</td><td>${row.name}</td><td>${row.dist}</td><td>${row.val}</td>`;
+        const datesCell = (row.dates && row.dates.length > 0) ? row.dates.join(', ') : '';
+        tr.innerHTML = `<td>${row.id}</td><td>${row.name}</td><td>${row.dist}</td><td>${row.val}</td><td>${datesCell}</td>`;
         tbody.appendChild(tr);
     });
 }
@@ -226,15 +227,18 @@ async function calcMultiStats() {
 
     try {
         const response = await fetch('/get_multi_stats', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify(payload)
         });
         if (response.status === 401) { window.location.href = "/login"; return; }
         const result = await response.json();
         if (result.status === 'success') {
             result.results.forEach(row => { row.dist = distMap[row.id]; rawMultiStatsResults.push(row); });
             renderMultiStatTable();
-        } else { tbody.innerHTML = `<tr><td colspan="4">Error: ${result.message}</td></tr>`; }
-    } catch (err) { tbody.innerHTML = `<tr><td colspan="4">Network Error</td></tr>`; } 
+        } else { tbody.innerHTML = `<tr><td colspan="5">Error: ${result.message}</td></tr>`; }
+    } catch (err) { tbody.innerHTML = `<tr><td colspan="5">Network Error</td></tr>`; } 
     finally { loading.classList.add('hidden'); }
 }
 
@@ -395,12 +399,26 @@ async function fetchData() {
         const response = await fetch('/get_data', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
             body: JSON.stringify(payload)
         });
 
-        if (response.status === 401) { window.location.href = "/login"; return; }
+        if (response.status === 401) { 
+            errorMsg.textContent = "Authentication required. Please login first.";
+            window.location.href = "/login"; 
+            return; 
+        }
+        
+        if (!response.ok) {
+            errorMsg.textContent = `Server error: ${response.status} ${response.statusText}`;
+            return;
+        }
+        
         const result = await response.json();
-        if (result.status === 'error') { errorMsg.textContent = "Error: " + result.message; return; }
+        if (result.status === 'error') { 
+            errorMsg.textContent = "Error: " + result.message; 
+            return; 
+        }
 
         updateStatRow('tmin', result.stats.TMIN);
         updateStatRow('tavg', result.stats.TAVG);
@@ -451,8 +469,8 @@ async function fetchData() {
         }
         
     } catch (err) {
-        errorMsg.textContent = "Please login first to get data.";
-        console.error(err);
+        errorMsg.textContent = `Error fetching data: ${err.message}. Please check your connection and try again.`;
+        console.error('Fetch error:', err);
     } finally {
         loading.classList.add('hidden');
         if(sortingLoading) sortingLoading.classList.add('hidden');
