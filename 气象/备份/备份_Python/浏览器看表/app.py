@@ -34,26 +34,50 @@ def parse_excel(filepath_or_buffer, global_keyword="", column_filters=None):
             column_filters = {}
 
         for sheet_name, df in xls_dict.items():
-            # 1. Format Dates
+            # 2. Reformat Date columns to string for search/display
             for col in df.columns:
                 if pd.api.types.is_datetime64_any_dtype(df[col]):
                     df[col] = df[col].dt.strftime('%Y-%m-%d %H:%M:%S')
 
-            # 2. Convert to string
+            # 3. COLUMN FILTERS (Ordered before Global Search and final string conversion)
+            if isinstance(column_filters, list):
+                for f in column_filters:
+                    col_name = f.get('column')
+                    f_type = f.get('type', 'string')
+                    if col_name not in df.columns:
+                        continue
+                    
+                    if f_type == 'string':
+                        val = f.get('value')
+                        if val:
+                            df = df[df[col_name].astype(str).str.contains(str(val), case=False, na=False)]
+                    elif f_type == 'number':
+                        try:
+                            start = float(f.get('start', 0))
+                            step = float(f.get('step', 0))
+                            end = start + step
+                            # Numeric comparison: convert col to numeric safely
+                            num_col = pd.to_numeric(df[col_name], errors='coerce')
+                            df = df[(num_col >= start) & (num_col <= end)]
+                        except (ValueError, TypeError):
+                            continue
+            elif isinstance(column_filters, dict):
+                # Backward compatibility for any old-style calls
+                for col_name, search_val in column_filters.items():
+                    if col_name in df.columns and search_val:
+                        df = df[df[col_name].astype(str).str.contains(str(search_val), case=False, na=False)]
+
+            # 4. GLOBAL SEARCH
+            if global_keyword:
+                # Temporary string version for row-wide search
+                mask = df.astype(str).apply(lambda row: row.str.contains(global_keyword, case=False).any(), axis=1)
+                df = df[mask]
+
+            # 5. FINAL STRING CONVERSION FOR DISPLAY
             df = df.astype(object).fillna("").astype(str)
             df = df.replace(["nan", "<NA>", "None", "NaT", "inf", "-inf"], "")
 
-            # 3. GLOBAL SEARCH
-            if global_keyword:
-                mask = df.apply(lambda row: row.str.contains(global_keyword, case=False).any(), axis=1)
-                df = df[mask]
-
-            # 4. COLUMN FILTERS
-            for col_name, search_val in column_filters.items():
-                if col_name in df.columns and search_val:
-                    df = df[df[col_name].str.contains(search_val, case=False)]
-
-            # 5. ROW LIMIT CHECK
+            # 6. ROW LIMIT CHECK
             # Instead of erroring, we set a flag
             row_count = len(df)
             is_too_large = row_count > MAX_ROWS

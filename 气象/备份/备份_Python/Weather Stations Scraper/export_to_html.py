@@ -124,14 +124,19 @@ def arr_east_asia():
 def arr_east_siberia():
     esArr = [e for e in sortedArr if e['east_asia'] == '' and e['country'] == '俄罗斯']
     return esArr
+# 定制导出首页12个明星站
+def arr_star12():
+    esArr = [e for e in sortedArr if e['is_star'] == 'Y']
+    return esArr
 
 # 把多个定制的对象数组导出到js文件
 def export_to_JS():
     json_all_stations = json.dumps(sortedArr, indent=4) #全部有数据的站
     json_ea_stations = json.dumps(arr_east_asia(), indent=4) # 东亚json
     json_east_siberia_stations = json.dumps(arr_east_siberia(), indent=4) # east siberia
+    json_star12_stations = json.dumps(arr_star12(), indent=4) # 首页明星站
 
-    js_all_stations = f'export const array_of_stations_by_different_filters = {{\n"汇总": {json_all_stations}, \n"东亚": {json_ea_stations}, \n"西伯利亚": {json_east_siberia_stations}}};'
+    js_all_stations = f'export const array_of_stations_by_different_filters = {{\n"汇总": {json_all_stations}, \n"东亚": {json_ea_stations}, \n"西伯利亚": {json_east_siberia_stations}, \n"明星站": {json_star12_stations}}};'
     with open(to_js_path, "w", encoding="utf-8") as f:
         f.write(js_all_stations)
 

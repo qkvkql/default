@@ -1,9 +1,9 @@
-let globalExcelData = {}; 
+let globalExcelData = {};
 let currentSheetName = "";
-let currentTableRows = []; 
+let currentTableRows = [];
 let currentHeaders = [];
-let sortDirection = {}; 
-let activeMode = null; 
+let sortDirection = {};
+let activeMode = null;
 let activeKey = null;
 
 // --- UI STATE MANAGEMENT ---
@@ -43,16 +43,26 @@ function addFilterRow() {
     const container = document.getElementById('advanced-filters');
     const div = document.createElement('div');
     div.className = 'filter-row';
-    div.style.marginBottom = "10px";
+    div.style.marginBottom = "15px";
+    div.style.padding = "10px";
+    div.style.background = "#fff";
+    div.style.border = "1px solid #ddd";
+    div.style.borderRadius = "4px";
     div.style.display = "flex";
-    div.style.gap = "10px";
-    div.style.alignItems = "center";
+    div.style.flexDirection = "column";
+    div.style.gap = "8px";
+
+    // Top row: Column selector and Remove button
+    const topRow = document.createElement('div');
+    topRow.style.display = "flex";
+    topRow.style.gap = "10px";
+    topRow.style.alignItems = "center";
 
     const select = document.createElement('select');
     select.className = 'col-select';
     select.style.padding = "5px";
-    select.style.minWidth = "150px"; 
-    
+    select.style.minWidth = "150px";
+
     const defaultOpt = document.createElement('option');
     defaultOpt.value = "";
     defaultOpt.text = "-- Select Column --";
@@ -67,34 +77,129 @@ function addFilterRow() {
         });
     }
 
-    const input = document.createElement('input');
-    input.type = "text";
-    input.className = 'col-value short-input'; 
-    input.placeholder = "Filter value...";
-    input.style.padding = "5px";
-    
     const removeBtn = document.createElement('button');
     removeBtn.innerHTML = "X";
-    removeBtn.style.backgroundColor = "#dc3545"; 
+    removeBtn.style.backgroundColor = "#dc3545";
     removeBtn.style.color = "white";
     removeBtn.style.border = "none";
     removeBtn.style.padding = "5px 10px";
     removeBtn.style.cursor = "pointer";
-    removeBtn.onclick = function() { container.removeChild(div); };
+    removeBtn.onclick = function () { container.removeChild(div); };
 
-    div.appendChild(select);
-    div.appendChild(input);
-    div.appendChild(removeBtn);
+    topRow.appendChild(select);
+    topRow.appendChild(removeBtn);
+
+    // Middle row: Type selection (Radio)
+    const typeRow = document.createElement('div');
+    typeRow.style.display = "flex";
+    typeRow.style.gap = "15px";
+    typeRow.style.fontSize = "14px";
+
+    const filterId = Date.now() + Math.random(); // Unique ID for radio group
+
+    const stringLabel = document.createElement('label');
+    const stringRadio = document.createElement('input');
+    stringRadio.type = "radio";
+    stringRadio.name = `type-${filterId}`;
+    stringRadio.value = "string";
+    stringRadio.checked = true;
+    stringRadio.className = "filter-type-radio";
+    stringLabel.appendChild(stringRadio);
+    stringLabel.appendChild(document.createTextNode(" String"));
+
+    const numberLabel = document.createElement('label');
+    const numberRadio = document.createElement('input');
+    numberRadio.type = "radio";
+    numberRadio.name = `type-${filterId}`;
+    numberRadio.value = "number";
+    numberRadio.className = "filter-type-radio";
+    numberLabel.appendChild(numberRadio);
+    numberLabel.appendChild(document.createTextNode(" Number Range"));
+
+    typeRow.appendChild(stringLabel);
+    typeRow.appendChild(numberLabel);
+
+    // Bottom row: Inputs (conditional)
+    const inputRow = document.createElement('div');
+
+    // String input
+    const stringInput = document.createElement('input');
+    stringInput.type = "text";
+    stringInput.className = 'col-value-string short-input';
+    stringInput.placeholder = "Filter value...";
+    stringInput.style.padding = "5px";
+    stringInput.style.display = "block";
+
+    // Number inputs container
+    const numberInputs = document.createElement('div');
+    numberInputs.className = 'number-inputs-container';
+    numberInputs.style.display = "none";
+    numberInputs.style.gap = "10px";
+    numberInputs.style.alignItems = "center";
+
+    const startInput = document.createElement('input');
+    startInput.type = "text";
+    startInput.className = 'col-value-start short-input';
+    startInput.placeholder = "Start Range";
+    startInput.style.padding = "5px";
+    startInput.style.width = "100px";
+
+    const stepInput = document.createElement('input');
+    stepInput.type = "text";
+    stepInput.className = 'col-value-step short-input';
+    stepInput.placeholder = "Step Length";
+    stepInput.style.padding = "5px";
+    stepInput.style.width = "100px";
+
+    numberInputs.appendChild(document.createTextNode("Range: "));
+    numberInputs.appendChild(startInput);
+    numberInputs.appendChild(document.createTextNode(" + "));
+    numberInputs.appendChild(stepInput);
+
+    inputRow.appendChild(stringInput);
+    inputRow.appendChild(numberInputs);
+
+    // Toggle logic
+    stringRadio.onchange = () => {
+        stringInput.style.display = "block";
+        numberInputs.style.display = "none";
+    };
+    numberRadio.onchange = () => {
+        stringInput.style.display = "none";
+        numberInputs.style.display = "flex";
+    };
+
+    div.appendChild(topRow);
+    div.appendChild(typeRow);
+    div.appendChild(inputRow);
     container.appendChild(div);
 }
 
 function gatherColumnFilters() {
-    const filters = {};
+    const filters = [];
     const rows = document.querySelectorAll('.filter-row');
     rows.forEach(row => {
         const col = row.querySelector('.col-select').value;
-        const val = row.querySelector('.col-value').value.trim();
-        if (col && val) filters[col] = val;
+        if (!col) return;
+
+        const type = row.querySelector('.filter-type-radio:checked').value;
+        const filterObj = { column: col, type: type };
+
+        if (type === 'string') {
+            const val = row.querySelector('.col-value-string').value.trim();
+            if (val) {
+                filterObj.value = val;
+                filters.push(filterObj);
+            }
+        } else {
+            const start = row.querySelector('.col-value-start').value.trim();
+            const step = row.querySelector('.col-value-step').value.trim();
+            if (start !== "" && step !== "") {
+                filterObj.start = start;
+                filterObj.step = step;
+                filters.push(filterObj);
+            }
+        }
     });
     return filters;
 }
@@ -104,7 +209,7 @@ function gatherColumnFilters() {
 function renderExportCheckboxes() {
     const container = document.getElementById('checkbox-list');
     const exportSection = document.getElementById('export-container');
-    
+
     // Show section
     exportSection.style.display = "block";
     container.innerHTML = "";
@@ -120,7 +225,7 @@ function renderExportCheckboxes() {
         checkbox.value = index; // Store column index
         checkbox.id = `chk-${index}`;
         // Per requirement: unchecked by default
-        checkbox.checked = false; 
+        checkbox.checked = false;
 
         const label = document.createElement('label');
         label.htmlFor = `chk-${index}`;
@@ -142,8 +247,8 @@ function copyToClipboard() {
 
     // Sort checkboxes by index to ensure order matches table order
     const selectedIndices = Array.from(checkboxes)
-                                 .map(cb => parseInt(cb.value))
-                                 .sort((a, b) => a - b);
+        .map(cb => parseInt(cb.value))
+        .sort((a, b) => a - b);
 
     // --- PART A: COPY TO CLIPBOARD (Existing Logic) ---
     let tsvContent = "";
@@ -157,7 +262,7 @@ function copyToClipboard() {
         const rowData = selectedIndices.map(idx => {
             let val = row[idx];
             if (val === null || val === undefined) val = "";
-            val = String(val).replace(/\t/g, " ").replace(/\n/g, " "); 
+            val = String(val).replace(/\t/g, " ").replace(/\n/g, " ");
             return val;
         }).join("\t");
         tsvContent += rowData + "\n";
@@ -172,7 +277,7 @@ function copyToClipboard() {
     });
 
     // --- PART B: UPDATE TABLE DISPLAY (New Logic) ---
-    
+
     // 1. Create new Headers array containing ONLY selected headers
     const newHeaders = selectedIndices.map(idx => currentHeaders[idx]);
 
@@ -191,7 +296,7 @@ function copyToClipboard() {
     // 5. Re-render the Export Checkboxes
     // (Since the visible columns changed, the checkboxes must match the new table)
     renderExportCheckboxes();
-    
+
     // 6. Reset Sort Direction since the column indices have shifted
     sortDirection = {};
 }
@@ -205,13 +310,13 @@ function setModeAndLoad(mode, key) {
 }
 
 function triggerSearch() {
-    if (!activeMode) return; 
+    if (!activeMode) return;
     executeLoad();
 }
 
 async function executeLoad() {
     const keyword = document.getElementById('searchInput').value;
-    const colFilters = gatherColumnFilters(); 
+    const colFilters = gatherColumnFilters();
 
     // Reset Copy Button on new search start
     toggleCopyButton(false);
@@ -223,8 +328,8 @@ async function executeLoad() {
             response = await fetch('/get_predefined', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    key: activeKey, 
+                body: JSON.stringify({
+                    key: activeKey,
                     keyword: keyword,
                     column_filters: colFilters
                 })
@@ -238,7 +343,7 @@ async function executeLoad() {
             const formData = new FormData();
             formData.append('file', fileInput.files[0]);
             formData.append('keyword', keyword);
-            formData.append('column_filters', JSON.stringify(colFilters)); 
+            formData.append('column_filters', JSON.stringify(colFilters));
             response = await fetch('/upload_file', { method: 'POST', body: formData });
         }
 
@@ -261,7 +366,7 @@ function handleResponse(data) {
     const sheetSelect = document.getElementById('sheetSelect');
     const sheetControl = document.getElementById('sheet-control');
 
-    sheetSelect.innerHTML = ""; 
+    sheetSelect.innerHTML = "";
     sheetNames.forEach(name => {
         const option = document.createElement('option');
         option.value = name;
@@ -270,11 +375,11 @@ function handleResponse(data) {
     });
 
     if (sheetNames.length > 0) {
-        if(sheetControl) sheetControl.style.display = "block";
+        if (sheetControl) sheetControl.style.display = "block";
         currentSheetName = sheetNames[0];
         loadSheet(currentSheetName);
     } else {
-        if(sheetControl) sheetControl.style.display = "none";
+        if (sheetControl) sheetControl.style.display = "none";
         showError("File contains no readable sheets.");
     }
 }
@@ -282,17 +387,17 @@ function handleResponse(data) {
 function switchSheet() {
     currentSheetName = document.getElementById('sheetSelect').value;
     // Reset copy button when switching
-    toggleCopyButton(false); 
+    toggleCopyButton(false);
     loadSheet(currentSheetName);
 }
 
 function loadSheet(sheetName) {
-    sortDirection = {}; 
+    sortDirection = {};
     const sheetData = globalExcelData[sheetName];
-    
+
     currentHeaders = sheetData.headers;
-    currentTableRows = JSON.parse(JSON.stringify(sheetData.rows)); 
-    
+    currentTableRows = JSON.parse(JSON.stringify(sheetData.rows));
+
     // 1. Update Filters Dropdowns
     updateFilterDropdowns();
 
@@ -303,7 +408,7 @@ function loadSheet(sheetName) {
     if (sheetData.too_large) {
         // WARNING STATE: Button must be DISABLED
         toggleCopyButton(false);
-        
+
         const msg = `Result has ${sheetData.row_count} rows (Limit: 2000). <br>
                      Data is hidden to prevent browser crash. <br>
                      <strong>Please type keywords or add column filters to reduce result size.</strong>`;
@@ -335,7 +440,7 @@ function updateFilterDropdowns() {
 
 function renderTable() {
     const container = document.getElementById('table-container');
-    
+
     // EMPTY STATE
     if (currentTableRows.length === 0) {
         toggleCopyButton(false); // Disable copy if empty
@@ -351,12 +456,12 @@ function renderTable() {
             Found ${currentTableRows.length} rows
         </div>
         <table><thead><tr>`;
-    
+
     currentHeaders.forEach((header, index) => {
         const dir = sortDirection[index] || '';
         html += `<th class="${dir}" onclick="sortTable(${index})">${header}</th>`;
     });
-    
+
     html += '</tr></thead><tbody>';
     currentTableRows.forEach(row => {
         html += '<tr>';
@@ -369,7 +474,7 @@ function renderTable() {
 
 function sortTable(columnIndex) {
     const currentDir = sortDirection[columnIndex] === 'asc' ? 'desc' : 'asc';
-    sortDirection = {}; 
+    sortDirection = {};
     sortDirection[columnIndex] = currentDir;
 
     currentTableRows.sort((a, b) => {
@@ -382,7 +487,7 @@ function sortTable(columnIndex) {
         const isEmptyB = cleanB === "";
 
         if (isEmptyA && isEmptyB) return 0;
-        if (isEmptyA) return 1; 
+        if (isEmptyA) return 1;
         if (isEmptyB) return -1;
 
         const numA = parseFloat(valA);
@@ -390,7 +495,7 @@ function sortTable(columnIndex) {
         const isNumA = !isNaN(numA) && isFinite(valA) && cleanA !== "";
         const isNumB = !isNaN(numB) && isFinite(valB) && cleanB !== "";
 
-        if (isNumA && !isNumB) return -1; 
+        if (isNumA && !isNumB) return -1;
         if (!isNumA && isNumB) return 1;
 
         if (isNumA && isNumB) {

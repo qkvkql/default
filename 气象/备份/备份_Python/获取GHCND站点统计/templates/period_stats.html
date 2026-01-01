@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ station_name }} - {{ t('sections.period_details') }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .details-container {
+            max-width: 1200px;
+            margin: 20px auto;
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 10px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .station-meta {
+            margin-top: 5px;
+            font-size: 0.95rem;
+            color: #555;
+        }
+
+        .meta-item {
+            display: inline-block;
+            margin-right: 15px;
+            padding: 4px 8px;
+            background: white;
+            border: 1px dashed #bbb;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #666;
+        }
+
+        .meta-item:hover {
+            background: #f8f9fa;
+            border-color: #333;
+            color: #000;
+        }
+
+        .section-title {
+            font-size: 1.4rem;
+            margin: 25px 0 15px 0;
+            color: #333;
+            border-left: 4px solid #007bff;
+            padding-left: 10px;
+        }
+
+        /* Period Summary Header Note */
+        .header-note {
+            display: block;
+            font-size: 0.75em;
+            font-weight: normal;
+            color: #777;
+            margin-top: 2px;
+        }
+
+        .summary-cell {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #d32f2f;
+        }
+
+        .toast {
+            visibility: hidden;
+            min-width: 250px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 4px;
+            padding: 10px;
+            position: fixed;
+            z-index: 1000;
+            left: 50%;
+            bottom: 30px;
+            transform: translateX(-50%);
+            font-size: 16px;
+        }
+
+        .toast.show {
+            visibility: visible;
+            animation: fadein 0.5s, fadeout 0.5s 2.5s;
+        }
+
+        @keyframes fadein {
+            from {
+                bottom: 0;
+                opacity: 0;
+            }
+
+            to {
+                bottom: 30px;
+                opacity: 1;
+            }
+        }
+
+        @keyframes fadeout {
+            from {
+                bottom: 30px;
+                opacity: 1;
+            }
+
+            to {
+                bottom: 0;
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    {% macro render_stat_cell(obj) %}
+    <td class="copy-cell">
+        {% if obj.val != '-' and obj.dates %}
+        <div class="tooltip-container">
+            <span>{{ obj.val }}</span>
+            <span class="tooltip-note clickable-date"
+                onclick="event.stopPropagation(); openDateDetailsList('{{ obj.dates|join(',') }}')"
+                title="Click to view details">{% if obj.dates|length > 20 %}{{ obj.dates[:20]|join("\n")
+                }}{{"\n"}}...and {{ obj.dates|length - 20 }} more{% else %}{{ obj.dates|join("\n") }}{% endif %}</span>
+        </div>
+        {% else %}
+        {{ obj.val }}
+        {% endif %}
+    </td>
+    {% endmacro %}
+
+    <div class="details-container">
+        <div class="header-row">
+            <div>
+                <h1>{{ station_name }}</h1>
+                {% if station_info and station_info.lat != '-' %}
+                <div class="station-meta">
+                    <span class="meta-item copyable" title="Click to copy Coordinates">{{ station_info.lat }}&#9;{{
+                        station_info.lon }}</span>
+                    <span class="meta-item copyable" title="Click to copy Elevation">{{ station_info.elev }}m</span>
+                </div>
+                {% endif %}
+            </div>
+            <div>
+                <select id="languageSelect" onchange="window.location.href='/set_language/' + this.value"
+                    style="padding: 5px; border-radius: 4px; border: 1px solid #ccc;">
+                    <option value="en" {% if lang()=='en' %}selected{% endif %}>English</option>
+                    <option value="zh" {% if lang()=='zh' %}selected{% endif %}>中文</option>
+                </select>
+            </div>
+        </div>
+
+        {% if error_msg %}
+        <div
+            style="background-color: #f8d7da; color: #721c24; padding: 15px; border-radius: 4px; border: 1px solid #f5c6cb; margin-bottom: 20px; font-weight: bold; text-align: center;">
+            {{ error_msg }}
+        </div>
+        {% endif %}
+
+        {% if period_summary %}
+        <h2 class="section-title">
+            {% if period_mode == 'p1' %}{{ t('season.winter') }}{% else %}{{ t('season.summer') }}{% endif %}
+            {{ t('sections.averages_suffix') if lang() == 'en' else t('sections.averages_suffix_zh') }}
+        </h2>
+        <div class="table-responsive">
+            <table class="stats-table">
+                <thead>
+                    <tr>
+                        <th>{{ t('tables.avg_min_tmin_period') }}<br><span class="header-note">{{
+                                t('tables.val_used_total') }}</span></th>
+                        <th>{{ t('tables.avg_min_tmax_period') }}<br><span class="header-note">{{
+                                t('tables.val_used_total') }}</span></th>
+                        <th>{{ t('tables.avg_max_tmin_period') }}<br><span class="header-note">{{
+                                t('tables.val_used_total') }}</span></th>
+                        <th>{{ t('tables.avg_max_tmax_period') }}<br><span class="header-note">{{
+                                t('tables.val_used_total') }}</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="summary-cell">{{ period_summary.avg_min_tmin.val }}<br><span class="header-note">({{
+                                period_summary.avg_min_tmin.used }}/{{ period_summary.avg_min_tmin.total }})</span></td>
+                        <td class="summary-cell">{{ period_summary.avg_min_tmax.val }}<br><span class="header-note">({{
+                                period_summary.avg_min_tmax.used }}/{{ period_summary.avg_min_tmax.total }})</span></td>
+                        <td class="summary-cell">{{ period_summary.avg_max_tmin.val }}<br><span class="header-note">({{
+                                period_summary.avg_max_tmin.used }}/{{ period_summary.avg_max_tmin.total }})</span></td>
+                        <td class="summary-cell">{{ period_summary.avg_max_tmax.val }}<br><span class="header-note">({{
+                                period_summary.avg_max_tmax.used }}/{{ period_summary.avg_max_tmax.total }})</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+
+        {% if period_stats %}
+        <h2 class="section-title">
+            {% if period_mode == 'p1' %}{{ t('season.winter') }}{% else %}{{ t('season.summer') }}{% endif %}
+        </h2>
+        <div style="text-align:right; margin-bottom:10px;">
+            <button class="small-btn" style="background-color: #17a2b8;" onclick="copyPeriodTable()">{{
+                t('tables.copy_table_tsv') }}</button>
+        </div>
+        <div class="table-responsive" style="max-height: none;">
+            <table class="stats-table" id="periodStatsTable">
+                <thead>
+                    <tr>
+                        <th onclick="sortTable(0)">
+                            {% if period_mode == 'p1' %}{{ t('season.winter') }}{% else %}{{ t('season.summer') }}{%
+                            endif %}
+                            &#8645;
+                        </th>
+                        <th onclick="sortTable(1)">{{ t('tables.data_coverage') }} &#8645;</th>
+                        <th onclick="sortTable(2)">{{ t('tables.min_tmin') }} &#8645;</th>
+                        <th onclick="sortTable(3)">{{ t('tables.min_tmax') }} &#8645;</th>
+                        <th onclick="sortTable(4)">{{ t('tables.max_tmin') }} &#8645;</th>
+                        <th onclick="sortTable(5)">{{ t('tables.max_tmax') }} &#8645;</th>
+                        <th onclick="sortTable(6)">{{ t('tables.days_tmin') }} &#8645;</th>
+                        <th onclick="sortTable(7)">{{ t('tables.days_tavg') }} &#8645;</th>
+                        <th onclick="sortTable(8)">{{ t('tables.days_tmax') }} &#8645;</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in period_stats %}
+                    <tr>
+                        <td style="font-weight:bold; cursor:pointer; color:#007bff;"
+                            onclick="openDateDetails('{{ row.range }}')">{{ row.range }}</td>
+                        <td>{{ row.count_actual }} / {{ row.count_expected }}</td>
+                        {{ render_stat_cell(row.min_tmin) }}
+                        {{ render_stat_cell(row.min_tmax) }}
+                        {{ render_stat_cell(row.max_tmin) }}
+                        {{ render_stat_cell(row.max_tmax) }}
+                        <td>{{ row.cnt_tmin }}</td>
+                        <td>{{ row.cnt_tavg }}</td>
+                        <td>{{ row.cnt_tmax }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+
+
+    <div id="copyToast">{{ t('messages.copied_to_clipboard') }}</div>
+
+    <script>
+        function showToast(message) {
+            const toast = document.getElementById('copyToast');
+            toast.textContent = message;
+            toast.className = 'show';
+            setTimeout(() => toast.className = '', 3000);
+        }
+
+        let sortDirs = Array(9).fill('desc');
+        function sortTable(n) {
+            const table = document.getElementById("periodStatsTable");
+            const tbody = table.tBodies[0];
+            const rows = Array.from(tbody.rows);
+            const dir = sortDirs[n] === 'asc' ? 'desc' : 'asc';
+            sortDirs[n] = dir;
+
+            rows.sort((a, b) => {
+                let x = a.cells[n].innerText.trim();
+                let y = b.cells[n].innerText.trim();
+
+                // Handle coverage fraction (e.g. "90 / 92")
+                if (n === 1) {
+                    x = parseFloat(x.split('/')[0]);
+                    y = parseFloat(y.split('/')[0]);
+                } else if (!isNaN(parseFloat(x)) && isFinite(x)) {
+                    x = parseFloat(x);
+                    y = parseFloat(y);
+                }
+
+                if (dir === 'asc') return x > y ? 1 : -1;
+                else return x < y ? 1 : -1;
+            });
+
+            rows.forEach(row => tbody.appendChild(row));
+        }
+
+        function copyPeriodTable() {
+            const table = document.getElementById('periodStatsTable');
+            let tsv = [];
+            const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.innerText.replace(' ⇅', '').trim());
+            tsv.push(headers.join('\t'));
+            const rows = table.querySelectorAll('tbody tr');
+            rows.forEach(tr => {
+                const cells = Array.from(tr.querySelectorAll('td')).map(td => td.innerText.trim());
+                tsv.push(cells.join('\t'));
+            });
+            navigator.clipboard.writeText(tsv.join('\n')).then(() => {
+                showToast("{{ t('messages.copied_to_clipboard') }}");
+            });
+        }
+
+        function openDateDetails(range) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const sid = urlParams.get('station_id');
+            const ds = urlParams.get('source');
+            const pm = urlParams.get('period') || 'p1';
+            const tmin_val = urlParams.get('tmin_val') || '';
+            const tmin_dir = urlParams.get('tmin_dir') || 'lte';
+            const tavg_val = urlParams.get('tavg_val') || '';
+            const tavg_dir = urlParams.get('tavg_dir') || 'lte';
+            const tmax_val = urlParams.get('tmax_val') || '';
+            const tmax_dir = urlParams.get('tmax_dir') || 'lte';
+
+            const url = `/date_details?station_id=${sid}&source=${ds}&type=period&value=${range}&period_mode=${pm}&tmin_val=${tmin_val}&tmin_dir=${tmin_dir}&tavg_val=${tavg_val}&tavg_dir=${tavg_dir}&tmax_val=${tmax_val}&tmax_dir=${tmax_dir}`;
+            window.open(url, '_blank');
+        }
+
+        function openDateDetailsList(dates) {
+            if (!dates) return;
+            const urlParams = new URLSearchParams(window.location.search);
+            const sid = urlParams.get('station_id');
+            const ds = urlParams.get('source');
+            const url = `/date_details?station_id=${sid}&source=${ds}&type=list&value=${dates}`;
+            window.open(url, '_blank');
+        }
+
+        // Global Copy Listener for .copyable items (Lat/Lon/Elev)
+        document.addEventListener('click', function (e) {
+            const target = e.target.closest('.copyable');
+            if (target) {
+                const text = target.innerText.trim();
+                navigator.clipboard.writeText(text).then(() => {
+                    showToast("{{ t('messages.copied_to_clipboard') }}");
+                }).catch(err => { console.error('Failed to copy', err); });
+            }
+        });
+    </script>
+</body>
+
+</html>

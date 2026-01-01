@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Extreme Temperatures - {{ station_name }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .container {
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+        }
+
+        h2 {
+            font-size: 1.2rem;
+            color: #666;
+            margin-top: 0;
+            font-weight: normal;
+            margin-bottom: 20px;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #007bff;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th,
+        td {
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+
+        th {
+            background: #f8f9fa;
+            position: sticky;
+            top: 0;
+        }
+
+        .year-list {
+            font-size: 0.85em;
+            color: #555;
+            margin-top: 4px;
+            display: block;
+        }
+
+        .val {
+            font-weight: bold;
+        }
+
+        .season-tag {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .winter {
+            background: #e3f2fd;
+            color: #0d47a1;
+        }
+
+        .summer {
+            background: #fff3e0;
+            color: #e65100;
+        }
+
+        .station-meta {
+            margin-top: 5px;
+            font-size: 0.95rem;
+            color: #555;
+        }
+
+        .meta-item {
+            display: inline-block;
+            margin-right: 15px;
+            padding: 2px 6px;
+            background: #f1f1f1;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .meta-item:hover {
+            background: #e0e0e0;
+            color: #000;
+        }
+
+        .controls {
+            margin-bottom: 15px;
+            text-align: right;
+        }
+
+        .copy-btn {
+            background: #17a2b8;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .copy-btn:hover {
+            background: #138496;
+        }
+
+        th {
+            cursor: pointer;
+            user-select: none;
+            color: #333;
+        }
+
+        th:hover {
+            background-color: #e9ecef;
+        }
+
+        .toast {
+            visibility: hidden;
+            min-width: 250px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 4px;
+            padding: 10px;
+            position: fixed;
+            z-index: 1000;
+            left: 50%;
+            bottom: 30px;
+            transform: translateX(-50%);
+            font-size: 16px;
+        }
+
+        .toast.show {
+            visibility: visible;
+            animation: fadein 0.5s, fadeout 0.5s 2.5s;
+        }
+
+        @keyframes fadein {
+            from {
+                bottom: 0;
+                opacity: 0;
+            }
+
+            to {
+                bottom: 30px;
+                opacity: 1;
+            }
+        }
+
+        @keyframes fadeout {
+            from {
+                bottom: 30px;
+                opacity: 1;
+            }
+
+            to {
+                bottom: 0;
+                opacity: 0;
+            }
+        }
+
+        .clickable-cell {
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .clickable-cell:hover {
+            background-color: #f0f8ff;
+            color: #0056b3;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <!-- New tab usually implies we can just close it, or keep simple back -->
+        <!-- <a href="javascript:history.back()" class="back-link">&larr; Back</a> -->
+        <div style="position: absolute; top: 10px; right: 10px;">
+            <select id="languageSelect" onchange="window.location.href='/set_language/' + this.value"
+                style="padding: 5px; border-radius: 4px; border: 1px solid #ccc;">
+                <option value="en" {% if lang()=='en' %}selected{% endif %}>English</option>
+                <option value="zh" {% if lang()=='zh' %}selected{% endif %}>中文</option>
+            </select>
+        </div>
+
+        <h1>{{ t('extreme_temps.title') }}</h1>
+        <h2>{{ station_name }}</h2>
+
+        {% if station_info and station_info.lat != '-' %}
+        <div class="station-meta" style="margin-bottom: 20px;">
+            <span class="meta-item copyable" title="Click to copy Coordinates">{{ station_info.lat }}&#9;{{
+                station_info.lon }}</span>
+            <span class="meta-item copyable" title="Click to copy Elevation">{{ station_info.elev }}m</span>
+        </div>
+        {% endif %}
+
+        <div class="controls"
+            style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+            <div>
+                <label for="monthFilter" style="font-weight:bold; color:#555;">{{ t('extreme_temps.filter_label')
+                    }}:</label>
+                <select id="monthFilter" onchange="filterTable()"
+                    style="padding:5px; border-radius:4px; border:1px solid #ccc;">
+                    <option value="all">{{ t('extreme_temps.full_year') }}</option>
+                    <option value="01">{{ t('months.january') }}</option>
+                    <option value="02">{{ t('months.february') }}</option>
+                    <option value="03">{{ t('months.march') }}</option>
+                    <option value="04">{{ t('months.april') }}</option>
+                    <option value="05">{{ t('months.may') }}</option>
+                    <option value="06">{{ t('months.june') }}</option>
+                    <option value="07">{{ t('months.july') }}</option>
+                    <option value="08">{{ t('months.august') }}</option>
+                    <option value="09">{{ t('months.september') }}</option>
+                    <option value="10">{{ t('months.october') }}</option>
+                    <option value="11">{{ t('months.november') }}</option>
+                    <option value="12">{{ t('months.december') }}</option>
+                </select>
+            </div>
+            <div>
+                <label for="startDateInput" style="font-weight:bold; color:#555;">{{
+                    t('extreme_temps.starting_date_label') }}:</label>
+                <input type="text" id="startDateInput" placeholder="MM-DD" maxlength="5"
+                    style="padding:5px; border-radius:4px; border:1px solid #ccc; width: 80px;"
+                    oninput="handleStartDateInput()" value="01-01">
+                <button onclick="handleStartDateInput()"
+                    style="padding: 5px 10px; cursor: pointer; border-radius: 4px; border: 1px solid #ccc; background-color: #f8f9fa; margin-left: 5px;">{{
+                    t('params.go') }}</button>
+            </div>
+        </div>
+
+        <div class="table-responsive" style="max-height: none;">
+            <table id="extremeTable">
+                <thead>
+                    <tr>
+                        <th onclick="sortTable(0)">{{ t('extreme_temps.header_date') }} &#8645;</th>
+                        <th onclick="sortTable(1)">{{ t('extreme_temps.header_min_tmin') }} &#8645;</th>
+                        <th onclick="sortTable(2)">{{ t('extreme_temps.header_min_tmax') }} &#8645;</th>
+                        <th onclick="sortTable(3)">{{ t('extreme_temps.header_max_tmin') }} &#8645;</th>
+                        <th onclick="sortTable(4)">{{ t('extreme_temps.header_max_tmax') }} &#8645;</th>
+                        <th onclick="sortTable(5)">{{ t('extreme_temps.header_count_tmin') }} &#8645;</th>
+                        <th onclick="sortTable(6)">{{ t('extreme_temps.header_count_tmax') }} &#8645;</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in results %}
+                    <tr data-month="{{ row.md[:2] }}">
+                        <td>{{ row.md }}</td>
+                        <td class="clickable-cell">
+                            <span class="val">{{ row.min_tmin_val }}</span>
+                            {% if row.min_tmin_years %}
+                            <span class="year-list">{{ row.min_tmin_years|join(', ') }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="clickable-cell">
+                            <span class="val">{{ row.min_tmax_val }}</span>
+                            {% if row.min_tmax_years %}
+                            <span class="year-list">{{ row.min_tmax_years|join(', ') }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="clickable-cell">
+                            <span class="val">{{ row.max_tmin_val }}</span>
+                            {% if row.max_tmin_years %}
+                            <span class="year-list">{{ row.max_tmin_years|join(', ') }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="clickable-cell">
+                            <span class="val">{{ row.max_tmax_val }}</span>
+                            {% if row.max_tmax_years %}
+                            <span class="year-list">{{ row.max_tmax_years|join(', ') }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="clickable-cell">
+                            {{ row.count_tmin_val }}
+                            {% if row.count_tmin_years %}
+                            <span class="year-list" style="display:none">{{ row.count_tmin_years|join(', ') }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="clickable-cell">
+                            {{ row.count_tmax_val }}
+                            {% if row.count_tmax_years %}
+                            <span class="year-list" style="display:none">{{ row.count_tmax_years|join(', ') }}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" style="text-align:center; padding: 20px;">No data available.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="toast" class="toast">Copied to clipboard!</div>
+
+    <script>
+        function showToast(message) {
+            const toast = document.getElementById("toast");
+            toast.textContent = message;
+            toast.className = "toast show";
+            setTimeout(function () { toast.className = toast.className.replace("show", ""); }, 3000);
+        }
+
+        function handleStartDateInput() {
+            const val = document.getElementById('startDateInput').value;
+            const regex = /^(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/;
+            if (val.length === 5) {
+                if (regex.test(val)) {
+                    reorderTable(val);
+                } else {
+                    showToast("{{ t('extreme_temps.invalid_format_warning') }}");
+                }
+            }
+        }
+
+        function reorderTable(startMD) {
+            const table = document.getElementById("extremeTable");
+            const tbody = table.querySelector('tbody');
+            let rows = Array.from(tbody.querySelectorAll('tr:not([style*="display: none"])'));
+
+            // If we are filtering, we only want to reorder visible rows, 
+            // but the requirement says "this MD... will be used to decide which row should be displayed as first row".
+            // Typically this applies to the whole dataset or the currently filtered set.
+            // Let's reorder ALL rows so that the logic remains consistent even if filters change.
+            let allRows = Array.from(tbody.querySelectorAll('tr'));
+            if (allRows.length <= 1) return;
+
+            // Sort chronologically (M-D) first to ensure stable base order
+            allRows.sort((a, b) => {
+                let valA = a.cells[0].innerText.trim();
+                let valB = b.cells[0].innerText.trim();
+                return valA.localeCompare(valB);
+            });
+
+            // Find index of the starting MD
+            let startIndex = allRows.findIndex(r => r.cells[0].innerText.trim() === startMD);
+
+            if (startIndex === -1) {
+                // Localized warning
+                let msg = "{{ t('extreme_temps.date_not_found', date='___DATE___') }}".replace('___DATE___', startMD);
+                showToast(msg);
+                return;
+            }
+
+            // Reorder: elements from startIndex to end, then 0 to startIndex-1
+            const reordered = [
+                ...allRows.slice(startIndex),
+                ...allRows.slice(0, startIndex)
+            ];
+
+            tbody.innerHTML = '';
+            reordered.forEach(r => tbody.appendChild(r));
+        }
+
+        function filterTable() {
+            const month = document.getElementById('monthFilter').value;
+            const rows = document.querySelectorAll('#extremeTable tbody tr');
+            rows.forEach(row => {
+                if (month === 'all') {
+                    row.style.display = '';
+                } else {
+                    const m = row.getAttribute('data-month');
+                    if (m === month) row.style.display = '';
+                    else row.style.display = 'none';
+                }
+            });
+        }
+
+        // Global Copy Listener
+        document.addEventListener('click', function (e) {
+            const target = e.target.closest('.copyable');
+            if (target) {
+                const text = target.innerText.trim();
+                navigator.clipboard.writeText(text).then(() => { showToast('Copied info!'); });
+            }
+
+            // Cell Redirection
+            const targetCell = e.target.closest('.clickable-cell');
+            if (targetCell) {
+                const tr = targetCell.closest('tr');
+                const md = tr.cells[0].innerText.trim(); // First cell is "MM-DD"
+
+                // Find all years in the cell text (using textContent to pick up hidden years)
+                const text = targetCell.textContent;
+                const yearMatches = text.match(/\b\d{4}\b/g);
+
+                if (yearMatches && yearMatches.length > 0) {
+                    const uniqueYears = [...new Set(yearMatches)];
+                    const dateListString = uniqueYears.map(year => `${year}-${md}`).join(',');
+                    const stationId = "{{ station_id }}";
+                    const source = "{{ source }}";
+
+                    const url = `/date_details?station_id=${stationId}&source=${source}&type=list&value=${dateListString}`;
+                    window.open(url, '_blank');
+                }
+            }
+        });
+
+        let sortCol = -1;
+        let sortDir = 'asc';
+
+        function sortTable(n) {
+            const table = document.getElementById("extremeTable");
+            const tbody = table.querySelector('tbody');
+            let rows = Array.from(tbody.rows);
+
+            if (sortCol === n) { sortDir = (sortDir === 'asc') ? 'desc' : 'asc'; }
+            else { sortCol = n; sortDir = 'asc'; }
+
+            rows.sort((a, b) => {
+                let x = a.cells[n].innerText.trim();
+                let y = b.cells[n].innerText.trim();
+
+                // Helper to extract numeric value from start of string (e.g. "-5.5 (1990, 1991)")
+                const getVal = (str) => {
+                    if (str === '-' || str === '') return null; // Sentinel for empty
+                    // Extract number before first space or parenthesis
+                    const match = str.match(/^-?[\d\.]+/);
+                    return match ? parseFloat(match[0]) : str;
+                };
+
+                let xVal = getVal(x);
+                let yVal = getVal(y);
+
+                // Handle Empty values at bottom always
+                if (xVal === null && yVal === null) return 0;
+                if (xVal === null) return 1;
+                if (yVal === null) return -1;
+
+                // If column 0 (Date M-D), treat as string or special sort?
+                // M-D format: "01-01", "12-31". String comparison works fine for "MM-DD".
+                if (n === 0) {
+                    return sortDir === 'asc' ? x.localeCompare(y) : y.localeCompare(x);
+                }
+
+                // Numeric Sort for others
+                if (xVal < yVal) return sortDir === 'asc' ? -1 : 1;
+                if (xVal > yVal) return sortDir === 'asc' ? 1 : -1;
+                return 0;
+            });
+
+            tbody.innerHTML = '';
+            rows.forEach(r => tbody.appendChild(r));
+        }
+    </script>
+    </div>
+</body>
+
+</html>

@@ -1,39 +1,93 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ t('title') }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
-        .nav-bar { display: flex; justify-content: flex-end; padding: 10px; background-color: #e9ecef; border-bottom: 1px solid #ccc; }
-        .nav-bar a { text-decoration: none; color: #007bff; margin-left: 15px; font-weight: bold; }
-        .nav-bar a:hover { text-decoration: underline; }
-        .nav-user { margin-right: auto; color: #333; font-weight: bold; }
+        .nav-bar a {
+            text-decoration: none;
+            color: #007bff;
+            margin-left: 15px;
+            font-weight: bold;
+        }
+
+        .nav-bar a:hover {
+            text-decoration: underline;
+        }
+
+        .nav-user {
+            margin-right: auto;
+            color: #333;
+            font-weight: bold;
+        }
     </style>
 </head>
+
 <body>
 
     <div class="nav-bar">
-        <div style="margin-right: auto;">
-            <select id="languageSelect" onchange="window.location.href='/set_language/' + this.value" style="padding: 5px; margin-right: 10px;">
-                <option value="en" {% if lang() == 'en' %}selected{% endif %}>English</option>
-                <option value="zh" {% if lang() == 'zh' %}selected{% endif %}>中文</option>
+        <!-- New Layout: Left = Language, Right = Menu Icon -->
+        <div class="nav-left">
+            <select id="languageSelect" onchange="window.location.href='/set_language/' + this.value"
+                style="width: auto; padding: 5px;">
+                <option value="en" {% if lang()=='en' %}selected{% endif %}>English</option>
+                <option value="zh" {% if lang()=='zh' %}selected{% endif %}>中文</option>
             </select>
         </div>
-        {% if current_user.is_authenticated %}
-            <span class="nav-user">{{ t('nav.welcome_user', username=current_user.username) }}</span>
-            {% if current_user.is_admin %}
-                <a href="/invitation">{{ t('nav.manage_invites') }}</a>
-            {% endif %}
-            <a href="/logout">{{ t('nav.logout') }}</a>
-        {% elif session.get('is_visitor_access') %}
-            <span class="nav-user">{% if session.get('visitor_level') == 'advanced' %}{{ t('nav.welcome_advanced_visitor') }}{% else %}{{ t('nav.welcome_visitor') }}{% endif %}</span>
-            <a href="/logout">{{ t('nav.exit_visitor_mode') }}</a>
-        {% else %}
-            <span class="nav-user">{{ t('nav.welcome') }}!</span>
-        {% endif %}
+
+        <div class="nav-right">
+            <div class="menu-icon" onclick="toggleMenu()">&#9776;</div>
+            <div id="popupMenu" class="popup-menu hidden">
+                <div class="popup-content">
+                    <div class="popup-item user-info">
+                        {% if current_user.is_authenticated %}
+                        {{ t('nav.welcome_user', username=current_user.username) }}
+                        {% elif session.get('is_visitor_access') %}
+                        {% if session.get('visitor_level') == 'advanced' %}{{ t('nav.welcome_advanced_visitor') }}{%
+                        else %}{{
+                        t('nav.welcome_visitor') }}{% endif %}
+                        {% else %}
+                        {{ t('nav.welcome') }}!
+                        {% endif %}
+                    </div>
+
+                    <div class="popup-item">
+                        {% if current_user.is_authenticated %}
+                        {% if current_user.is_admin %}
+                        <a href="/invitation">{{ t('nav.manage_invites') }}</a>
+                        {% endif %}
+                        <a href="/logout">{{ t('nav.logout') }}</a>
+                        {% elif session.get('is_visitor_access') %}
+                        <a href="/logout">{{ t('nav.exit_visitor_mode') }}</a>
+                        {% else %}
+                        <!-- Optional: Login link if needed, though user request didn't specify adding it if missing -->
+                        <a href="/login">{{ t('auth.login_title') }}</a>
+                        {% endif %}
+                    </div>
+
+                    <div class="popup-divider"></div>
+
+                    <div class="popup-item note-text">
+                        {{ t('params.data_source_note') }}
+                    </div>
+
+                    <div class="popup-item station-links">
+                        <a href="https://www.ncei.noaa.gov/pub/data/ghcn/daily/ghcnd-stations.txt" target="_blank"
+                            rel="noopener">{{ t('links.ghcnd_stations_list') }} ({{ ghcnd_count }})</a>
+                        <br>
+                        <a href="https://www.ncei.noaa.gov/pub/data/noaa/isd-history.txt" target="_blank"
+                            rel="noopener">{{ t('links.gsod_stations_list') }} ({{ gsod_count }})</a>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
+
+    <!-- Overlay for closing popup when clicking outside -->
+    <div id="menuOverlay" class="menu-overlay hidden" onclick="closeMenu()"></div>
 
     <div class="container">
         <h1>{{ t('title') }}</h1>
@@ -41,392 +95,637 @@
         <!-- PART 1: PARAMETERS -->
         <div class="section">
             <h2>{{ t('sections.parameters') }}</h2>
-            
+
             <div class="param-row">
                 <label>{{ t('params.data_source') }}</label>
                 <select id="dataSource" style="width: auto; max-width: 120px;">
                     <option value="GHCND" selected>GHCND</option>
                     <option value="GSOD">GSOD</option>
                 </select>
+                <!-- Note removed from here -->
             </div>
 
             <div class="param-row">
                 <label>{{ t('params.station_search') }}</label>
-                <input type="text" id="stationInput" list="stationOptions" 
-                       placeholder="{{ t('params.type_name_or_id') }}" oninput="searchStations()" 
-                       autocomplete="off">
+                <input type="text" id="stationInput" list="stationOptions"
+                    placeholder="{{ t('params.type_name_or_id') }}" oninput="searchStations()" autocomplete="off">
                 <datalist id="stationOptions"></datalist>
                 <input type="hidden" id="stationId" value="RSM00030565">
             </div>
-            
+
             <div id="stationInfoDisplay" class="station-details"></div>
 
-            <div class="param-row">
-                <label>{{ t('params.date_range') }}</label>
-                <select id="quickDateRange" style="width: auto; max-width: 180px; margin-right: 10px;" onchange="applyQuickDateRange()">
-                    <option value="">{{ t('params.custom_all') }}</option>
-                    <option value="1991-2020">1991 - 2020</option>
-                    <option value="1961-1990">1961 - 1990</option>
-                </select>
-                <input type="date" id="startDate" value="1800-01-01">
-                <span>{{ t('params.to') }}</span>
-                <input type="date" id="endDate" value="2100-12-31">
-            </div>
-
-            <!-- ... (Month/Hemisphere/Period Dropdowns - Same as before) ... -->
-            <div class="param-row">
-                <label>{{ t('params.month_focus') }}</label>
-                <select id="monthFilter">
-                    <option value="0">{{ t('months.full_year') }}</option>
-                    <option value="winter_3">{{ t('months.winter_3') }}</option>
-                    <option value="summer_3">{{ t('months.summer_3') }}</option>
-                    <option value="1">{{ t('months.january') }}</option><option value="2">{{ t('months.february') }}</option>
-                    <option value="3">{{ t('months.march') }}</option><option value="4">{{ t('months.april') }}</option>
-                    <option value="5">{{ t('months.may') }}</option><option value="6">{{ t('months.june') }}</option>
-                    <option value="7">{{ t('months.july') }}</option><option value="8">{{ t('months.august') }}</option>
-                    <option value="9">{{ t('months.september') }}</option><option value="10">{{ t('months.october') }}</option>
-                    <option value="11">{{ t('months.november') }}</option><option value="12">{{ t('months.december') }}</option>
-                </select>
-            </div>
-            <div class="param-row">
-                <label>{{ t('params.hemisphere') }}</label>
-                <div class="radio-group">
-                    <label style="font-weight: normal; width: auto;"><input type="radio" name="hemisphere" value="north" checked> {{ t('hemisphere.north') }}</label>
-                    <label style="font-weight: normal; width: auto;"><input type="radio" name="hemisphere" value="south"> {{ t('hemisphere.south') }}</label>
+            <!-- COLLAPSIBLE SECTION 1: Date Restrict -->
+            <div class="collapsible-wrapper" id="dateRestrictSection">
+                <div class="collapsible-header" onclick="toggleSection('dateRestrictSection')">
+                    <strong>{{ t('params.date_restrict') }}</strong>
+                    <span class="collapsible-icon">▼</span>
                 </div>
-            </div>
-            <div class="param-row">
-                <label>{{ t('params.period_mode') }}</label>
-                <div class="radio-group">
-                    <label style="font-weight: normal; width: auto;"><input type="radio" name="period" value="p1" checked> {{ t('period.period_1') }}</label>
-                    <label style="font-weight: normal; width: auto;"><input type="radio" name="period" value="p2"> {{ t('period.period_2') }}</label>
+                <div class="collapsible-content">
+                    <div class="collapsible-inner">
+                        <div class="param-row">
+                            <label>{{ t('params.date_range') }}</label>
+                            <select id="quickDateRange" style="width: auto; max-width: 180px; margin-right: 10px;"
+                                onchange="applyQuickDateRange()">
+                                <option value="">{{ t('params.custom_all') }}</option>
+                                <option value="1991-2020">1991 - 2020</option>
+                                <option value="1961-1990">1961 - 1990</option>
+                            </select>
+                            <input type="date" id="startDate" value="1800-01-01">
+                            <span>{{ t('params.to') }}</span>
+                            <input type="date" id="endDate" value="2100-12-31">
+                        </div>
+
+                        <div class="param-row">
+                            <label>{{ t('params.month_focus') }}</label>
+                            <select id="monthFilter" onchange="updateDayDropdown()">
+                                <option value="0">{{ t('months.full_year') }}</option>
+                                <option value="winter_3">{{ t('months.winter_3') }}</option>
+                                <option value="summer_3">{{ t('months.summer_3') }}</option>
+                                <option value="1">{{ t('months.january') }}</option>
+                                <option value="2">{{ t('months.february') }}</option>
+                                <option value="3">{{ t('months.march') }}</option>
+                                <option value="4">{{ t('months.april') }}</option>
+                                <option value="5">{{ t('months.may') }}</option>
+                                <option value="6">{{ t('months.june') }}</option>
+                                <option value="7">{{ t('months.july') }}</option>
+                                <option value="8">{{ t('months.august') }}</option>
+                                <option value="9">{{ t('months.september') }}</option>
+                                <option value="10">{{ t('months.october') }}</option>
+                                <option value="11">{{ t('months.november') }}</option>
+                                <option value="12">{{ t('months.december') }}</option>
+                            </select>
+                            <select id="dayFilter"
+                                style="display: none; margin-left: 10px; width: auto; max-width: 120px;">
+                                <option value="0">{{ t('params.all_days') }}</option>
+                            </select>
+                        </div>
+
+                        <div class="param-row">
+                            <label>{{ t('params.hemisphere') }}</label>
+                            <div class="radio-group">
+                                <label style="font-weight: normal; width: auto;"><input type="radio" name="hemisphere"
+                                        value="north" checked> {{ t('hemisphere.north') }}</label>
+                                <label style="font-weight: normal; width: auto;"><input type="radio" name="hemisphere"
+                                        value="south"> {{ t('hemisphere.south') }}</label>
+                            </div>
+                        </div>
+
+                        <div class="param-row">
+                            <label>{{ t('params.season_mode') }}</label>
+                            <div class="radio-group">
+                                <label style="font-weight: normal; width: auto;"><input type="radio" name="season"
+                                        value="winter" checked> {{ t('season.winter') }}</label>
+                                <label style="font-weight: normal; width: auto;"><input type="radio" name="season"
+                                        value="summer"> {{
+                                    t('season.summer') }}</label>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <div class="divider"></div>
-            
-            <!-- THRESHOLDS -->
-            <div class="param-grid">
-                <div class="thresh-box">
-                    <strong>{{ t('thresholds.tmin_threshold') }}</strong>
-                    <select id="tminDir"><option value="lte">&le;</option><option value="gte">&ge;</option></select>
-                    <input type="number" id="tminVal" value="-50" placeholder="{{ t('thresholds.value_c') }}">
+
+            <!-- COLLAPSIBLE SECTION 2: Temperature Threshold -->
+            <div class="collapsible-wrapper" id="temperatureSection">
+                <div class="collapsible-header" onclick="toggleSection('temperatureSection')">
+                    <strong>{{ t('params.temperature_threshold') }}</strong>
+                    <span class="collapsible-icon">▼</span>
                 </div>
-                <div class="thresh-box">
-                    <strong>{{ t('thresholds.tavg_threshold') }}</strong>
-                    <select id="tavgDir"><option value="lte">&le;</option><option value="gte">&ge;</option></select>
-                    <input type="number" id="tavgVal" value="-40" placeholder="{{ t('thresholds.value_c') }}">
-                </div>
-                <div class="thresh-box">
-                    <strong>{{ t('thresholds.tmax_threshold') }}</strong>
-                    <select id="tmaxDir"><option value="lte">&le;</option><option value="gte">&ge;</option></select>
-                    <input type="number" id="tmaxVal" value="-30" placeholder="{{ t('thresholds.value_c') }}">
+                <div class="collapsible-content">
+                    <div class="collapsible-inner">
+                        <p style="margin: 0 0 10px 0; font-size: 0.9em; color: #666;">{{
+                            t('params.threshold_explanation') }}</p>
+                        <div class="param-grid">
+                            <div class="thresh-box">
+                                <strong>{{ t('thresholds.tmin_threshold') }}</strong>
+                                <select id="tminDir">
+                                    <option value="lte">&le;</option>
+                                    <option value="gte">&ge;</option>
+                                </select>
+                                <input type="number" id="tminVal" value="-50"
+                                    placeholder="{{ t('thresholds.value_c') }}">
+                            </div>
+                            <div class="thresh-box">
+                                <strong>{{ t('thresholds.tavg_threshold') }}</strong>
+                                <select id="tavgDir">
+                                    <option value="lte">&le;</option>
+                                    <option value="gte">&ge;</option>
+                                </select>
+                                <input type="number" id="tavgVal" value="-40"
+                                    placeholder="{{ t('thresholds.value_c') }}">
+                            </div>
+                            <div class="thresh-box">
+                                <strong>{{ t('thresholds.tmax_threshold') }}</strong>
+                                <select id="tmaxDir">
+                                    <option value="lte">&le;</option>
+                                    <option value="gte">&ge;</option>
+                                </select>
+                                <input type="number" id="tmaxVal" value="-30"
+                                    placeholder="{{ t('thresholds.value_c') }}">
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Custom Average -->
-            <div class="param-grid" style="margin-top: 15px;">
-                <div class="thresh-box">
-                    <strong>{{ t('thresholds.custom_average_base') }}</strong>
-                    <label style="font-weight:normal; font-size:0.9em;">{{ t('thresholds.for_tmin_explosive') }}</label>
-                    <input type="number" id="customAvgTmin" placeholder="{{ t('thresholds.leave_blank_avg') }}">
+            <!-- COLLAPSIBLE SECTION 3: Explosive Power -->
+            <div class="collapsible-wrapper" id="explosivePowerSection">
+                <div class="collapsible-header" onclick="toggleSection('explosivePowerSection')">
+                    <strong>{{ t('params.explosive_power') }}</strong>
+                    <span class="collapsible-icon">▼</span>
                 </div>
-                <div class="thresh-box">
-                    <strong>{{ t('thresholds.custom_average_base') }}</strong>
-                    <label style="font-weight:normal; font-size:0.9em;">{{ t('thresholds.for_tavg_explosive') }}</label>
-                    <input type="number" id="customAvgTavg" placeholder="{{ t('thresholds.leave_blank_avg') }}">
-                </div>
-                <div class="thresh-box">
-                    <strong>{{ t('thresholds.custom_average_base') }}</strong>
-                    <label style="font-weight:normal; font-size:0.9em;">{{ t('thresholds.for_tmax_explosive') }}</label>
-                    <input type="number" id="customAvgTmax" placeholder="{{ t('thresholds.leave_blank_avg') }}">
+                <div class="collapsible-content">
+                    <div class="collapsible-inner">
+                        <div class="param-grid">
+                            <div class="thresh-box">
+                                <strong>{{ t('thresholds.custom_average_base.tmin') }}</strong>
+                                <label style="font-weight:normal; font-size:0.9em;">{{
+                                    t('thresholds.for_tmin_explosive') }}</label>
+                                <input type="number" id="customAvgTmin"
+                                    placeholder="{{ t('thresholds.leave_blank_avg') }}">
+                            </div>
+                            <div class="thresh-box">
+                                <strong>{{ t('thresholds.custom_average_base.tavg') }}</strong>
+                                <label style="font-weight:normal; font-size:0.9em;">{{
+                                    t('thresholds.for_tavg_explosive') }}</label>
+                                <input type="number" id="customAvgTavg"
+                                    placeholder="{{ t('thresholds.leave_blank_avg') }}">
+                            </div>
+                            <div class="thresh-box">
+                                <strong>{{ t('thresholds.custom_average_base.tmax') }}</strong>
+                                <label style="font-weight:normal; font-size:0.9em;">{{
+                                    t('thresholds.for_tmax_explosive') }}</label>
+                                <input type="number" id="customAvgTmax"
+                                    placeholder="{{ t('thresholds.leave_blank_avg') }}">
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <div class="divider"></div>
 
             <!-- MULTI STATION PARAMS (Only for Admin or Advanced) -->
-            {% if (current_user.is_authenticated and (current_user.is_admin or current_user.user_level == 'advanced')) or (session.get('is_visitor_access') and session.get('visitor_level') == 'advanced') %}
-            <div id="multiParamsArea">
-                <h3 style="margin-top:0;">{{ t('multi_station.search_conditions') }}</h3>
-                
-                <div class="param-row">
-                    <label>{{ t('multi_station.center_location_mode') }}</label>
-                    <select id="centerMode" onchange="toggleCenterLocMode()">
-                        <option value="station">{{ t('multi_station.by_weather_station') }}</option>
-                        <option value="coords">{{ t('multi_station.by_coordinates') }}</option>
-                    </select>
+            {% if (current_user.is_authenticated and (current_user.is_admin or current_user.user_level == 'advanced'))
+            or (session.get('is_visitor_access') and session.get('visitor_level') == 'advanced') %}
+            <!-- COLLAPSIBLE SECTION 4: Multiple Stations Search Conditions -->
+            <div class="collapsible-wrapper" id="multiStationSection">
+                <div class="collapsible-header" onclick="toggleSection('multiStationSection')">
+                    <strong>{{ t('multi_station.search_conditions') }}</strong>
+                    <span class="collapsible-icon">▼</span>
                 </div>
+                <div class="collapsible-content">
+                    <div class="collapsible-inner">
+                        <div id="multiParamsArea">
+                            <div class="param-row">
+                                <label>{{ t('multi_station.center_location_mode') }}</label>
+                                <select id="centerMode" onchange="toggleCenterLocMode()">
+                                    <option value="station">{{ t('multi_station.by_weather_station') }}</option>
+                                    <option value="coords">{{ t('multi_station.by_coordinates') }}</option>
+                                </select>
+                            </div>
 
-                <div class="param-grid" id="coordsInputArea" style="display:none;">
-                    <div class="thresh-box">
-                        <strong>{{ t('multi_station.center_latitude') }}</strong>
-                        <input type="number" id="centerLat" placeholder="{{ t('multi_station.decimal_deg') }}">
-                    </div>
-                    <div class="thresh-box">
-                        <strong>{{ t('multi_station.center_longitude') }}</strong>
-                        <input type="number" id="centerLon" placeholder="{{ t('multi_station.decimal_deg') }}">
-                    </div>
-                </div>
+                            <div class="param-grid" id="coordsInputArea" style="display:none;">
+                                <div class="thresh-box">
+                                    <strong>{{ t('multi_station.center_latitude') }}</strong>
+                                    <input type="number" id="centerLat"
+                                        placeholder="{{ t('multi_station.decimal_deg') }}">
+                                </div>
+                                <div class="thresh-box">
+                                    <strong>{{ t('multi_station.center_longitude') }}</strong>
+                                    <input type="number" id="centerLon"
+                                        placeholder="{{ t('multi_station.decimal_deg') }}">
+                                </div>
+                            </div>
 
-                <div class="param-row">
-                    <label>{{ t('multi_station.max_distance_km') }}</label>
-                    <select id="maxDist">
-                        <option value="no_limit">{{ t('multi_station.no_limit') }}</option>
-                        <option value="50">50</option>
-                        <option value="200">200</option>
-                        <option value="500">500</option>
-                        <option value="2000">2000</option>
-                    </select>
-                </div>
+                            <div class="param-row">
+                                <label>{{ t('multi_station.max_distance_km') }}</label>
+                                <select id="maxDist">
+                                    <option value="no_limit">{{ t('multi_station.no_limit') }}</option>
+                                    <option value="50">50</option>
+                                    <option value="200">200</option>
+                                    <option value="500">500</option>
+                                    <option value="1000">1000</option>
+                                    <option value="2000">2000</option>
+                                </select>
+                            </div>
 
-                <div class="param-row">
-                    <label>{{ t('multi_station.country_limit') }}</label>
-                    <input type="text" id="countryLimit" placeholder="{{ t('multi_station.country_example') }}">
-                </div>
+                            <div class="param-row">
+                                <label>{{ t('multi_station.country_limit') }}</label>
+                                <input type="text" id="countryLimit"
+                                    placeholder="{{ t('multi_station.country_example') }}">
+                            </div>
 
-                <div class="param-grid">
-                    <div class="thresh-box">
-                        <strong>{{ t('multi_station.latitude_range') }}</strong>
-                        <input type="number" id="latMin" placeholder="{{ t('multi_station.min') }}">
-                        <input type="number" id="latMax" placeholder="{{ t('multi_station.max') }}">
-                    </div>
-                    <div class="thresh-box">
-                        <strong>{{ t('multi_station.longitude_range') }}</strong>
-                        <input type="number" id="lonMin" placeholder="{{ t('multi_station.min') }}">
-                        <input type="number" id="lonMax" placeholder="{{ t('multi_station.max') }}">
-                    </div>
-                    <div class="thresh-box">
-                        <strong>{{ t('multi_station.elevation_range') }}</strong>
-                        <input type="number" id="elevMin" placeholder="{{ t('multi_station.min') }}">
-                        <input type="number" id="elevMax" placeholder="{{ t('multi_station.max') }}">
-                    </div>
-                </div>
+                            <div class="param-grid">
+                                <div class="thresh-box">
+                                    <strong>{{ t('multi_station.latitude_range') }}</strong>
+                                    <input type="number" id="latMin" placeholder="{{ t('multi_station.min') }}">
+                                    <input type="number" id="latMax" placeholder="{{ t('multi_station.max') }}">
+                                    <div style="display: flex; align-items: center; margin-top: 5px;">
+                                        <input type="checkbox" id="includeOppositeLat"
+                                            style="width: auto; margin-right: 5px;">
+                                        <label for="includeOppositeLat"
+                                            style="font-size: 0.9em; font-weight: normal; margin-bottom: 0;">{{
+                                            t('multi_station.include_opposite') }}</label>
+                                    </div>
+                                </div>
+                                <div class="thresh-box">
+                                    <strong>{{ t('multi_station.longitude_range') }}</strong>
+                                    <input type="number" id="lonMin" placeholder="{{ t('multi_station.min') }}">
+                                    <input type="number" id="lonMax" placeholder="{{ t('multi_station.max') }}">
+                                </div>
+                                <div class="thresh-box">
+                                    <strong>{{ t('multi_station.elevation_range') }}</strong>
+                                    <input type="number" id="elevMin" placeholder="{{ t('multi_station.min') }}">
+                                    <input type="number" id="elevMax" placeholder="{{ t('multi_station.max') }}">
+                                </div>
+                            </div>
 
-                <div class="param-row" id="wbanRow" style="display:none;">
-                    <label>{{ t('multi_station.wban_limit') }}</label>
-                    <div class="radio-group">
-                        <label style="font-weight: normal; width: auto;"><input type="radio" name="wbanLimit" value="no" checked> {{ t('multi_station.no_limit') }}</label>
-                        <label style="font-weight: normal; width: auto;"><input type="radio" name="wbanLimit" value="99999"> {{ t('multi_station.limit_to_99999') }}</label>
+                            <div class="param-row" id="wbanRow" style="display:none;">
+                                <label>{{ t('multi_station.wban_limit') }}</label>
+                                <div class="radio-group">
+                                    <label style="font-weight: normal; width: auto;"><input type="radio"
+                                            name="wbanLimit" value="no" checked> {{ t('multi_station.no_limit')
+                                        }}</label>
+                                    <label style="font-weight: normal; width: auto;"><input type="radio"
+                                            name="wbanLimit" value="99999"> {{ t('multi_station.limit_to_99999')
+                                        }}</label>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div class="divider"></div>
             </div>
+            <div class="divider"></div>
             {% endif %}
 
             <button class="submit-btn" onclick="fetchData()">{{ t('params.get_data') }}</button>
-            
+
             <div id="loading" class="hidden">{{ t('params.loading_data') }}</div>
             <div id="errorMsg" class="error"></div>
         </div>
 
+
+        <!-- PART 2: STATISTICS -->
         <!-- PART 2: STATISTICS -->
         <div class="section">
-            <h2>{{ t('sections.global_statistics') }}</h2>
-            <div class="table-responsive">
-                <table class="stats-table">
-                    <thead><tr><th>{{ t('tables.type') }}</th><th>{{ t('tables.min_c') }}</th><th>{{ t('tables.avg_c') }}</th><th>{{ t('tables.max_c') }}</th><th>{{ t('tables.explosive_power') }}</th><th>{{ t('tables.days_matching_threshold') }}</th></tr></thead>
-                    <tbody>
-                        <tr><td><strong>TMIN</strong></td><td id="stat-tmin-min">-</td><td id="stat-tmin-avg">-</td><td id="stat-tmin-max">-</td><td id="stat-tmin-power">-</td><td id="stat-tmin-count">-</td></tr>
-                        <tr><td><strong>TAVG</strong></td><td id="stat-tavg-min">-</td><td id="stat-tavg-avg">-</td><td id="stat-tavg-max">-</td><td id="stat-tavg-power">-</td><td id="stat-tavg-count">-</td></tr>
-                        <tr><td><strong>TMAX</strong></td><td id="stat-tmax-min">-</td><td id="stat-tmax-avg">-</td><td id="stat-tmax-max">-</td><td id="stat-tmax-power">-</td><td id="stat-tmax-count">-</td></tr>
-                    </tbody>
-                </table>
+            <div>
+                <h2>{{ t('sections.global_statistics') }}</h2>
+                <button class="small-btn" style="background-color: #17a2b8; margin-bottom: 5px;"
+                    onclick="copyGlobalStatsTable()">{{ t('tables.copy_table_tsv') }}</button>
             </div>
-        </div>
-
-        <div class="section">
-            <h2>{{ t('sections.period_averages') }}</h2>
             <div class="table-responsive">
-                <table class="stats-table">
+                <table class="stats-table" id="globalStatsTable">
                     <thead>
                         <tr>
-                            <th>{{ t('tables.avg_min_tmin_period') }}<br><span class="header-note">{{ t('tables.val_used_total') }}</span></th>
-                            <th>{{ t('tables.avg_min_tmax_period') }}<br><span class="header-note">{{ t('tables.val_used_total') }}</span></th>
-                            <th>{{ t('tables.avg_max_tmin_period') }}<br><span class="header-note">{{ t('tables.val_used_total') }}</span></th>
-                            <th>{{ t('tables.avg_max_tmax_period') }}<br><span class="header-note">{{ t('tables.val_used_total') }}</span></th>
+                            <th>{{ t('tables.type') }}</th>
+                            <th>{{ t('tables.min_c') }}</th>
+                            <th>{{ t('tables.avg_c') }}</th>
+                            <th>{{ t('tables.max_c') }}</th>
+                            <th>{{ t('tables.explosive_power') }}</th>
+                            <th>{{ t('tables.days_matching_threshold') }}</th>
+                            <th>{{ t('tables.total_valid') }}</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr>
-                            <td id="sum-avg-min-tmin" class="summary-cell">-</td>
-                            <td id="sum-avg-min-tmax" class="summary-cell">-</td>
-                            <td id="sum-avg-max-tmin" class="summary-cell">-</td>
-                            <td id="sum-avg-max-tmax" class="summary-cell">-</td>
+                            <td><strong>{{ t('statistics.label_tmin_min') }}</strong></td>
+                            <td id="stat-tmin-min">-</td>
+                            <td id="stat-tmin-avg">-</td>
+                            <td id="stat-tmin-max">-</td>
+                            <td id="stat-tmin-power">-</td>
+                            <td id="stat-tmin-count">-</td>
+                            <td id="stat-tmin-total">-</td>
+                        </tr>
+                        <tr>
+                            <td><strong>{{ t('statistics.label_tavg_min') }}</strong></td>
+                            <td id="stat-tavg-min">-</td>
+                            <td id="stat-tavg-avg">-</td>
+                            <td id="stat-tavg-max">-</td>
+                            <td id="stat-tavg-power">-</td>
+                            <td id="stat-tavg-count">-</td>
+                            <td id="stat-tavg-total">-</td>
+                        </tr>
+                        <tr>
+                            <td><strong>{{ t('statistics.label_tmax_min') }}</strong></td>
+                            <td id="stat-tmax-min">-</td>
+                            <td id="stat-tmax-avg">-</td>
+                            <td id="stat-tmax-max">-</td>
+                            <td id="stat-tmax-power">-</td>
+                            <td id="stat-tmax-count">-</td>
+                            <td id="stat-tmax-total">-</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
         </div>
 
-        <div class="section">
-            <h2>{{ t('sections.period_details') }}</h2>
-            <div class="column-controls">
-                <span style="font-weight:bold; margin-right:10px;">{{ t('tables.show_columns') }}</span>
-                <label><input type="checkbox" id="chk_min_tmin" checked> Min TMIN</label>
-                <label><input type="checkbox" id="chk_min_tmax" checked> Min TMAX</label>
-                <label><input type="checkbox" id="chk_max_tmin" checked> Max TMIN</label>
-                <label><input type="checkbox" id="chk_max_tmax" checked> Max TMAX</label>
-                <button class="small-btn" onclick="updatePeriodColumns()">{{ t('tables.update_table') }}</button>
-            </div>
-            <div style="max-height: 400px; overflow-y: auto;">
-                <div class="table-responsive">
-                    <table class="stats-table" id="periodStatsTable">
-                        <thead>
-                            <tr>
-                                <th onclick="sortPeriodTable('range')">{{ t('tables.period_range') }} &#8645;</th>
-                                <th id="th_min_tmin" onclick="sortPeriodTable('min_tmin')">Min TMIN &#8645;</th>
-                                <th id="th_min_tmax" onclick="sortPeriodTable('min_tmax')">Min TMAX &#8645;</th>
-                                <th id="th_max_tmin" onclick="sortPeriodTable('max_tmin')">Max TMIN &#8645;</th>
-                                <th id="th_max_tmax" onclick="sortPeriodTable('max_tmax')">Max TMAX &#8645;</th>
-                                <th onclick="sortPeriodTable('cnt_tmin')">{{ t('tables.days_tmin') }} &#8645;</th>
-                                <th onclick="sortPeriodTable('cnt_tavg')">{{ t('tables.days_tavg') }} &#8645;</th>
-                                <th onclick="sortPeriodTable('cnt_tmax')">{{ t('tables.days_tmax') }} &#8645;</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
 
         <!-- PART 3: RECORD LIST -->
         <div class="section">
-            <h2>3. {{ t('sections.record_list', limit='<span id="limitLabel">15</span>')|safe }}</h2>
-            
-            <div class="record-controls">
-                <div class="control-group">
-                    <span style="font-weight:bold;">{{ t('tables.filter_elements') }}</span>
-                    <label><input type="checkbox" name="rec_elem" value="TMIN" checked> TMIN</label>
-                    <label><input type="checkbox" name="rec_elem" value="TAVG" checked> TAVG</label>
-                    <label><input type="checkbox" name="rec_elem" value="TMAX" checked> TMAX</label>
+            <div id="recordListSection">
+                <div style="margin-bottom: 10px; border-bottom: 2px solid #007bff; padding-bottom: 5px;">
+                    <h2 style="margin: 0;">{{ t('sections.record_list', limit='<span id="limitLabel">15</span>')|safe }}
+                    </h2>
                 </div>
-                <div class="control-group">
-                    <span style="font-weight:bold;">{{ t('tables.max_records') }}</span>
-                    <select id="recordLimitSelect" style="width:auto; padding:5px;">
-                        <option value="15" selected>15</option>
-                        <option value="50">50</option>
-                        <option value="200">200</option>
-                    </select>
-                    <button class="small-btn" onclick="updateRecordsList()">{{ t('tables.update_records') }}</button>
+                <div>
+                    <div>
+                        <div class="record-controls">
+                            <!-- REMOVED Filter Elements -->
+                            <div class="control-group">
+                                <span style="font-weight:bold;">{{ t('tables.max_records') }}</span>
+                                <select id="recordLimitSelect" style="width:auto; padding:5px;">
+                                    <option value="5" selected>5</option>
+                                    <option value="15">15</option>
+                                    <option value="50">50</option>
+                                    <option value="200">200</option>
+                                </select>
+                                <button class="small-btn" onclick="updateRecordsList()">{{ t('tables.update_records')
+                                    }}</button>
+                                <!-- NEW COPY BUTTON -->
+                                <button class="small-btn" style="background-color: #17a2b8;"
+                                    onclick="copyRecordsTable()">{{
+                                    t('tables.copy_table_tsv') }}</button>
+                            </div>
+                        </div>
+                        <div id="sortingLoading" class="hidden"
+                            style="color: #e67e22; font-weight: bold; margin-bottom: 10px;">
+                            {{ t('tables.fetching_records') }}
+                        </div>
+                        <div class="table-responsive">
+                            <table class="data-table" id="recordsTable">
+                                <thead>
+                                    <tr>
+                                        <th onclick="triggerServerSort('DATE')">{{ t('tables.date') }} &#8645;</th>
+                                        <th onclick="triggerServerSort('TMIN')">{{ t('statistics.label_tmin_min') }} (℃)
+                                            &#8645;
+                                        </th>
+                                        <th onclick="triggerServerSort('TAVG')">{{ t('statistics.label_tavg_min') }} (℃)
+                                            &#8645;
+                                        </th>
+                                        <th onclick="triggerServerSort('TMAX')">{{ t('statistics.label_tmax_min') }} (℃)
+                                            &#8645;
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recordsTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
-            </div>
-            <div id="sortingLoading" class="hidden" style="color: #e67e22; font-weight: bold; margin-bottom: 10px;">
-                {{ t('tables.fetching_records') }}
-            </div>
-            <div class="table-responsive">
-                <table class="data-table" id="recordsTable">
-                    <thead>
-                        <tr>
-                            <th onclick="triggerServerSort('ID')">{{ t('tables.id') }} &#8645;</th>
-                            <th onclick="triggerServerSort('DATE')">{{ t('tables.date') }} &#8645;</th>
-                            <th>{{ t('tables.element') }}</th> 
-                            <th onclick="triggerServerSort('DATA_VALUE')">{{ t('tables.data_value_c') }} &#8645;</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
             </div>
         </div>
 
+        <div class="section" style="text-align: center; padding: 15px;">
+            <a href="#" onclick="openExtremeTemps(); return false;"
+                style="font-size: 1.1rem; font-weight: bold; color: #007bff; text-decoration: none;">
+                {{ t('links.view_extreme_temps') }}
+            </a>
+            <span style="padding: 0 30px"></span>
+            <a href="#" onclick="openPeriodStats(); return false;"
+                style="font-size: 1.1rem; font-weight: bold; color: #007bff; text-decoration: none;">
+                {{ t('links.view_period_stats') }}
+            </a>
+            <span style="padding: 0 30px"></span>
+            <a href="#" onclick="openYearStats(); return false;"
+                style="font-size: 1.1rem; font-weight: bold; color: #007bff; text-decoration: none;">
+                {{ t('links.view_year_stats') }}
+            </a>
+            <script>
+                function openExtremeTemps() {
+                    const sid = document.getElementById('stationId').value;
+                    const ds = document.getElementById('dataSource').value;
+                    let season = 'winter';
+                    const seasonEls = document.getElementsByName('season');
+                    for (let el of seasonEls) { if (el.checked) season = el.value; }
+
+                    const url = `/extreme_temps?station_id=${sid}&source=${ds}&season=${season}`;
+                    window.open(url, '_blank');
+                }
+                function openPeriodStats() {
+                    const sid = document.getElementById('stationId').value;
+                    const ds = document.getElementById('dataSource').value;
+                    const start = document.getElementById('startDate').value;
+                    const end = document.getElementById('endDate').value;
+                    const month = document.getElementById('monthFilter').value;
+                    const day = document.getElementById('dayFilter').value;
+                    const period = document.querySelector('input[name="season"]:checked').value === 'winter' ? 'p1' : 'p2';
+                    const hemi = document.querySelector('input[name="hemisphere"]:checked').value;
+
+                    const tmin_val = document.getElementById('tminVal').value;
+                    const tmin_dir = document.getElementById('tminDir').value;
+                    const tavg_val = document.getElementById('tavgVal').value;
+                    const tavg_dir = document.getElementById('tavgDir').value;
+                    const tmax_val = document.getElementById('tmaxVal').value;
+                    const tmax_dir = document.getElementById('tmaxDir').value;
+
+                    let url = `/period_stats?station_id=${sid}&source=${ds}&start_date=${start}&end_date=${end}&month_filter=${month}&day_filter=${day}&period=${period}&hemisphere=${hemi}`;
+                    url += `&tmin_val=${tmin_val}&tmin_dir=${tmin_dir}&tavg_val=${tavg_val}&tavg_dir=${tavg_dir}&tmax_val=${tmax_val}&tmax_dir=${tmax_dir}`;
+
+                    window.open(url, '_blank');
+                }
+                function openYearStats() {
+                    const sid = document.getElementById('stationId').value;
+                    const ds = document.getElementById('dataSource').value;
+                    const start = document.getElementById('startDate').value;
+                    const end = document.getElementById('endDate').value;
+
+                    const tmin_val = document.getElementById('tminVal').value;
+                    const tmin_dir = document.getElementById('tminDir').value;
+                    const tavg_val = document.getElementById('tavgVal').value;
+                    const tavg_dir = document.getElementById('tavgDir').value;
+                    const tmax_val = document.getElementById('tmaxVal').value;
+                    const tmax_dir = document.getElementById('tmaxDir').value;
+
+                    const custom_avg_tmin = document.getElementById('customAvgTmin').value;
+                    const custom_avg_tavg = document.getElementById('customAvgTavg').value;
+                    const custom_avg_tmax = document.getElementById('customAvgTmax').value;
+
+                    let url = `/year_stats?station_id=${sid}&source=${ds}&start_date=${start}&end_date=${end}`;
+                    url += `&tmin_val=${tmin_val}&tmin_dir=${tmin_dir}&tavg_val=${tavg_val}&tavg_dir=${tavg_dir}&tmax_val=${tmax_val}&tmax_dir=${tmax_dir}`;
+                    url += `&custom_avg_tmin=${custom_avg_tmin}&custom_avg_tavg=${custom_avg_tavg}&custom_avg_tmax=${custom_avg_tmax}`;
+
+                    window.open(url, '_blank');
+                }
+            </script>
+        </div>
+
         <!-- PART 4 & 5 (Restricted) -->
-        {% if (current_user.is_authenticated and (current_user.is_admin or current_user.user_level == 'advanced')) or (session.get('is_visitor_access') and session.get('visitor_level') == 'advanced') %}
+        {% if (current_user.is_authenticated and (current_user.is_admin or current_user.user_level == 'advanced')) or
+        (session.get('is_visitor_access') and session.get('visitor_level') == 'advanced') %}
 
         <!-- PART 4: MULTIPLE STATIONS -->
         <div class="section">
-            <h2>{{ t('sections.multiple_stations', limit='<span id="multiLimitLabel">15</span>')|safe }}</h2>
-            
-            <div class="record-controls">
-                <div class="control-group">
-                    <span style="font-weight:bold;">{{ t('tables.max_stations') }}</span>
-                    <select id="multiLimitSelect" style="width:auto; padding:5px;">
-                        <option value="15" selected>15</option>
-                        <option value="50">50</option>
-                        <option value="200">200</option>
-                        <option value="500">500</option>
-                        <option value="1000">1000</option>
-                    </select>
+            <div class="collapsible-wrapper" id="multiStationListSection">
+                <div class="collapsible-header" onclick="toggleSection('multiStationListSection')">
+                    <h2>{{ t('sections.multiple_stations', limit='<span id="multiLimitLabel">15</span>')|safe }}</h2>
+                    <span class="collapsible-icon">▼</span>
                 </div>
-                <div class="control-group">
-                    <button class="small-btn" onclick="updateMultiStations()">{{ t('tables.update_list') }}</button>
-                    <button class="small-btn" style="background-color: #17a2b8;" onclick="copyMultiTable()">{{ t('tables.copy_table_tsv') }}</button>
+                <div class="collapsible-content">
+                    <div class="collapsible-inner">
+                        <div class="record-controls">
+                            <div class="control-group">
+                                <span style="font-weight:bold;">{{ t('tables.max_stations') }}</span>
+                                <select id="multiLimitSelect" style="width:auto; padding:5px;">
+                                    <option value="5" selected>5</option>
+                                    <option value="15">15</option>
+                                    <option value="50">50</option>
+                                    <option value="200">200</option>
+                                    <option value="500">500</option>
+                                    <option value="1000">1000</option>
+                                    <option value="10000">10000</option>
+                                </select>
+                            </div>
+                            <div class="control-group">
+                                <button class="small-btn" onclick="updateMultiStations()">{{ t('tables.update_list')
+                                    }}</button>
+                                <button class="small-btn" style="background-color: #17a2b8;"
+                                    onclick="copyMultiTable()">{{
+                                    t('tables.copy_table_tsv') }}</button>
+                            </div>
+                        </div>
+
+                        <div id="multiStationLoading" class="hidden"
+                            style="color: #e67e22; font-weight: bold; margin-bottom: 10px;">
+                            {{ t('tables.updating_station_list') }}
+                        </div>
+
+                        <div id="multiStationCountArea" style="margin-bottom: 5px; font-weight: bold;">
+                            {{ t('tables.total_result_rows') }} <span id="multiStationCount">0</span>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="data-table" id="multiStationTable">
+                                <thead>
+                                    <tr>
+                                        <th onclick="triggerMultiSort('id')">{{ t('tables.id') }} &#8645;</th>
+                                        <th onclick="triggerMultiSort('name')">{{ t('tables.name') }} &#8645;</th>
+                                        <th onclick="triggerMultiSort('lat')">{{ t('tables.latitude') }} &#8645;</th>
+                                        <th onclick="triggerMultiSort('lon')">{{ t('tables.longitude') }} &#8645;</th>
+                                        <th onclick="triggerMultiSort('elev')">{{ t('tables.elevation_m') }} &#8645;
+                                        </th>
+                                        <th onclick="triggerMultiSort('dist')">{{ t('tables.distance_km') }} &#8645;
+                                        </th>
+                                        <th onclick="triggerMultiSort('country')">{{ t('tables.country') }} &#8645;</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
-            </div>
-
-            <div id="multiStationLoading" class="hidden" style="color: #e67e22; font-weight: bold; margin-bottom: 10px;">
-                {{ t('tables.updating_station_list') }}
-            </div>
-
-            <div class="table-responsive">
-                <table class="data-table" id="multiStationTable">
-                    <thead>
-                        <tr>
-                            <th onclick="triggerMultiSort('id')">{{ t('tables.id') }} &#8645;</th>
-                            <th onclick="triggerMultiSort('name')">{{ t('tables.name') }} &#8645;</th>
-                            <th onclick="triggerMultiSort('lat')">{{ t('tables.latitude') }} &#8645;</th>
-                            <th onclick="triggerMultiSort('lon')">{{ t('tables.longitude') }} &#8645;</th>
-                            <th onclick="triggerMultiSort('elev')">{{ t('tables.elevation_m') }} &#8645;</th>
-                            <th onclick="triggerMultiSort('dist')">{{ t('tables.distance_km') }} &#8645;</th>
-                            <th onclick="triggerMultiSort('country')">{{ t('tables.country') }} &#8645;</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
             </div>
         </div>
 
         <!-- PART 5: MULTIPLE STATIONS STATISTICS -->
         <div class="section">
-            <h2>{{ t('sections.multiple_stats') }}</h2>
-            
-            <div class="record-controls">
-                <div class="control-group" style="flex:1;">
-                    <span style="font-weight:bold;">{{ t('tables.select_statistic') }}</span>
-                    <select id="multiStatSelect" style="width:auto; max-width:250px; padding:5px;">
-                        <option value="avg_tmin">{{ t('statistics.average_tmin') }}</option>
-                        <option value="avg_tavg">{{ t('statistics.average_tavg') }}</option>
-                        <option value="avg_tmax">{{ t('statistics.average_tmax') }}</option>
-                        <option value="min_tmin">{{ t('statistics.minimum_tmin') }}</option>
-                        <option value="min_tavg">{{ t('statistics.minimum_tavg') }}</option>
-                        <option value="min_tmax">{{ t('statistics.minimum_tmax') }}</option>
-                        <option value="max_tmin">{{ t('statistics.maximum_tmin') }}</option>
-                        <option value="max_tavg">{{ t('statistics.maximum_tavg') }}</option>
-                        <option value="max_tmax">{{ t('statistics.maximum_tmax') }}</option>
-                        <option value="max_days_tmin">{{ t('statistics.max_days_tmin') }}</option>
-                        <option value="max_days_tavg">{{ t('statistics.max_days_tavg') }}</option>
-                        <option value="max_days_tmax">{{ t('statistics.max_days_tmax') }}</option>
-                    </select>
+            <div class="collapsible-wrapper" id="multiStatsSection">
+                <div class="collapsible-header" onclick="toggleSection('multiStatsSection')">
+                    <h2>{{ t('sections.multiple_stats') }}</h2>
+                    <span class="collapsible-icon">▼</span>
                 </div>
-                <div class="control-group">
-                    <button class="small-btn" onclick="calcMultiStats()">{{ t('tables.calculate_stats') }}</button>
-                    <button class="small-btn" style="background-color: #17a2b8;" onclick="copyMultiStatsTable()">{{ t('tables.copy_table_tsv') }}</button>
+                <div class="collapsible-content">
+                    <div class="collapsible-inner">
+                        <div class="record-controls">
+                            <div class="control-group" style="flex:1;">
+                                <span style="font-weight:bold;">{{ t('tables.select_statistic') }}</span>
+                                <select id="multiStatSelect" style="width:auto; max-width:250px; padding:5px;">
+                                    <option value="min_tmin">{{ t('statistics.minimum_tmin') }}</option>
+                                    <option value="min_tavg">{{ t('statistics.minimum_tavg') }}</option>
+                                    <option value="min_tmax">{{ t('statistics.minimum_tmax') }}</option>
+                                    <option value="max_tmin">{{ t('statistics.maximum_tmin') }}</option>
+                                    <option value="max_tavg">{{ t('statistics.maximum_tavg') }}</option>
+                                    <option value="max_tmax">{{ t('statistics.maximum_tmax') }}</option>
+                                    <option value="avg_tmin">{{ t('statistics.average_tmin') }}</option>
+                                    <option value="avg_tavg">{{ t('statistics.average_tavg') }}</option>
+                                    <option value="avg_tmax">{{ t('statistics.average_tmax') }}</option>
+                                    <option value="max_days_tmin">{{ t('statistics.max_days_tmin') }}</option>
+                                    <option value="max_days_tavg">{{ t('statistics.max_days_tavg') }}</option>
+                                    <option value="max_days_tmax">{{ t('statistics.max_days_tmax') }}</option>
+                                    <option value="total_days_tmin">{{ t('statistics.total_days_tmin') }}</option>
+                                    <option value="total_days_tavg">{{ t('statistics.total_days_tavg') }}</option>
+                                    <option value="total_days_tmax">{{ t('statistics.total_days_tmax') }}</option>
+                                    <option value="valid_days_tmin">{{ t('statistics.valid_days_tmin') }}</option>
+                                    <option value="valid_days_tavg">{{ t('statistics.valid_days_tavg') }}</option>
+                                    <option value="valid_days_tmax">{{ t('statistics.valid_days_tmax') }}</option>
+                                    <option value="min_monthly_avg_tmin">{{ t('statistics.min_monthly_avg_tmin') }}
+                                    </option>
+                                    <option value="min_monthly_avg_tavg">{{ t('statistics.min_monthly_avg_tavg') }}
+                                    </option>
+                                    <option value="min_monthly_avg_tmax">{{ t('statistics.min_monthly_avg_tmax') }}
+                                    </option>
+                                    <option value="max_monthly_avg_tmin">{{ t('statistics.max_monthly_avg_tmin') }}
+                                    </option>
+                                    <option value="max_monthly_avg_tavg">{{ t('statistics.max_monthly_avg_tavg') }}
+                                    </option>
+                                    <option value="max_monthly_avg_tmax">{{ t('statistics.max_monthly_avg_tmax') }}
+                                    </option>
+                                </select>
+                            </div>
+                            <div class="control-group">
+                                <button class="small-btn" onclick="calcMultiStats()">{{ t('tables.calculate_stats')
+                                    }}</button>
+                                <button class="small-btn" style="background-color: #17a2b8;"
+                                    onclick="copyMultiStatsTable()">{{
+                                    t('tables.copy_table_tsv') }}</button>
+                            </div>
+                            <div id="multiStatTimerResult"
+                                style="margin-left: 10px; font-weight: bold; color: #28a745;"></div>
+                        </div>
+
+                        <div id="multiStatLoading" class="hidden"
+                            style="color: #e67e22; font-weight: bold; margin-bottom: 10px;">
+                            {{ t('tables.calculating_statistics') }}
+                            <span id="multiStatTimer" style="margin-left: 10px; color: #333;"></span>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="data-table" id="multiStatResultTable">
+                                <thead>
+                                    <tr>
+                                        <th onclick="sortMultiStatTable('id')">{{ t('tables.station_id') }} &#8645;</th>
+                                        <th onclick="sortMultiStatTable('name')">{{ t('tables.station_name') }} &#8645;
+                                        </th>
+                                        <th onclick="sortMultiStatTable('lat')">{{ t('tables.latitude') }} &#8645;</th>
+                                        <th onclick="sortMultiStatTable('lon')">{{ t('tables.longitude') }} &#8645;</th>
+                                        <th onclick="sortMultiStatTable('elev')">{{ t('tables.elevation_m') }} &#8645;
+                                        </th>
+                                        <th onclick="sortMultiStatTable('dist')">{{ t('tables.distance_km') }} &#8645;
+                                        </th>
+                                        <th onclick="sortMultiStatTable('val')">{{ t('tables.value') }} &#8645;</th>
+                                        <th>{{ t('tables.relevant_dates_periods') }}</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
-            </div>
-
-            <div id="multiStatLoading" class="hidden" style="color: #e67e22; font-weight: bold; margin-bottom: 10px;">
-                {{ t('tables.calculating_statistics') }}
-            </div>
-
-            <div class="table-responsive">
-                <table class="data-table" id="multiStatResultTable">
-                    <thead>
-                        <tr>
-                            <th onclick="sortMultiStatTable('id')">{{ t('tables.station_id') }} &#8645;</th>
-                            <th onclick="sortMultiStatTable('name')">{{ t('tables.station_name') }} &#8645;</th>
-                            <th onclick="triggerMultiSort('dist')">{{ t('tables.distance_km') }} &#8645;</th>
-                            <th onclick="sortMultiStatTable('val')">{{ t('tables.value') }} &#8645;</th>
-                            <th>{{ t('tables.relevant_dates_periods') }}</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
             </div>
         </div>
         {% endif %}
 
         <div id="copyToast">{{ t('messages.copied_to_clipboard') }}</div>
 
+        <!-- PERIOD SELECTION MODAL -->
+        <div id="periodModal" class="modal-overlay hidden">
+            <div class="modal-content">
+                <h3>{{ t('modal.select_period') }}</h3>
+                <div id="periodList" class="period-list"></div>
+                <button onclick="document.getElementById('periodModal').classList.add('hidden')"
+                    style="margin-top:15px; width:100%; padding:8px;">{{ t('modal.close') }}</button>
+            </div>
+        </div>
+
     </div>
+    <script>
+        // Pass translation to JavaScript
+        const STATION_INFO_TITLE = "{{ t('params.current_selected_station') }}";
+        const TIMER_LABEL_JS = "{{ t('tables.timer') }}";
+    </script>
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
+
 </html>
