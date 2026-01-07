@@ -1,0 +1,5 @@
+seguiemj.ttf是windows默认字体，如果需要可以用这个恢复
+Github:
+https://github.com/perguto/Country-Flag-Emojis-for-Windows?tab=readme-ov-file
+
+名字里带google那个是从github下载的.
