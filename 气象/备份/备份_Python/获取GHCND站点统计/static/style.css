@@ -389,14 +389,17 @@ td {
 }
 
 th {
-    background-color: #343a40;
-    color: white;
+    background-color: #f8f9fa;
+    color: #333;
     cursor: pointer;
     user-select: none;
+    position: sticky;
+    top: 0;
+    z-index: 10;
 }
 
 th:hover {
-    background-color: #555;
+    background-color: #e9ecef;
 }
 
 tr:nth-child(even) {

@@ -14,16 +14,29 @@ PREDEFINED_FILES = {
 
 MAX_ROWS = 2000
 
-def parse_excel(filepath_or_buffer, global_keyword="", column_filters=None):
+def parse_file(filepath_or_buffer, global_keyword="", column_filters=None):
     try:
-        engine = None
-        if isinstance(filepath_or_buffer, str):
-            if filepath_or_buffer.lower().endswith('.xls'):
-                engine = 'xlrd'
-            else:
-                engine = 'openpyxl'
+        # Detect file type
+        filename = ""
+        if hasattr(filepath_or_buffer, 'filename'):
+            filename = filepath_or_buffer.filename
+        elif isinstance(filepath_or_buffer, str):
+            filename = filepath_or_buffer
 
-        xls_dict = pd.read_excel(filepath_or_buffer, sheet_name=None, engine=engine)
+        is_csv = filename.lower().endswith('.csv')
+        
+        if is_csv:
+            df = pd.read_csv(filepath_or_buffer)
+            xls_dict = {"CSV_Data": df}
+        else:
+            engine = None
+            if isinstance(filepath_or_buffer, str):
+                if filepath_or_buffer.lower().endswith('.xls'):
+                    engine = 'xlrd'
+                else:
+                    engine = 'openpyxl'
+
+            xls_dict = pd.read_excel(filepath_or_buffer, sheet_name=None, engine=engine)
         
         output_data = {}
         sheet_names = list(xls_dict.keys())
@@ -119,7 +132,7 @@ def get_predefined():
     if not file_path or not os.path.exists(file_path):
         return jsonify({"success": False, "error": f"File not found: {file_path}"})
     
-    return jsonify(parse_excel(file_path, keyword, col_filters))
+    return jsonify(parse_file(file_path, keyword, col_filters))
 
 @app.route('/upload_file', methods=['POST'])
 def upload_file():
@@ -137,7 +150,7 @@ def upload_file():
     if file.filename == '':
         return jsonify({"success": False, "error": "No file selected"})
         
-    return jsonify(parse_excel(file, keyword, col_filters))
+    return jsonify(parse_file(file, keyword, col_filters))
 
 if __name__ == '__main__':
     app.run(debug=True, port=1003)

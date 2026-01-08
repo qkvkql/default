@@ -6,6 +6,17 @@ let sortDirection = {};
 let activeMode = null;
 let activeKey = null;
 
+// --- STYLE PERSISTENCE REGISTRY ---
+let styleRegistry = {
+    headers: [], // Rules for <thead> tr
+    rows: {},    // Rules for individual <tbody> rows { index: styles }
+    allRows: null, // Rule for all <tbody> rows
+    cols: {},    // Rules for individual columns { index: styles }
+    allCols: null, // Rule for all <tbody> cells
+    cells: {},   // Rules for specific cells { "rowIdx-colIdx": styles }
+    temps: []    // List of .temp() calls to re-apply
+};
+
 // --- UI STATE MANAGEMENT ---
 
 function toggleControls(enable) {
@@ -301,6 +312,33 @@ function copyToClipboard() {
     sortDirection = {};
 }
 
+function copyColumn(index, btnElement) {
+    if (currentTableRows.length === 0) return;
+
+    // Data Rows (excluding header)
+    const columnData = currentTableRows.map(row => {
+        let val = row[index];
+        if (val === null || val === undefined) val = "";
+        // Clean TSV sensitive characters
+        val = String(val).replace(/\t/g, " ").replace(/\n/g, " ");
+        return val;
+    }).join("\n");
+
+    navigator.clipboard.writeText(columnData).then(() => {
+        // Visual feedback
+        const originalText = btnElement.innerText;
+        btnElement.innerText = "Copied!";
+        btnElement.classList.add('copied');
+
+        setTimeout(() => {
+            btnElement.innerText = originalText;
+            btnElement.classList.remove('copied');
+        }, 2000);
+    }).catch(err => {
+        alert("Failed to copy column: " + err);
+    });
+}
+
 // --- MAIN LOGIC ---
 
 function setModeAndLoad(mode, key) {
@@ -451,11 +489,24 @@ function renderTable() {
     // CONTENT STATE
     toggleCopyButton(true); // Enable copy since we have content
 
+    const totalCols = currentHeaders.length;
     let html = `
         <div style='padding:10px; font-weight:bold; color:#555;'>
             Found ${currentTableRows.length} rows
         </div>
-        <table><thead><tr>`;
+        <div class="copy-buttons-row">
+            ${currentHeaders.map((_, idx) => `
+                <div class="copy-btn-cell" style="flex: 0 0 auto; padding: 5px; border-right: 1px solid #ddd; display: flex; justify-content: center; align-items: center; box-sizing: border-box;">
+                    <button class="copy-col-btn" onclick="copyColumn(${idx}, this)">Copy Col</button>
+                </div>
+            `).join('')}
+        </div>
+        <table>
+            <thead>
+                <tr class="summary-header">
+                    <th colspan="${totalCols}" style="text-align: center; background-color: #f8f9fa;">Table Summary</th>
+                </tr>
+                <tr>`;
 
     currentHeaders.forEach((header, index) => {
         const dir = sortDirection[index] || '';
@@ -470,6 +521,70 @@ function renderTable() {
     });
     html += '</tbody></table>';
     container.innerHTML = html;
+
+    // RE-APPLY STYLES FROM REGISTRY
+    applyRegistryStyles();
+
+    // Sync button widths with table columns
+    setTimeout(syncCopyBtnWidths, 0);
+}
+
+function syncCopyBtnWidths() {
+    const table = document.querySelector('#table-container table');
+    const btnCells = document.querySelectorAll('.copy-btn-cell');
+    if (!table || btnCells.length === 0) return;
+
+    const ths = table.querySelectorAll('thead tr:last-child th');
+    if (ths.length !== btnCells.length) return;
+
+    ths.forEach((th, idx) => {
+        const width = th.getBoundingClientRect().width;
+        btnCells[idx].style.width = width + 'px';
+        btnCells[idx].style.minWidth = width + 'px';
+        btnCells[idx].style.maxWidth = width + 'px';
+    });
+}
+
+window.addEventListener('resize', syncCopyBtnWidths);
+
+/**
+ * Re-applies all styles stored in the registry to the current DOM
+ */
+function applyRegistryStyles() {
+    // 1. All Rows
+    if (styleRegistry.allRows) {
+        window.setAllRowsStyle(styleRegistry.allRows, false);
+    }
+    // 2. All Cols
+    if (styleRegistry.allCols) {
+        window.setAllColumnsStyle(styleRegistry.allCols, false);
+    }
+    // 3. Individual Rows
+    for (let idx in styleRegistry.rows) {
+        window.setRowStyle(parseInt(idx), styleRegistry.rows[idx], false);
+    }
+    // 4. Individual Columns
+    for (let idx in styleRegistry.cols) {
+        window.setColumnStyle(parseInt(idx), styleRegistry.cols[idx], false);
+    }
+    // 5. Specific Cells
+    for (let key in styleRegistry.cells) {
+        const [r, c] = key.split('-').map(Number);
+        window.setCellStyle(r, c, styleRegistry.cells[key], false);
+    }
+    // 6. Headers
+    styleRegistry.headers.forEach(rule => {
+        window.setHeaderStyle(rule, false);
+    });
+    // 7. Temps
+    styleRegistry.temps.forEach(tempRule => {
+        if (tempRule.type === 'allRows') window.setAllRowsStyle.temp(false);
+        if (tempRule.type === 'row') window.setRowStyle.temp(tempRule.index, false);
+        if (tempRule.type === 'allCols') window.setAllColumnsStyle.temp(false);
+        if (tempRule.type === 'col') window.setColumnStyle.temp(tempRule.index, false);
+        if (tempRule.type === 'cell') window.setCellStyle.temp(tempRule.rowIndex, tempRule.colIndex, false);
+        if (tempRule.type === 'header') window.setHeaderStyle.temp(false);
+    });
 }
 
 function sortTable(columnIndex) {
@@ -526,3 +641,322 @@ function showWarning(msg) {
     toggleCopyButton(false); // Disable on warning (too large)
     document.getElementById('table-container').innerHTML = `<p class="placeholder" style="color:#d9534f; font-size:18px;">${msg}</p>`;
 }
+
+// --- STYLING API ---
+
+/**
+ * Get color based on temperature value
+ */
+function getTemperatureColor(val) {
+    const v = parseFloat(val);
+    if (isNaN(v)) return null;
+
+    if (v <= -75) return '#ffffff';
+    if (v <= -74) return '#fff4f9';
+    if (v <= -73) return '#fee9f3';
+    if (v <= -72) return '#fedfed';
+    if (v <= -71) return '#fdd4e7';
+    if (v <= -70) return '#fdc9e1';
+    if (v <= -69) return '#fdbedb';
+    if (v <= -68) return '#fcb3d5';
+    if (v <= -67) return '#fca8ce';
+    if (v <= -66) return '#fb9dc8';
+    if (v <= -65) return '#fb92c2';
+    if (v <= -64) return '#fb87bc';
+    if (v <= -63) return '#fa7cb6';
+    if (v <= -62) return '#fa72b0';
+    if (v <= -61) return '#f967aa';
+    if (v <= -60) return '#f95ca4';
+    if (v <= -59) return '#f9519e';
+    if (v <= -58) return '#f84698';
+    if (v <= -57) return '#f83b91';
+    if (v <= -56) return '#f7308b';
+    if (v <= -55) return '#f72585';
+    if (v <= -54) return '#f02488';
+    if (v <= -53) return '#ea228a';
+    if (v <= -52) return '#e3218d';
+    if (v <= -51) return '#dd1f8f';
+    if (v <= -50) return '#d61e92';
+    if (v <= -49) return '#cf1d94';
+    if (v <= -48) return '#c91b97';
+    if (v <= -47) return '#c21a99';
+    if (v <= -46) return '#bc189c';
+    if (v <= -45) return '#b5179e';
+    if (v <= -44) return '#ae16a1';
+    if (v <= -43) return '#a814a3';
+    if (v <= -42) return '#a113a6';
+    if (v <= -41) return '#9b11a8';
+    if (v <= -40) return '#9410ab';
+    if (v <= -39) return '#8d0fad';
+    if (v <= -38) return '#860db0';
+    if (v <= -37) return '#800cb2';
+    if (v <= -36) return '#790ab5';
+    if (v <= -35) return '#7209b7';
+    if (v <= -34) return '#6c09b5';
+    if (v <= -33) return '#670ab3';
+    if (v <= -32) return '#610ab1';
+    if (v <= -31) return '#5c0baf';
+    if (v <= -30) return '#560bad';
+    if (v <= -29) return '#530bac';
+    if (v <= -28) return '#500bab';
+    if (v <= -27) return '#4e0caa';
+    if (v <= -26) return '#4b0ca9';
+    if (v <= -25) return '#480ca8';
+    if (v <= -24) return '#450ca7';
+    if (v <= -23) return '#420ca6';
+    if (v <= -22) return '#400ca5';
+    if (v <= -21) return '#3d0ca4';
+    if (v <= -20) return '#3a0ca3';
+    if (v <= -19) return '#3b15ab';
+    if (v <= -18) return '#3c1db2';
+    if (v <= -17) return '#3d26ba';
+    if (v <= -16) return '#3e2ec1';
+    if (v <= -15) return '#3f37c9';
+    if (v <= -14) return '#403fd0';
+    if (v <= -13) return '#4148d8';
+    if (v <= -12) return '#4150df';
+    if (v <= -11) return '#4259e7';
+    if (v <= -10) return '#4361ee';
+    if (v <= -9) return '#446bee';
+    if (v <= -8) return '#4576ee';
+    if (v <= -7) return '#4680ef';
+    if (v <= -6) return '#478bef';
+    if (v <= -5) return '#4895ef';
+    if (v <= -4) return '#499fef';
+    if (v <= -3) return '#4aaaef';
+    if (v <= -2) return '#4ab4f0';
+    if (v <= -1) return '#4bbff0';
+    if (v <= 0) return '#4cc9f0';
+    if (v < 1) return '#6dcfea';
+    if (v < 2) return '#8fd6e4';
+    if (v < 3) return '#b0dcdd';
+    if (v < 4) return '#d2e3d7';
+    if (v < 5) return '#f3e9d1';
+    if (v < 6) return '#f0e5c8';
+    if (v < 7) return '#eee0bf';
+    if (v < 8) return '#ebdcb5';
+    if (v < 9) return '#e9d7ac';
+    if (v < 10) return '#e6d3a3';
+    if (v < 11) return '#e3d39a';
+    if (v < 12) return '#e0d290';
+    if (v < 13) return '#ded287';
+    if (v < 14) return '#dbd17d';
+    if (v < 15) return '#d8d174';
+    if (v < 16) return '#d1ce6e';
+    if (v < 17) return '#cacc67';
+    if (v < 18) return '#c4c961';
+    if (v < 19) return '#bdc75a';
+    if (v < 20) return '#b6c454';
+    if (v < 21) return '#aebe44';
+    if (v < 22) return '#a6b834';
+    if (v < 23) return '#9eb224';
+    if (v < 24) return '#96ac14';
+    if (v < 25) return '#8ea604';
+    if (v < 26) return '#a3aa03';
+    if (v < 27) return '#b7ae02';
+    if (v < 28) return '#ccb302';
+    if (v < 29) return '#e0b701';
+    if (v < 30) return '#f5bb00';
+    if (v < 31) return '#efab01';
+    if (v < 32) return '#e99b01';
+    if (v < 33) return '#e38a02';
+    if (v < 34) return '#dd7a02';
+    if (v < 35) return '#d76a03';
+    if (v < 36) return '#d25f02';
+    if (v < 37) return '#cd5302';
+    if (v < 38) return '#c94801';
+    if (v < 39) return '#c43c01';
+    if (v < 40) return '#bf3100';
+    if (v < 41) return '#ae2b03';
+    if (v < 42) return '#9d2506';
+    if (v < 43) return '#8b2008';
+    if (v < 44) return '#7a1a0b';
+    if (v < 45) return '#69140e';
+    if (v < 46) return '#601410';
+    if (v < 47) return '#571412';
+    if (v < 48) return '#4e1514';
+    if (v < 49) return '#451516';
+    if (v < 50) return '#3c1518';
+    if (v < 51) return '#301113';
+    if (v < 52) return '#240d0e';
+    if (v < 53) return '#18080a';
+    if (v < 54) return '#0c0405';
+    return '#000000';
+}
+
+/**
+ * Get font color based on temperature value for contrast
+ */
+function getTemperatureFontColor(val) {
+    const v = parseFloat(val);
+    if (isNaN(v)) return null;
+
+    if (v <= -55 || (v > -5 && v < 35)) {
+        return '#000000';
+    } else {
+        return '#ffffff';
+    }
+}
+
+/**
+ * Helper to apply styles to an element
+ */
+function applyStylesToElement(el, styles) {
+    if (!el || !styles) return;
+    if (styles.color) el.style.color = styles.color;
+    if (styles.backgroundColor) el.style.backgroundColor = styles.backgroundColor;
+    if (styles.borderStyle) el.style.borderStyle = styles.borderStyle;
+    if (styles.fontWeight) el.style.fontWeight = styles.fontWeight;
+    if (styles.fontSize) el.style.fontSize = styles.fontSize;
+    if (styles.textAlign) el.style.textAlign = styles.textAlign;
+    if (styles.height) el.style.height = styles.height;
+    if (styles.padding) el.style.padding = styles.padding;
+    if (styles.margin) el.style.margin = styles.margin;
+
+    // Robust Width Handling
+    if (styles.width) {
+        el.style.width = styles.width;
+        el.style.minWidth = styles.width;
+        el.style.maxWidth = styles.width;
+        el.style.overflow = "hidden";
+        el.style.textOverflow = "ellipsis";
+    }
+
+    // Custom White Space (e.g., 'normal' for wrapping)
+    if (styles.whiteSpace) {
+        el.style.whiteSpace = styles.whiteSpace;
+    }
+}
+
+function applyTempStyle(cell) {
+    if (!cell) return;
+    const bgColor = getTemperatureColor(cell.textContent);
+    const fontColor = getTemperatureFontColor(cell.textContent);
+    if (bgColor) {
+        cell.style.backgroundColor = bgColor;
+    }
+    if (fontColor) {
+        cell.style.color = fontColor;
+    }
+}
+
+/**
+ * Set style for all rows in tbody
+ */
+window.setAllRowsStyle = function (styles, save = true) {
+    if (save) styleRegistry.allRows = styles;
+    const rows = document.querySelectorAll('#table-container tbody tr');
+    rows.forEach(row => applyStylesToElement(row, styles));
+};
+window.setAllRowsStyle.temp = function (save = true) {
+    if (save) styleRegistry.temps.push({ type: 'allRows' });
+    const cells = document.querySelectorAll('#table-container tbody td');
+    cells.forEach(cell => applyTempStyle(cell));
+};
+
+/**
+ * Set style for a specific row in tbody (0-indexed)
+ */
+window.setRowStyle = function (index, styles, save = true) {
+    if (save) styleRegistry.rows[index] = styles;
+    const rows = document.querySelectorAll('#table-container tbody tr');
+    if (rows[index]) {
+        applyStylesToElement(rows[index], styles);
+    }
+};
+window.setRowStyle.temp = function (index, save = true) {
+    if (save) styleRegistry.temps.push({ type: 'row', index: index });
+    const rows = document.querySelectorAll('#table-container tbody tr');
+    const row = rows[index];
+    if (row) {
+        Array.from(row.cells).forEach(cell => applyTempStyle(cell));
+    }
+};
+
+/**
+ * Set style for all cells in all rows in tbody
+ */
+window.setAllColumnsStyle = function (styles, save = true) {
+    if (save) styleRegistry.allCols = styles;
+    const cells = document.querySelectorAll('#table-container tbody td');
+    cells.forEach(cell => applyStylesToElement(cell, styles));
+};
+window.setAllColumnsStyle.temp = function (save = true) {
+    if (save) styleRegistry.temps.push({ type: 'allCols' });
+    window.setAllRowsStyle.temp(false);
+};
+
+/**
+ * Set style for a specific column in all rows in tbody (0-indexed)
+ */
+window.setColumnStyle = function (index, styles, save = true) {
+    if (save) styleRegistry.cols[index] = styles;
+    const rows = document.querySelectorAll('#table-container tbody tr');
+    rows.forEach(row => {
+        const cell = row.cells[index];
+        if (cell) {
+            applyStylesToElement(cell, styles);
+        }
+    });
+};
+window.setColumnStyle.temp = function (index, save = true) {
+    if (save) styleRegistry.temps.push({ type: 'col', index: index });
+    const rows = document.querySelectorAll('#table-container tbody tr');
+    rows.forEach(row => {
+        const cell = row.cells[index];
+        if (cell) applyTempStyle(cell);
+    });
+};
+
+/**
+ * Set style for a specific table cell (0-indexed)
+ */
+window.setCellStyle = function (rowIndex, colIndex, styles, save = true) {
+    if (save) styleRegistry.cells[`${rowIndex}-${colIndex}`] = styles;
+    const rows = document.querySelectorAll('#table-container tbody tr');
+    const row = rows[rowIndex];
+    if (row) {
+        const cell = row.cells[colIndex];
+        if (cell) {
+            applyStylesToElement(cell, styles);
+        }
+    }
+};
+window.setCellStyle.temp = function (rowIndex, colIndex, save = true) {
+    if (save) styleRegistry.temps.push({ type: 'cell', rowIndex: rowIndex, colIndex: colIndex });
+    const rows = document.querySelectorAll('#table-container tbody tr');
+    const row = rows[rowIndex];
+    if (row) {
+        const cell = row.cells[colIndex];
+        if (cell) applyTempStyle(cell);
+    }
+};
+
+/**
+ * Set style for both header rows
+ */
+window.setHeaderStyle = function (styles, save = true) {
+    if (save) styleRegistry.headers.push(styles);
+    const headerRows = document.querySelectorAll('#table-container thead tr');
+    headerRows.forEach(row => {
+        applyStylesToElement(row, styles);
+        // Also apply to cells within the row if needed, as tr styles might not apply to th background
+        Array.from(row.cells).forEach(cell => applyStylesToElement(cell, styles));
+    });
+};
+window.setHeaderStyle.temp = function (save = true) {
+    if (save) styleRegistry.temps.push({ type: 'header' });
+    const cells = document.querySelectorAll('#table-container thead th');
+    cells.forEach(cell => applyTempStyle(cell));
+};
+
+/**
+ * Clear all registered styles and re-render
+ */
+window.clearStyles = function () {
+    styleRegistry = {
+        headers: [], rows: {}, allRows: null,
+        cols: {}, allCols: null, cells: {}, temps: []
+    };
+    renderTable();
+};

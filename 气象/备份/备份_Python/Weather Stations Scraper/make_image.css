@@ -13,18 +13,84 @@ body {
 }
 
 /* CONTROLS AREA */
+#controls-wrapper {
+    max-height: 500px;
+    /* Large enough for the controls */
+    overflow: hidden;
+    transition: max-height 0.4s ease-out, opacity 0.3s ease-out, margin-bottom 0.3s ease-out;
+    opacity: 1;
+}
+
+#controls-wrapper.collapsed {
+    max-height: 0;
+    opacity: 0;
+    margin-bottom: 0;
+}
+
 .controls {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
     background-color: #333;
     padding: 15px;
     border-radius: 8px;
-    margin-bottom: 20px;
+    margin-bottom: 5px;
+    /* Reduced margin since toggle bar is below */
 }
 
-.input-group label { margin-right: 10px; font-weight: bold; }
-select { padding: 8px; font-size: 16px; margin-right: 10px; }
+.controls-toggle-bar {
+    width: 100%;
+    background-color: #444;
+    color: #eee;
+    padding: 8px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    border-radius: 4px;
+    margin-bottom: 15px;
+    font-size: 14px;
+    font-weight: bold;
+    user-select: none;
+    transition: background-color 0.2s;
+}
+
+.controls-toggle-bar:hover {
+    background-color: #555;
+}
+
+.toggle-icon {
+    margin-left: 10px;
+    transition: transform 0.3s;
+}
+
+#controls-wrapper.collapsed+.controls-toggle-bar .toggle-icon {
+    transform: rotate(180deg);
+}
+
+.input-group label {
+    margin-right: 10px;
+    font-weight: bold;
+}
+
+.radio-label {
+    margin-right: 15px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.radio-label input {
+    cursor: pointer;
+}
+
+select {
+    padding: 8px;
+    font-size: 16px;
+    margin-right: 10px;
+}
 
 button {
     padding: 10px 20px;
@@ -35,33 +101,126 @@ button {
     font-weight: bold;
 }
 
-#btn-load { background-color: #2196F3; color: white; }
-#btn-load:hover { background-color: #0b7dda; }
+#btn-load {
+    background-color: #2196F3;
+    color: white;
+}
 
-.export-btn { background-color: #4CAF50; color: white; }
-.export-btn:hover { background-color: #45a049; }
+#btn-load:hover {
+    background-color: #0b7dda;
+}
 
-.instruction { color: #aaa; margin-left: 15px; font-size: 14px; }
+/* WIDTH CONTROLS */
+.width-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    align-items: center;
+    padding: 10px;
+    background-color: #444;
+    border-radius: 6px;
+    margin-top: 10px;
+    width: 100%;
+}
+
+.width-inputs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    flex-grow: 1;
+}
+
+.width-input-item {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.width-input-item span {
+    font-size: 12px;
+    color: #ccc;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.width-input-item input {
+    width: 60px;
+    padding: 5px;
+    border-radius: 4px;
+    border: 1px solid #666;
+    background: #222;
+    color: white;
+    text-align: center;
+}
+
+.width-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+#btn-submit-widths {
+    background-color: #ff9800;
+    color: white;
+    padding: 8px 15px;
+}
+
+#btn-submit-widths:hover {
+    background-color: #e68a00;
+}
+
+.error-msg {
+    color: #ff5252;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.export-btn {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.export-btn:hover {
+    background-color: #45a049;
+}
+
+.instruction {
+    color: #aaa;
+    margin-left: 15px;
+    font-size: 14px;
+}
 
 /* TABLE CONTAINER */
 .table-container {
     width: 80%;
     overflow-x: auto;
-    border: 2px solid #555;
-    background-color: black;
+
+    padding: 4px;
+    /* 2. Apply a gradient background */
+    background-image: linear-gradient(to right, red, orange, yellow, green, blue, indigo, violet);
+    /* 3. Clip the background: outer is the border-box, inner is the padding-box (the actual content area) */
+    background-clip: padding-box, border-box;
+    background-origin: border-box;
+    /* Ensures the gradient starts from the border edge */
 }
 
 /* TABLE STYLES */
 table {
-    table-layout: fixed; /* REQUIRED for resizing */
+    table-layout: fixed;
+    /* REQUIRED for resizing */
     width: 100%;
     border-collapse: collapse;
-    border-right: 3px solid #555;
+    border: 3px solid #555;
     color: white;
+    background-color: #000000;
 }
 
 /* HEADER STYLES */
-thead { background-color: #000000; }
+thead {
+    background-color: #000000;
+}
 
 .meta-header td {
     padding: 20px;
@@ -69,11 +228,25 @@ thead { background-color: #000000; }
     font-weight: bold;
     border-bottom: 2px solid #555;
 }
-#title-cell { padding: 14px 4px; color: #ffffff; text-align: center; font-size: 60px}
-#date-cell { text-align: left; padding: 4px; background-color: #0b132b; color:#ffffff; font-size: 38px; }
+
+#title-cell {
+    padding: 14px 4px;
+    color: #ffffff;
+    text-align: center;
+    font-size: 60px
+}
+
+#date-cell {
+    text-align: left;
+    padding: 4px;
+    background-color: #0b132b;
+    color: #ffffff;
+    font-size: 38px;
+}
 
 th {
-    position: relative; /* Anchor for resizer */
+    position: relative;
+    /* Anchor for resizer */
     text-align: center;
     padding: 12px 2px;
     font-size: 36px;
@@ -81,27 +254,39 @@ th {
     border-right: 1px solid #555;
     border-bottom: 2px solid #555;
     white-space: nowrap;
-    overflow: hidden; /* Hide overflow text */
+    overflow: hidden;
+    /* Hide overflow text */
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-th:nth-child(1){
+th.col-🌏,
+th.col-📢 {
+    font-size: 20px;
+}
+
+th:nth-child(2) {
     color: #adb5bd;
 }
-th:nth-child(2){
+
+th:nth-child(3) {
     color: #f72585;
 }
-th:nth-child(3){
+
+th:nth-child(4) {
     color: #ffff3f;
 }
-th:nth-child(4){
+
+th:nth-child(5) {
     color: #4cc9f0;
 }
-th:nth-child(5), th:nth-child(6){
+
+th:nth-child(6),
+th:nth-child(7) {
     color: #adb5bd;
 }
-th:nth-child(6){
+
+th:nth-child(7) {
     text-align: left;
     padding-left: 20px;
 }
@@ -116,56 +301,136 @@ td {
     overflow: hidden;
     text-overflow: ellipsis;
 }
+
+/* Remove vertical borders between data cells in the table body */
+tbody td {
+    border-left: none !important;
+    border-right: none !important;
+}
+
+/* FIRST COLUMN (FLAG) STYLES */
+tbody td:nth-child(1) {
+    padding: 0 !important;
+    font-size: 58px;
+    /* Maximize size within standard row height (approx 60px) */
+    text-align: center;
+    vertical-align: middle;
+}
+
+tbody tr.star-row td:nth-child(1) {
+    font-size: 100px;
+    /* Maximize size within star-height (104px) */
+}
+
 .star-height {
     height: 104px;
 }
 
-td:nth-child(1){
-    text-align: right;
+td:nth-child(2),
+.col-地点 {
+    text-align: center;
     font-size: 36px;
+    white-space: normal !important;
+    /* Allow wrapping by default */
+    overflow: visible;
+    text-overflow: clip;
+    padding: 5px;
 }
-td:nth-child(2), 
-td:nth-child(3){
+
+.name-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.name-text {
+    text-align: right;
+    flex: 1;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: normal !important;
+    /* Default to wrapping */
+}
+
+/* Force nowrap for STAR rows to allow font resizing to work */
+tr.star-row .name-text {
+    white-space: nowrap !important;
+}
+
+.name-icons {
+    flex-shrink: 0;
+    margin-left: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+td:nth-child(3),
+td:nth-child(4) {
     padding-right: 50px;
-    font-size: 42px; /* Larger than normal 20px */
+    font-size: 42px;
+    /* Larger than normal 20px */
     font-weight: bold;
-    color: #aaddff; /* Light blue number color */
-    text-align: right; /* Numbers usually look better right-aligned */
+    color: #aaddff;
+    /* Light blue number color */
+    text-align: right;
+    /* Numbers usually look better right-aligned */
 }
-td:nth-child(4){
+
+td:nth-child(5) {
     padding-right: 40px;
     font-size: 42px;
     font-weight: bold;
     color: #aaddff;
     text-align: right;
 }
-td:nth-child(5){
+
+td:nth-child(6),
+.col-纬度 {
     text-align: right;
-    padding-right:12px;
-    color:#aaa;
-}
-td:nth-child(6){
-    text-align: right;
-    padding-right:44px;
-    color:#aaa;
+    padding-right: 12px;
+    color: #aaa;
 }
 
-tbody tr:hover { background-color: #111; }
+td:nth-child(7),
+.col-海拔 {
+    text-align: right;
+    padding-right: 28px;
+    color: #aaa;
+}
+
+td.col-📢,
+td.col-stereotype {
+    text-align: left !important;
+    padding-left: 20px !important;
+    color: #aaa;
+    white-space: normal !important;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+}
+
+tbody tr:hover {
+    background-color: #111;
+}
 
 .icon-diamond {
-  filter: hue-rotate(120deg) saturate(1.2); 
+    filter: hue-rotate(120deg) saturate(1.2);
 }
+
 .icon-lightning {
-  filter: hue-rotate(280deg);
+    filter: hue-rotate(280deg);
 }
+
 .icon-snow {
-  filter: brightness(0) invert(27%) sepia(51%) saturate(2878%) hue-rotate(310deg) brightness(104%) contrast(97%);
+    filter: brightness(0) invert(27%) sepia(51%) saturate(2878%) hue-rotate(310deg) brightness(104%) contrast(97%);
 }
+
 .ice-cube {
-  /* 
+    /* 
      1. hue-rotate(30deg): Shifts the native Cyan (~200°) to Royal Blue (~230°)
      2. saturate(3): Forces the pale ice to become vivid
      3. brightness(0.9): Darkens it slightly to match the depth of #4361ee
   */
-  filter: hue-rotate(30deg) saturate(3) brightness(0.9);
+    filter: hue-rotate(30deg) saturate(3) brightness(0.9);
 }

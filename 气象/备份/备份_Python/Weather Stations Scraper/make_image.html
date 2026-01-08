@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,23 +8,42 @@
     <link rel="stylesheet" href="make_image.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
+
 <body>
 
-    <div class="controls">
-        <div class="input-group">
-            <label for="data-source">选择区域:</label>
-            <select id="data-source">
-                <!-- Options will be filled by JS -->
-            </select>
-            <button id="btn-load">确定</button>
-        </div>
+    <div id="controls-wrapper">
+        <div class="controls">
+            <div class="input-group">
+                <label for="data-source">选择区域:</label>
+                <select id="data-source">
+                    <!-- Options will be filled by JS -->
+                </select>
+                <label for="date-input" style="margin-left: 15px;">日期:</label>
+                <input type="date" id="date-input">
+            </div>
+            <div class="input-group">
+                <label>版本:</label>
+                <label class="radio-label"><input type="radio" name="table-version" value="classic"> 经典版</label>
+                <label class="radio-label"><input type="radio" name="table-version" value="stereotype" checked>
+                    特点版</label>
+                <button id="btn-load">确定</button>
+            </div>
 
-        <!--
-        <div class="action-group">
-            <button id="btn-export" class="export-btn">📸 Save as High-Res Image</button>
-            <span class="instruction">Drag the red lines between headers to resize columns.</span>
+            <div class="width-controls" id="width-controls-panel">
+                <div id="width-inputs-container" class="width-inputs">
+                    <!-- Dynamic inputs will be added here -->
+                </div>
+                <div class="width-actions">
+                    <button id="btn-submit-widths">提交宽度</button>
+                    <span id="width-error-msg" class="error-msg"></span>
+                </div>
+            </div>
         </div>
-        -->
+    </div>
+
+    <div id="controls-toggle" class="controls-toggle-bar">
+        <span class="toggle-text">收起/展开 控制面板</span>
+        <span class="toggle-icon">▲</span>
     </div>
 
     <!-- The Table Wrapper -->
@@ -48,4 +68,5 @@
     <script type="module" src="make_image.js"></script>
 
 </body>
+
 </html>
