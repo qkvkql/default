@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>Earth Visualization</title>
+    <script src="https://cesium.com/downloads/cesiumjs/releases/1.113/Build/Cesium/Cesium.js"></script>
+    <link href="https://cesium.com/downloads/cesiumjs/releases/1.113/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+    <style>
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #000;
+        }
+
+        #cesiumContainer {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Sidebar Styling */
+        #sidebar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 300px;
+            height: 100%;
+            background: rgba(30, 30, 30, 0.95);
+            color: #eee;
+            display: flex;
+            flex-direction: column;
+            z-index: 100;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.5);
+            transition: transform 0.3s ease;
+        }
+
+        #sidebar.hidden {
+            transform: translateX(-100%);
+        }
+
+        .sidebar-header {
+            padding: 15px;
+            background: #252525;
+            border-bottom: 1px solid #444;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .sidebar-header h2 {
+            margin: 0;
+            font-size: 1.2em;
+            color: #64b5f6;
+        }
+
+        .controls-section {
+            padding: 15px;
+            border-bottom: 1px solid #444;
+        }
+
+        .control-group {
+            margin-bottom: 8px;
+        }
+
+        .control-group label {
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+        }
+
+        .control-group input {
+            margin-right: 8px;
+        }
+
+        .index-section {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px 0;
+        }
+
+        .station-item {
+            padding: 8px 15px;
+            border-bottom: 1px solid #333;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-size: 0.9em;
+        }
+
+        .station-item:hover {
+            background: #3a3a3a;
+        }
+
+        .station-item .sub-text {
+            font-size: 0.8em;
+            color: #888;
+            margin-top: 2px;
+        }
+
+        /* Toggle Button */
+        #toggleSidebarBtn {
+            position: absolute;
+            top: 15px;
+            left: 315px;
+            z-index: 101;
+            background: rgba(30, 30, 30, 0.8);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: left 0.3s ease;
+        }
+
+        #sidebar.hidden+#cesiumContainer+#toggleSidebarBtn {
+            left: 15px;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #222;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #555;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #777;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="sidebar">
+        <div class="sidebar-header">
+            <h2>Station Controls</h2>
+        </div>
+
+        <div class="controls-section">
+            <h4 style="margin-top:0; margin-bottom:10px; color:#aaa;">Visible Columns</h4>
+            <div class="control-group"><label><input type="checkbox" id="col_cn_name" checked> Name</label></div>
+            <div class="control-group"><label><input type="checkbox" id="col_stereotype" checked> Stereotype</label>
+            </div>
+            <div class="control-group"><label><input type="checkbox" id="col_min"> Min Temp</label></div>
+            <div class="control-group"><label><input type="checkbox" id="col_avg"> Avg Temp</label></div>
+            <div class="control-group"><label><input type="checkbox" id="col_max"> Max Temp</label></div>
+        </div>
+
+        <div class="controls-section">
+            <button id="resetViewBtn"
+                style="width:100%; padding:8px; background:#444; border:none; color:white; cursor:pointer;">Reset
+                Camera</button>
+        </div>
+
+        <div class="index-section" id="stationList">
+            <!-- Station items will be injected here -->
+            <div style="padding:15px; color:#777; text-align:center;">Loading...</div>
+        </div>
+    </div>
+
+    <div id="cesiumContainer"></div>
+    <button id="toggleSidebarBtn">☰</button>
+
+    <script>
+        // --- Configuration ---
+        // Distance at which labels start appearing (meters)
+        const LABEL_SHOW_DISTANCE = 500000;
+
+        // --- Viewer Setup ---
+        const viewer = new Cesium.Viewer('cesiumContainer', {
+            baseLayerPicker: true,
+            fullscreenButton: false,
+            geocoder: false,
+            homeButton: false,
+            infoBox: true,
+            sceneModePicker: true,
+            selectionIndicator: true,
+            timeline: false,
+            animation: false,
+            navigationHelpButton: false,
+            scene3DOnly: true,
+            skyBox: false, // Disable stars
+            contextOptions: {
+                webgl: {
+                    alpha: true,
+                }
+            }
+        });
+
+        // Make background black/solid
+        viewer.scene.backgroundColor = Cesium.Color.BLACK;
+        viewer.scene.globe.baseColor = Cesium.Color.BLACK;
+
+        // Remove Credits for cleaner UI
+        viewer.scene.globe.depthTestAgainstTerrain = false;
+
+        // State
+        const stations = []; // Will hold raw data
+        const entities = {}; // Map ID -> Entity
+
+        // --- Loading Data ---
+        async function init() {
+            try {
+                // Load Borders
+                await Cesium.KmlDataSource.load('default.kml', {
+                    camera: viewer.scene.camera,
+                    canvas: viewer.scene.canvas,
+                    clampToGround: true
+                }).then(ds => viewer.dataSources.add(ds));
+
+                // Load Stations JSON
+                const response = await fetch('stations.json');
+                const data = await response.json();
+
+                const listContainer = document.getElementById('stationList');
+                listContainer.innerHTML = ''; // Clear loading text
+
+                data.forEach((s, index) => {
+                    stations.push(s);
+                    // Create Entity
+                    const entity = viewer.entities.add({
+                        id: 'station_' + index,
+                        position: Cesium.Cartesian3.fromDegrees(s.lon, s.lat),
+                        point: {
+                            pixelSize: 8,
+                            color: Cesium.Color.fromCssColorString('#00BFFF'),
+                            outlineColor: Cesium.Color.BLACK,
+                            outlineWidth: 2,
+                            distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 50000000) // Always visible point
+                        },
+                        label: {
+                            text: getLabelText(s),
+                            font: '14px monospace',
+                            fillColor: Cesium.Color.WHITE,
+                            style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+                            outlineWidth: 2,
+                            verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+                            pixelOffset: new Cesium.Cartesian2(0, -10),
+                            // Only show label when zoomed in
+                            distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, LABEL_SHOW_DISTANCE),
+                            disableDepthTestDistance: Number.POSITIVE_INFINITY
+                        },
+                        // Store raw data for reference
+                        properties: s
+                    });
+                    entities[index] = entity;
+
+                    // Add to Sidebar List
+                    const item = document.createElement('div');
+                    item.className = 'station-item';
+                    item.innerHTML = `<div>${s.cn_name}</div><div class="sub-text">${s.province_capital || ''} ${s.country}</div>`;
+                    item.onclick = () => {
+                        viewer.camera.flyTo({
+                            destination: Cesium.Cartesian3.fromDegrees(s.lon, s.lat, 50000)
+                        });
+                    };
+                    listContainer.appendChild(item);
+                });
+
+                // Initial view
+                viewer.camera.flyTo({
+                    destination: Cesium.Cartesian3.fromDegrees(105.0, 35.0, 10000000.0)
+                });
+
+            } catch (err) {
+                console.error("Error loading data", err);
+                alert("Error loading data. See console.");
+            }
+        }
+
+        // --- Dynamic Label Logic ---
+        function getLabelText(s) {
+            let parts = [];
+
+            if (document.getElementById('col_cn_name').checked && s.cn_name) parts.push(s.cn_name);
+            if (document.getElementById('col_stereotype').checked && s.stereotype) parts.push(`[${s.stereotype}]`);
+            // Temps
+            let stats = [];
+            if (document.getElementById('col_min').checked && s.min != null) stats.push(`Min:${s.min}`);
+            if (document.getElementById('col_avg').checked && s.avg != null) stats.push(`Avg:${s.avg}`);
+            if (document.getElementById('col_max').checked && s.max != null) stats.push(`Max:${s.max}`);
+
+            let label = parts.join(' ');
+            if (stats.length > 0) label += '\n' + stats.join(' ');
+
+            return label;
+        }
+
+        function updateAllLabels() {
+            stations.forEach((s, index) => {
+                const entity = entities[index];
+                if (entity) {
+                    entity.label.text = getLabelText(s);
+                }
+            });
+        }
+
+        // --- Event Listeners ---
+        const toggles = ['col_cn_name', 'col_stereotype', 'col_min', 'col_avg', 'col_max'];
+        toggles.forEach(id => {
+            document.getElementById(id).addEventListener('change', updateAllLabels);
+        });
+
+        document.getElementById('toggleSidebarBtn').onclick = () => {
+            const sb = document.getElementById('sidebar');
+            const btn = document.getElementById('toggleSidebarBtn');
+            sb.classList.toggle('hidden');
+            if (sb.classList.contains('hidden')) {
+                btn.style.left = '15px';
+            } else {
+                btn.style.left = '315px';
+            }
+        };
+
+        document.getElementById('resetViewBtn').onclick = () => {
+            viewer.camera.flyTo({
+                destination: Cesium.Cartesian3.fromDegrees(105.0, 35.0, 10000000.0)
+            });
+        };
+
+        // Run
+        init();
+
+    </script>
+</body>
+
+</html>

@@ -111,7 +111,11 @@
       "header_count_tmax": "Count TMAX",
       "starting_date_label": "Starting Date (MM-DD)",
       "invalid_format_warning": "Invalid format! Please use MM-DD (e.g. 07-16)",
-      "date_not_found": "Date {date} not found in this station's record."
+      "date_not_found": "Date {date} not found in this station's record.",
+      "copy_table_excel": "Copy Table for Excel",
+      "copy_processing": "Copying table...",
+      "copy_success": "Table copied! Paste into Excel.",
+      "copy_fail": "Copy failed."
     },
     "thresholds": {
       "tmin_threshold": "TMIN Threshold",
@@ -348,9 +352,9 @@
     "links": {
       "ghcnd_stations_list": "GHCND站点列表",
       "gsod_stations_list": "GSOD站点列表",
-      "view_extreme_temps": "分日期极端气温",
+      "view_extreme_temps": "日期极端",
       "view_period_stats": "冬/夏",
-      "view_year_stats": "全年逐月统计"
+      "view_year_stats": "月份和年"
     },
     "thresholds": {
       "tmin_threshold": "夜温阈值",
@@ -460,12 +464,12 @@
       "valid_days_tmin": "夜温天数总计",
       "valid_days_tavg": "均温天数总计",
       "valid_days_tmax": "昼温天数总计",
-      "min_monthly_avg_tmin": "月均夜温最小值",
-      "min_monthly_avg_tavg": "月均气温最小值",
-      "min_monthly_avg_tmax": "月均昼温最小值",
-      "max_monthly_avg_tmin": "月均夜温最大值",
-      "max_monthly_avg_tavg": "月均气温最大值",
-      "max_monthly_avg_tmax": "月均昼温最大值"
+      "min_monthly_avg_tmin": "月份: 最低夜温平均",
+      "min_monthly_avg_tavg": "月份: 最低月均温",
+      "min_monthly_avg_tmax": "月份: 最低昼温平均",
+      "max_monthly_avg_tmin": "月份: 最高夜温平均",
+      "max_monthly_avg_tavg": "月份: 最高月均温",
+      "max_monthly_avg_tmax": "月份: 最高昼温平均"
     },
     "messages": {
       "copied_to_clipboard": "已复制到剪贴板!",
@@ -548,7 +552,11 @@
       "header_count_tmax": "昼温总计",
       "starting_date_label": "起始日期",
       "invalid_format_warning": "格式错误！请使用 MM-DD 格式 (如 07-16)",
-      "date_not_found": "在该站点的记录中未找到日期 {date}。"
+      "date_not_found": "在该站点的记录中未找到日期 {date}。",
+      "copy_table_excel": "复制表格(Excel)",
+      "copy_processing": "正在复制表格...",
+      "copy_success": "表格已复制！请粘贴到 Excel。",
+      "copy_fail": "复制失败。"
     },
     "modal": {
       "select_period": "选择冬/夏",

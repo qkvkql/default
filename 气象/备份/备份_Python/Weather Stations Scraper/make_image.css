@@ -199,7 +199,7 @@ button {
 
     padding: 4px;
     /* 2. Apply a gradient background */
-    background-image: linear-gradient(to right, red, orange, yellow, green, blue, indigo, violet);
+    background-image: linear-gradient(to right, #03045e, #0077b6, #00b4d8, #90e0ef, #caf0f8);
     /* 3. Clip the background: outer is the border-box, inner is the padding-box (the actual content area) */
     background-clip: padding-box, border-box;
     background-origin: border-box;
@@ -260,8 +260,12 @@ th {
     white-space: nowrap;
 }
 
+td.col-🌏 {
+    background-color: #a3b18a;
+}
+
 th.col-🌏,
-th.col-📢 {
+th.col-🪪 {
     font-size: 20px;
 }
 
@@ -400,7 +404,7 @@ td:nth-child(7),
     color: #aaa;
 }
 
-td.col-📢,
+td.col-🪪,
 td.col-stereotype {
     text-align: left !important;
     padding-left: 20px !important;

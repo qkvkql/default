@@ -327,8 +327,8 @@ def get_daily_temperature_ogimet(wmo, tz): #中国和蒙古20-20时区是12，�
                 c1 = cols[0].text.strip()
                 c2 = cols[1].text.strip()
                 c3 = cols[2].text.strip()
-                c6 = cols[5].text.strip()
-                c7 = cols[6].text.strip()
+                c6 = cols[6].text.strip() #ogimet网站今天(260218)多加了一列，原来的六七列对应新的七八列
+                c7 = cols[7].text.strip()
                 
                 if check_datetime(c1, c2, target_date, tz)['in24']:
                     if is_valid_simple_number(c3) and float(c3) > -100 and float(c3) < 60:

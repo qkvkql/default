@@ -245,6 +245,9 @@
                 <button onclick="handleStartDateInput()"
                     style="padding: 5px 10px; cursor: pointer; border-radius: 4px; border: 1px solid #ccc; background-color: #f8f9fa; margin-left: 5px;">{{
                     t('params.go') }}</button>
+                <button onclick="copyTableForExcel()"
+                    style="padding: 5px 10px; cursor: pointer; border-radius: 4px; border: 1px solid #ccc; background-color: #e2e6ea; margin-left: 5px;">{{
+                    t('extreme_temps.copy_table_excel') }}</button>
             </div>
         </div>
 
@@ -462,6 +465,61 @@
 
             tbody.innerHTML = '';
             rows.forEach(r => tbody.appendChild(r));
+        }
+
+        function copyTableForExcel() {
+            const originalTable = document.getElementById('extremeTable');
+            showToast("{{ t('extreme_temps.copy_processing') }}");
+
+            // Clone table to modify it for export without touching the easy-to-read web version
+            const tableClone = originalTable.cloneNode(true);
+
+            // 1. Clean up: Remove invisible elements (like hidden year lists in count columns)
+            const hiddenElements = tableClone.querySelectorAll('[style*="display:none"], [style*="display: none"]');
+            hiddenElements.forEach(el => el.remove());
+
+            // 2. Format Value + Year cells to be "Value <br> Year" so they stay in one cell in Excel
+            // We use specific mso style to prevent Excel from treating <br> as new row in some contexts
+            const complexCells = tableClone.querySelectorAll('.clickable-cell');
+            complexCells.forEach(cell => {
+                const valNode = cell.querySelector('.val');
+                const yearNode = cell.querySelector('.year-list');
+
+                // Only process if we identify this structure (Value + Years)
+                if (valNode) {
+                    const valText = valNode.innerText.trim();
+                    let newHtml = `<b>${valText}</b>`;
+
+                    if (yearNode) {
+                        const yearText = yearNode.innerText.trim();
+                        if (yearText) {
+                            // mso-data-placement:same-cell forces Excel to keep content in one cell
+                            newHtml += `<br style="mso-data-placement:same-cell;" /><span style="color:#555; font-size:0.85em;">${yearText}</span>`;
+                        }
+                    }
+                    cell.innerHTML = newHtml;
+                }
+            });
+
+            // 3. Copy the HTML
+            const tableHTML = tableClone.outerHTML;
+            // For plain text, we use the clone's text content. 
+            const tableText = tableClone.innerText || tableClone.textContent;
+
+            const clipboardItem = new ClipboardItem({
+                "text/html": new Blob([tableHTML], { type: "text/html" }),
+                "text/plain": new Blob([tableText], { type: "text/plain" })
+            });
+
+            navigator.clipboard.write([clipboardItem]).then(
+                function () {
+                    showToast("{{ t('extreme_temps.copy_success') }}");
+                },
+                function (err) {
+                    console.error("Copy failed:", err);
+                    showToast("{{ t('extreme_temps.copy_fail') }}");
+                }
+            );
         }
     </script>
     </div>
