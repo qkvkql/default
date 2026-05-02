@@ -83,6 +83,13 @@ namespace PythonManager
                 Command = "python app.py", 
                 Port = 1003 
             });
+
+            Projects.Add(new ProjectModel { 
+                Name = "Q-Weather均温", 
+                FolderPath = @"D:\文档\Python\计算八点法日均温(q-weather版)", 
+                Command = "python app.py", 
+                Port = 1004 
+            });
             // ==============================
 
             ProjectList.ItemsSource = Projects;

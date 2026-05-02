@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "Tyarchive Realtime Temperature Extractor",
+  "version": "1.0",
+  "description": "Extracts min, max, and avg temperatures of the latest date from tyarchive realtime.",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "clipboardWrite"
+  ],
+  "host_permissions": [
+    "*://119.29.229.118/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["*://119.29.229.118/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["popup.html", "popup.js", "styles.css", "stations.json"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "action": {
+    "default_title": "Tyarchive Extractor"
+  }
+}

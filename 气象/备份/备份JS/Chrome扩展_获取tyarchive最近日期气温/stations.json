@@ -1,0 +1,1046 @@
+[
+  {
+    "USAF": "54342",
+    "domes_id": "",
+    "level1": "辽宁",
+    "cn_name": "沈阳"
+  },
+  {
+    "USAF": "54252",
+    "domes_id": "",
+    "level1": "辽宁",
+    "cn_name": "西丰"
+  },
+  {
+    "USAF": "54161",
+    "domes_id": "",
+    "level1": "吉林",
+    "cn_name": "长春"
+  },
+  {
+    "USAF": "54273",
+    "domes_id": "",
+    "level1": "吉林",
+    "cn_name": "桦甸"
+  },
+  {
+    "USAF": "50953",
+    "domes_id": "",
+    "level1": "黑龙江",
+    "cn_name": "哈尔滨"
+  },
+  {
+    "USAF": "50673",
+    "domes_id": "",
+    "level1": "黑龙江",
+    "cn_name": "嘉荫"
+  },
+  {
+    "USAF": "50353",
+    "domes_id": "",
+    "level1": "黑龙江",
+    "cn_name": "呼玛"
+  },
+  {
+    "USAF": "50246",
+    "domes_id": "",
+    "level1": "黑龙江",
+    "cn_name": "塔河"
+  },
+  {
+    "USAF": "50247",
+    "domes_id": "",
+    "level1": "黑龙江",
+    "cn_name": "呼中"
+  },
+  {
+    "USAF": "50136",
+    "domes_id": "",
+    "level1": "黑龙江",
+    "cn_name": "漠河"
+  },
+  {
+    "USAF": "50137",
+    "domes_id": "",
+    "level1": "黑龙江",
+    "cn_name": "北极村"
+  },
+  {
+    "USAF": "50431",
+    "domes_id": "",
+    "level1": "内蒙古",
+    "cn_name": "根河"
+  },
+  {
+    "USAF": "50434",
+    "domes_id": "",
+    "level1": "内蒙古",
+    "cn_name": "图里河"
+  },
+  {
+    "USAF": "50425",
+    "domes_id": "",
+    "level1": "内蒙古",
+    "cn_name": "额尔古纳"
+  },
+  {
+    "USAF": "50524",
+    "domes_id": "",
+    "level1": "内蒙古",
+    "cn_name": "陈巴尔虎旗"
+  },
+  {
+    "USAF": "50527",
+    "domes_id": "",
+    "level1": "内蒙古",
+    "cn_name": "海拉尔"
+  },
+  {
+    "USAF": "50525",
+    "domes_id": "",
+    "level1": "内蒙古",
+    "cn_name": "鄂温克族自治旗"
+  },
+  {
+    "USAF": "50526",
+    "domes_id": "",
+    "level1": "内蒙古",
+    "cn_name": "牙克石"
+  },
+  {
+    "USAF": "50727",
+    "domes_id": "",
+    "level1": "内蒙古",
+    "cn_name": "阿尔山"
+  },
+  {
+    "USAF": "53392",
+    "domes_id": "",
+    "level1": "河北",
+    "cn_name": "康保"
+  },
+  {
+    "USAF": "55294",
+    "domes_id": "",
+    "level1": "西藏",
+    "cn_name": "安多"
+  },
+  {
+    "USAF": "56034",
+    "domes_id": "",
+    "level1": "青海",
+    "cn_name": "清水河"
+  },
+  {
+    "USAF": "52908",
+    "domes_id": "",
+    "level1": "青海",
+    "cn_name": "五道梁"
+  },
+  {
+    "USAF": "52323",
+    "domes_id": "",
+    "level1": "甘肃",
+    "cn_name": "马鬃山"
+  },
+  {
+    "USAF": "52101",
+    "domes_id": "",
+    "level1": "新疆",
+    "cn_name": "巴里坤"
+  },
+  {
+    "USAF": "51186",
+    "domes_id": "",
+    "level1": "新疆",
+    "cn_name": "青河"
+  },
+  {
+    "USAF": "51076",
+    "domes_id": "",
+    "level1": "新疆",
+    "cn_name": "阿勒泰"
+  },
+  {
+    "USAF": "51573",
+    "domes_id": "",
+    "level1": "新疆",
+    "cn_name": "吐鲁番"
+  },
+  {
+    "USAF": "51463",
+    "domes_id": "",
+    "level1": "新疆",
+    "cn_name": "乌鲁木齐"
+  },
+  {
+    "USAF": "51542",
+    "domes_id": "",
+    "level1": "新疆",
+    "cn_name": "巴音布鲁克"
+  },
+  {
+    "USAF": "51437",
+    "domes_id": "",
+    "level1": "新疆",
+    "cn_name": "昭苏"
+  },
+  {
+    "USAF": "53463",
+    "domes_id": "",
+    "level1": "内蒙古",
+    "cn_name": "呼和浩特"
+  },
+  {
+    "USAF": "54511",
+    "domes_id": "",
+    "level1": "北京市",
+    "cn_name": "北京"
+  },
+  {
+    "USAF": "54517",
+    "domes_id": "",
+    "level1": "天津市",
+    "cn_name": "天津"
+  },
+  {
+    "USAF": "53614",
+    "domes_id": "",
+    "level1": "宁夏",
+    "cn_name": "银川"
+  },
+  {
+    "USAF": "53698",
+    "domes_id": "",
+    "level1": "河北",
+    "cn_name": "石家庄"
+  },
+  {
+    "USAF": "53772",
+    "domes_id": "",
+    "level1": "山西",
+    "cn_name": "太原"
+  },
+  {
+    "USAF": "52866",
+    "domes_id": "",
+    "level1": "青海",
+    "cn_name": "西宁"
+  },
+  {
+    "USAF": "54823",
+    "domes_id": "",
+    "level1": "山东",
+    "cn_name": "济南"
+  },
+  {
+    "USAF": "57083",
+    "domes_id": "",
+    "level1": "河南",
+    "cn_name": "郑州"
+  },
+  {
+    "USAF": "57131",
+    "domes_id": "",
+    "level1": "陕西",
+    "cn_name": "西安"
+  },
+  {
+    "USAF": "57245",
+    "domes_id": "",
+    "level1": "陕西",
+    "cn_name": "安康"
+  },
+  {
+    "USAF": "57687",
+    "domes_id": "",
+    "level1": "湖南",
+    "cn_name": "长沙"
+  },
+  {
+    "USAF": "58606",
+    "domes_id": "",
+    "level1": "江西",
+    "cn_name": "南昌"
+  },
+  {
+    "USAF": "57494",
+    "domes_id": "",
+    "level1": "湖北",
+    "cn_name": "武汉"
+  },
+  {
+    "USAF": "58321",
+    "domes_id": "",
+    "level1": "安徽",
+    "cn_name": "合肥"
+  },
+  {
+    "USAF": "58238",
+    "domes_id": "",
+    "level1": "江苏",
+    "cn_name": "南京"
+  },
+  {
+    "USAF": "58457",
+    "domes_id": "",
+    "level1": "浙江",
+    "cn_name": "杭州"
+  },
+  {
+    "USAF": "58646",
+    "domes_id": "",
+    "level1": "浙江",
+    "cn_name": "丽水"
+  },
+  {
+    "USAF": "58847",
+    "domes_id": "",
+    "level1": "福建",
+    "cn_name": "福州"
+  },
+  {
+    "USAF": "59287",
+    "domes_id": "",
+    "level1": "广东",
+    "cn_name": "广州"
+  },
+  {
+    "USAF": "59758",
+    "domes_id": "",
+    "level1": "海南",
+    "cn_name": "海口"
+  },
+  {
+    "USAF": "59948",
+    "domes_id": "",
+    "level1": "海南",
+    "cn_name": "三亚"
+  },
+  {
+    "USAF": "59838",
+    "domes_id": "",
+    "level1": "海南",
+    "cn_name": "东方"
+  },
+  {
+    "USAF": "59431",
+    "domes_id": "",
+    "level1": "广西",
+    "cn_name": "南宁"
+  },
+  {
+    "USAF": "56966",
+    "domes_id": "",
+    "level1": "云南",
+    "cn_name": "元江"
+  },
+  {
+    "USAF": "56778",
+    "domes_id": "",
+    "level1": "云南",
+    "cn_name": "昆明"
+  },
+  {
+    "USAF": "57816",
+    "domes_id": "",
+    "level1": "贵州",
+    "cn_name": "贵阳"
+  },
+  {
+    "USAF": "57516",
+    "domes_id": "",
+    "level1": "重庆市",
+    "cn_name": "重庆"
+  },
+  {
+    "USAF": "57413",
+    "domes_id": "",
+    "level1": "四川",
+    "cn_name": "渠县"
+  },
+  {
+    "USAF": "56187",
+    "domes_id": "",
+    "level1": "四川",
+    "cn_name": "成都"
+  },
+  {
+    "USAF": "55591",
+    "domes_id": "",
+    "level1": "西藏",
+    "cn_name": "拉萨"
+  },
+  {
+    "USAF": "52267",
+    "domes_id": "",
+    "level1": "内蒙古",
+    "cn_name": "额济纳旗"
+  },
+  {
+    "USAF": "53478",
+    "domes_id": "",
+    "level1": "山西",
+    "cn_name": "右玉"
+  },
+  {
+    "USAF": "58367",
+    "domes_id": "",
+    "level1": "上海市",
+    "cn_name": "上海"
+  },
+  {
+    "USAF": "58826",
+    "domes_id": "",
+    "level1": "福建",
+    "cn_name": "沙县"
+  },
+  {
+    "USAF": "58623",
+    "domes_id": "",
+    "level1": "江西",
+    "cn_name": "上饶县"
+  },
+  {
+    "USAF": "57778",
+    "domes_id": "",
+    "level1": "湖南",
+    "cn_name": "衡东"
+  },
+  {
+    "USAF": "52889",
+    "domes_id": "",
+    "level1": "甘肃",
+    "cn_name": "兰州"
+  },
+  {
+    "USAF": "50341",
+    "domes_id": "",
+    "level1": "黑龙江",
+    "cn_name": "白山景区下"
+  },
+  {
+    "USAF": "",
+    "domes_id": "H2547",
+    "level1": "黑龙江",
+    "cn_name": "阿木尔镇"
+  },
+  {
+    "USAF": "",
+    "domes_id": "C0083",
+    "level1": "内蒙古",
+    "cn_name": "蒙兀室韦"
+  },
+  {
+    "USAF": "",
+    "domes_id": "C0111",
+    "level1": "内蒙古",
+    "cn_name": "特泥河试验站"
+  },
+  {
+    "USAF": "",
+    "domes_id": "C0197",
+    "level1": "内蒙古",
+    "cn_name": "乌玛零公里"
+  },
+  {
+    "USAF": "",
+    "domes_id": "C0062",
+    "level1": "内蒙古",
+    "cn_name": "得耳布尔"
+  },
+  {
+    "USAF": "",
+    "domes_id": "Y5322",
+    "level1": "新疆",
+    "cn_name": "禾木村"
+  },
+  {
+    "USAF": "",
+    "domes_id": "Y5308",
+    "level1": "新疆",
+    "cn_name": "吐尔洪乡"
+  },
+  {
+    "USAF": "",
+    "domes_id": "Y6708",
+    "level1": "新疆",
+    "cn_name": "三道海子"
+  },
+  {
+    "USAF": "",
+    "domes_id": "Y6770",
+    "level1": "新疆",
+    "cn_name": "可可托海雪场"
+  },
+  {
+    "USAF": "",
+    "domes_id": "Y5808",
+    "level1": "新疆",
+    "cn_name": "巴音郭楞乡"
+  },
+  {
+    "USAF": "",
+    "domes_id": "B3521",
+    "level1": "河北",
+    "cn_name": "塞罕坝"
+  },
+  {
+    "USAF": "53589",
+    "domes_id": "",
+    "level1": "山西",
+    "cn_name": "五台山中台"
+  },
+  {
+    "USAF": "",
+    "domes_id": "S1196",
+    "level1": "四川",
+    "cn_name": "德荣玛乡"
+  },
+  {
+    "USAF": "58437",
+    "domes_id": "",
+    "level1": "安徽",
+    "cn_name": "黄山"
+  },
+  {
+    "USAF": "54287",
+    "domes_id": "",
+    "level1": "吉林",
+    "cn_name": "长白山天池"
+  },
+  {
+    "USAF": "",
+    "domes_id": "Y5315",
+    "level1": "新疆",
+    "cn_name": "喀纳斯"
+  },
+  {
+    "USAF": "51337",
+    "domes_id": "",
+    "level1": "新疆",
+    "cn_name": "赛里木湖"
+  },
+  {
+    "USAF": "",
+    "domes_id": "S9355",
+    "level1": "四川",
+    "cn_name": "九寨沟长海"
+  },
+  {
+    "USAF": "",
+    "domes_id": "P1823",
+    "level1": "湖南",
+    "cn_name": "张家界天门山"
+  },
+  {
+    "USAF": "58968",
+    "domes_id": "",
+    "level1": "台湾",
+    "cn_name": "台北"
+  },
+  {
+    "USAF": "45007",
+    "domes_id": "",
+    "level1": "香港",
+    "cn_name": "香港"
+  },
+  {
+    "USAF": "45011",
+    "domes_id": "",
+    "level1": "澳门",
+    "cn_name": "澳门"
+  },
+  {
+    "USAF": "",
+    "domes_id": "H2595",
+    "level1": "黑龙江",
+    "cn_name": "北红村"
+  },
+  {
+    "USAF": "50349",
+    "domes_id": "",
+    "level1": "黑龙江",
+    "cn_name": "新林"
+  },
+  {
+    "USAF": "50134",
+    "domes_id": "",
+    "level1": "黑龙江",
+    "cn_name": "洛古河"
+  },
+  {
+    "USAF": "",
+    "domes_id": "H2613",
+    "level1": "黑龙江",
+    "cn_name": "富克山"
+  },
+  {
+    "USAF": "50674",
+    "domes_id": "",
+    "level1": "黑龙江",
+    "cn_name": "乌伊岭"
+  },
+  {
+    "USAF": "50655",
+    "domes_id": "",
+    "level1": "黑龙江",
+    "cn_name": "五大连池"
+  },
+  {
+    "USAF": "",
+    "domes_id": "H2523",
+    "level1": "黑龙江",
+    "cn_name": "新林大乌苏"
+  },
+  {
+    "USAF": "",
+    "domes_id": "H2597",
+    "level1": "黑龙江",
+    "cn_name": "塔河马林"
+  },
+  {
+    "USAF": "",
+    "domes_id": "H2516",
+    "level1": "黑龙江",
+    "cn_name": "松岭古源"
+  },
+  {
+    "USAF": "",
+    "domes_id": "H3503",
+    "level1": "黑龙江",
+    "cn_name": "爱辉新生"
+  },
+  {
+    "USAF": "",
+    "domes_id": "",
+    "level1": "黑龙江",
+    "cn_name": "嫩江尖山农场"
+  },
+  {
+    "USAF": "50962",
+    "domes_id": "",
+    "level1": "黑龙江",
+    "cn_name": "哈尔滨木兰"
+  },
+  {
+    "USAF": "50442",
+    "domes_id": "",
+    "level1": "黑龙江",
+    "cn_name": "加格达奇"
+  },
+  {
+    "USAF": "",
+    "domes_id": "C7406",
+    "level1": "内蒙古",
+    "cn_name": "乌力库玛"
+  },
+  {
+    "USAF": "",
+    "domes_id": "C0061",
+    "level1": "内蒙古",
+    "cn_name": "根河敖乡机场"
+  },
+  {
+    "USAF": "",
+    "domes_id": "C0146",
+    "level1": "内蒙古",
+    "cn_name": "冷极村"
+  },
+  {
+    "USAF": "",
+    "domes_id": "C0114",
+    "level1": "内蒙古",
+    "cn_name": "额尔古纳苏沁"
+  },
+  {
+    "USAF": "",
+    "domes_id": "C0022",
+    "level1": "内蒙古",
+    "cn_name": "伊图里河"
+  },
+  {
+    "USAF": "",
+    "domes_id": "C0322",
+    "level1": "内蒙古",
+    "cn_name": "苏沁团结队"
+  },
+  {
+    "USAF": "",
+    "domes_id": "",
+    "level1": "内蒙古",
+    "cn_name": "恩和"
+  },
+  {
+    "USAF": "",
+    "domes_id": "C0118",
+    "level1": "内蒙古",
+    "cn_name": "苏沁机耕队"
+  },
+  {
+    "USAF": "50445",
+    "domes_id": "",
+    "level1": "内蒙古",
+    "cn_name": "鄂伦春自治旗"
+  },
+  {
+    "USAF": "",
+    "domes_id": "C0113",
+    "level1": "内蒙古",
+    "cn_name": "三河回族乡"
+  },
+  {
+    "USAF": "",
+    "domes_id": "",
+    "level1": "内蒙古",
+    "cn_name": "三河马场五队"
+  },
+  {
+    "USAF": "",
+    "domes_id": "CA112",
+    "level1": "内蒙古",
+    "cn_name": "齐奇岭"
+  },
+  {
+    "USAF": "",
+    "domes_id": "C0065",
+    "level1": "内蒙古",
+    "cn_name": "满归"
+  },
+  {
+    "USAF": "",
+    "domes_id": "C0238",
+    "level1": "内蒙古",
+    "cn_name": "阿巴河"
+  },
+  {
+    "USAF": "50618",
+    "domes_id": "",
+    "level1": "内蒙古",
+    "cn_name": "新巴尔虎左旗"
+  },
+  {
+    "USAF": "53083",
+    "domes_id": "",
+    "level1": "内蒙古",
+    "cn_name": "那仁宝力格"
+  },
+  {
+    "USAF": "",
+    "domes_id": "C0130",
+    "level1": "内蒙古",
+    "cn_name": "陈旗那吉"
+  },
+  {
+    "USAF": "50548",
+    "domes_id": "",
+    "level1": "内蒙古",
+    "cn_name": "小二沟"
+  },
+  {
+    "USAF": "",
+    "domes_id": "C0291",
+    "level1": "内蒙古",
+    "cn_name": "苏沁建设队"
+  },
+  {
+    "USAF": "",
+    "domes_id": "C0189",
+    "level1": "内蒙古",
+    "cn_name": "根河敖乡"
+  },
+  {
+    "USAF": "",
+    "domes_id": "",
+    "level1": "内蒙古",
+    "cn_name": "辉河林场"
+  },
+  {
+    "USAF": "",
+    "domes_id": "",
+    "level1": "内蒙古",
+    "cn_name": "三河"
+  },
+  {
+    "USAF": "",
+    "domes_id": "",
+    "level1": "内蒙古",
+    "cn_name": "特泥河十队"
+  },
+  {
+    "USAF": "",
+    "domes_id": "C0117",
+    "level1": "内蒙古",
+    "cn_name": "苏沁红旗队"
+  },
+  {
+    "USAF": "",
+    "domes_id": "C0286",
+    "level1": "内蒙古",
+    "cn_name": "上库力科技站"
+  },
+  {
+    "USAF": "",
+    "domes_id": "",
+    "level1": "内蒙古",
+    "cn_name": "阿龙山防火办"
+  },
+  {
+    "USAF": "52645",
+    "domes_id": "",
+    "level1": "青海",
+    "cn_name": "野牛沟"
+  },
+  {
+    "USAF": "",
+    "domes_id": "X6032",
+    "level1": "青海",
+    "cn_name": "玛沁优云乡"
+  },
+  {
+    "USAF": "",
+    "domes_id": "B5276",
+    "level1": "山西",
+    "cn_name": "右玉吴家窑"
+  },
+  {
+    "USAF": "",
+    "domes_id": "B5737",
+    "level1": "山西",
+    "cn_name": "五台山北台"
+  },
+  {
+    "USAF": "",
+    "domes_id": "Y6832",
+    "level1": "新疆",
+    "cn_name": "一八一吊桥"
+  },
+  {
+    "USAF": "",
+    "domes_id": "C0363",
+    "level1": "内蒙古",
+    "cn_name": "谢尔塔拉五队"
+  },
+  {
+    "USAF": "",
+    "domes_id": "C0380",
+    "level1": "内蒙古",
+    "cn_name": "谢尔塔拉八队"
+  },
+  {
+    "USAF": "50915",
+    "domes_id": "",
+    "level1": "内蒙古",
+    "cn_name": "东乌珠穆沁"
+  },
+  {
+    "USAF": "50913",
+    "domes_id": "",
+    "level1": "内蒙古",
+    "cn_name": "乌拉盖"
+  },
+  {
+    "USAF": "54012",
+    "domes_id": "",
+    "level1": "内蒙古",
+    "cn_name": "西乌珠穆沁"
+  },
+  {
+    "USAF": "51087",
+    "domes_id": "",
+    "level1": "新疆",
+    "cn_name": "富蕴"
+  },
+  {
+    "USAF": "51060",
+    "domes_id": "",
+    "level1": "新疆",
+    "cn_name": "布尔津"
+  },
+  {
+    "USAF": "50861",
+    "domes_id": "",
+    "level1": "黑龙江",
+    "cn_name": "庆安"
+  },
+  {
+    "USAF": "",
+    "domes_id": "",
+    "level1": "内蒙古",
+    "cn_name": "罕达盖"
+  },
+  {
+    "USAF": "",
+    "domes_id": "C1484",
+    "level1": "内蒙古",
+    "cn_name": "白音敖包"
+  },
+  {
+    "USAF": "54276",
+    "domes_id": "",
+    "level1": "吉林省",
+    "cn_name": "靖宇"
+  },
+  {
+    "USAF": "",
+    "domes_id": "B5254",
+    "level1": "山西",
+    "cn_name": "杀虎口"
+  },
+  {
+    "USAF": "",
+    "domes_id": "",
+    "level1": "内蒙古",
+    "cn_name": "西乌珠尔"
+  },
+  {
+    "USAF": "",
+    "domes_id": "E9490",
+    "level1": "吉林省",
+    "cn_name": "靖宇板石林场"
+  },
+  {
+    "USAF": "",
+    "domes_id": "",
+    "level1": "内蒙古",
+    "cn_name": "库都尔"
+  },
+  {
+    "USAF": "50779",
+    "domes_id": "",
+    "level1": "黑龙江",
+    "cn_name": "抚远"
+  },
+  {
+    "USAF": "51058",
+    "domes_id": "",
+    "level1": "新疆",
+    "cn_name": "阿克达拉"
+  },
+  {
+    "USAF": "51068",
+    "domes_id": "",
+    "level1": "新疆",
+    "cn_name": "福海"
+  },
+  {
+    "USAF": "50429",
+    "domes_id": "",
+    "level1": "内蒙古",
+    "cn_name": "莫尔道嘎"
+  },
+  {
+    "USAF": "",
+    "domes_id": "Y6758",
+    "level1": "新疆",
+    "cn_name": "齐背岭水库"
+  },
+  {
+    "USAF": "",
+    "domes_id": "Y5347",
+    "level1": "新疆",
+    "cn_name": "塔克什肯镇"
+  },
+  {
+    "USAF": "",
+    "domes_id": "C0107",
+    "level1": "内蒙古",
+    "cn_name": "新佰路克"
+  },
+  {
+    "USAF": "50514",
+    "domes_id": "",
+    "level1": "内蒙古",
+    "cn_name": "满洲里"
+  },
+  {
+    "USAF": "",
+    "domes_id": "C0059",
+    "level1": "内蒙古",
+    "cn_name": "古里农场"
+  },
+  {
+    "USAF": "",
+    "domes_id": "C0320",
+    "level1": "内蒙古",
+    "cn_name": "兴牧"
+  },
+  {
+    "USAF": "51468",
+    "domes_id": "",
+    "level1": "新疆",
+    "cn_name": "天山大西沟"
+  },
+  {
+    "USAF": "",
+    "domes_id": "Y9590",
+    "level1": "新疆",
+    "cn_name": "黑石北湖"
+  },
+  {
+    "USAF": "",
+    "domes_id": "Y5316",
+    "level1": "新疆",
+    "cn_name": "吉木乃冰川站"
+  },
+  {
+    "USAF": "",
+    "domes_id": "X7049",
+    "level1": "青海",
+    "cn_name": "珍秦永郎达"
+  },
+  {
+    "USAF": "52633",
+    "domes_id": "",
+    "level1": "青海",
+    "cn_name": "托勒"
+  },
+  {
+    "USAF": "",
+    "domes_id": "C0064",
+    "level1": "内蒙古",
+    "cn_name": "金河"
+  },
+  {
+    "USAF": "59843",
+    "domes_id": "",
+    "level1": "海南",
+    "cn_name": "澄迈"
+  },
+  {
+    "USAF": "56976",
+    "domes_id": "",
+    "level1": "云南",
+    "cn_name": "元阳"
+  },
+  {
+    "USAF": "59213",
+    "domes_id": "",
+    "level1": "广西",
+    "cn_name": "田阳"
+  },
+  {
+    "USAF": "56001",
+    "domes_id": "",
+    "level1": "青海",
+    "cn_name": "沱沱河"
+  },
+  {
+    "USAF": "51701",
+    "domes_id": "",
+    "level1": "新疆",
+    "cn_name": "吐尔尕特"
+  },
+  {
+    "USAF": "56038",
+    "domes_id": "",
+    "level1": "四川",
+    "cn_name": "石渠"
+  },
+  {
+    "USAF": "",
+    "domes_id": "U6801",
+    "level1": "西藏",
+    "cn_name": "唐古拉山"
+  }
+]

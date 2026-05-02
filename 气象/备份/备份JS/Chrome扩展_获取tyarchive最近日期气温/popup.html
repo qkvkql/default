@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tyarchive Extractor</title>
+  <link rel="stylesheet" href="styles.css">
+  <!-- Google Fonts removed: blocked by extension CSP when loaded in iframe -->
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1>Weather Stations</h1>
+      <p>Search and select a station to extract data.</p>
+    </header>
+    
+    <div class="search-container">
+      <input type="text" id="searchInput" placeholder="Search by name, prefix, or ID..." autofocus>
+      <div class="search-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+      </div>
+    </div>
+
+    <div class="table-container">
+      <table id="stationsTable">
+        <thead>
+          <tr>
+            <th>USAF</th>
+            <th>Domes ID</th>
+            <th>Province</th>
+            <th>Name</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="stationsBody">
+          <!-- Rows will be populated by JavaScript -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
