@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>8-point &amp; 4-point daily mean temperature</title>
+  <style>
+    :root {
+      font-family: system-ui, "Segoe UI", Roboto, "PingFang SC", sans-serif;
+      color: #1a1a1a;
+      background: #f4f6f8;
+    }
+    body { margin: 0; padding: 1.5rem; line-height: 1.5; }
+    main {
+      max-width: 42rem;
+      margin: 0 auto;
+      background: #fff;
+      padding: 1.5rem 1.75rem;
+      border-radius: 10px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.08);
+    }
+    h1 { font-size: 1.35rem; margin: 0 0 0.35rem; }
+    .sub { font-size: 0.9rem; color: #555; margin: 0 0 1.25rem; }
+    label { display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 0.35rem; color: #374151; }
+    .grid {
+      display: grid;
+      gap: 1rem;
+      grid-template-columns: 1fr;
+    }
+    @media (min-width: 520px) {
+      .grid { grid-template-columns: 1fr 1fr; align-items: end; }
+    }
+    input, button {
+      font: inherit;
+      padding: 0.55rem 0.65rem;
+      border-radius: 8px;
+      border: 1px solid #c4c9d1;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    input:focus {
+      outline: 2px solid #2563eb;
+      outline-offset: 1px;
+      border-color: #2563eb;
+    }
+    button {
+      margin-top: 1rem;
+      background: #2563eb;
+      color: #fff;
+      border-color: #1d4ed8;
+      cursor: pointer;
+      font-weight: 600;
+      padding: 0.65rem 1rem;
+    }
+    button:hover { background: #1d4ed8; }
+    button.btn-monthly {
+      margin-top: 0.5rem;
+      background: #fff;
+      color: #1d4ed8;
+      border: 2px solid #2563eb;
+    }
+    button.btn-monthly:hover:not(:disabled) {
+      background: #eff6ff;
+    }
+    button.btn-monthly:disabled {
+      opacity: 0.65;
+      cursor: wait;
+    }
+    .monthly-actions {
+      margin-top: 1.75rem;
+      padding-top: 1.25rem;
+      border-top: 2px solid #e5e7eb;
+    }
+    .hint { font-size: 0.8rem; color: #6b7280; margin-top: 0.35rem; }
+    #result { margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid #e5e7eb; }
+    .avg-line {
+      font-size: 1.35rem;
+      font-weight: 700;
+      margin: 0.5rem 0 1rem;
+      line-height: 1.4;
+    }
+    .avg-line .e8 { color: #0f766e; }
+    .avg-line .e4 { color: #1d4ed8; }
+    .avg-line .sep { color: #9ca3af; font-weight: 400; padding: 0 1rem; }
+    .avg-line .na { color: #b45309; font-weight: 600; font-size: 1rem; }
+    .copy-wrap { display: inline-flex; align-items: center; }
+    .copy-num {
+      user-select: all;
+      cursor: copy;
+      border: 1px dashed transparent;
+      transition: border-color 0.15s ease, background-color 0.15s ease;
+    }
+    .copy-num:hover {
+      border-color: #93c5fd;
+      background: #eff6ff;
+    }
+    .section-h { font-size: 0.95rem; margin: 0 0 0.35rem; color: #111827; }
+    .empty { color: #b45309; font-weight: 600; font-size: 0.9rem; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin-top: 0.5rem; }
+    th, td { border: 1px solid #e5e7eb; padding: 0.4rem 0.55rem; text-align: left; }
+    th { background: #f9fafb; }
+    .err { color: #b91c1c; white-space: pre-wrap; font-size: 0.85rem; }
+    code { font-size: 0.82em; background: #f3f4f6; padding: 0.12em 0.4em; border-radius: 4px; }
+    .monthly {
+      margin-top: 1.75rem;
+      padding-top: 1.25rem;
+      border-top: 2px solid #e5e7eb;
+    }
+    .monthly h2 { font-size: 1.05rem; margin: 0 0 0.75rem; }
+    .monthly .blk { margin-bottom: 1.75rem; }
+    .monthly .blk:last-child { margin-bottom: 0; }
+    .monthly .stat { font-size: 0.9rem; color: #374151; margin: 0.25rem 0; }
+    .monthly .mean-big { font-size: 1.2rem; font-weight: 700; color: #111; }
+    details.missbox { margin-top: 0.35rem; font-size: 0.85rem; }
+    details.missbox summary { cursor: pointer; color: #4b5563; font-weight: 600; }
+    .miss-scroll {
+      max-height: 12rem;
+      overflow: auto;
+      margin-top: 0.35rem;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      padding: 0.35rem 0.65rem;
+      background: #fafafa;
+    }
+    .miss-scroll ul { margin: 0; padding-left: 1.1rem; }
+    .miss-scroll li { margin: 0.1rem 0; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>8-point &amp; 4-point daily mean temperature</h1>
+    <p class="sub">
+      Data from <a href="https://q-weather.info/" target="_blank" rel="noopener">q-weather.info</a>.
+      <strong>Daily 8-point:</strong> previous day <code>23:00</code> and selected day
+      <code>02, 05, 08, 11, 14, 17, 20</code> (all required for that mean).
+      <strong>Daily 4-point:</strong> selected day <code>02, 08, 14, 20</code> only.
+      After a daily result, use <strong>Load monthly averages</strong> to scan the whole calendar month (slow); partial means exclude missing hours from the average and list them.
+    </p>
+    <form id="f">
+      <div class="grid">
+        <div>
+          <label for="station">Weather station number</label>
+          <input
+            id="station"
+            name="station"
+            type="text"
+            inputmode="numeric"
+            pattern="[0-9]+"
+            autocomplete="off"
+            placeholder="e.g. 50136"
+            title="Digits only"
+            required
+          />
+        </div>
+        <div>
+          <label for="date">Date</label>
+          <input id="date" name="date" type="date" required />
+        </div>
+      </div>
+      <div class="hint">Source page for your inputs: <code id="linkSample"></code></div>
+      <button type="submit">Calculate</button>
+    </form>
+    <div id="result" hidden></div>
+  </main>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const params = new URLSearchParams(location.search);
+    const stationEl = $("station");
+    const dateEl = $("date");
+
+    function todayISO() {
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return y + "-" + m + "-" + day;
+    }
+
+    if (params.get("station")) stationEl.value = params.get("station");
+    if (params.get("date")) dateEl.value = params.get("date");
+    else if (!dateEl.value) dateEl.value = todayISO();
+
+    function syncUrl() {
+      const s = stationEl.value.trim();
+      const d = dateEl.value;
+      const q = new URLSearchParams();
+      if (s) q.set("station", s);
+      if (d) q.set("date", d);
+      const next = q.toString() ? "?" + q.toString() : location.pathname;
+      history.replaceState(null, "", next);
+    }
+
+    function sampleLink() {
+      const s = stationEl.value.trim() || "50136";
+      const d = dateEl.value || todayISO();
+      $("linkSample").textContent =
+        "https://q-weather.info/weather/" + s + "/history/?date=" + d;
+    }
+
+    stationEl.addEventListener("input", sampleLink);
+    dateEl.addEventListener("change", sampleLink);
+    sampleLink();
+
+    function esc(s) {
+      const d = document.createElement("div");
+      d.textContent = s;
+      return d.innerHTML;
+    }
+
+    function tableFromPoints(points) {
+      let h =
+        "<table><thead><tr><th>Time</th><th>Temp °C</th></tr></thead><tbody>";
+      for (const p of points) {
+        h +=
+          "<tr><td>" +
+          esc(p.slot) +
+          "</td><td>" +
+          (p.temperature != null ? esc(String(p.temperature)) : "—") +
+          "</td></tr>";
+      }
+      return h + "</tbody></table>";
+    }
+
+    function missingBlock(title, list) {
+      if (!list || list.length === 0) {
+        return "";
+      }
+      let lis = "";
+      for (const x of list) {
+        lis += "<li>" + esc(x) + "</li>";
+      }
+      return (
+        '<details class="missbox"><summary>' +
+        esc(title) +
+        " (" +
+        list.length +
+        ")</summary><div class=\"miss-scroll\"><ul>" +
+        lis +
+        "</ul></div></details>"
+      );
+    }
+
+    function monthlyActionsHtml() {
+      return (
+        '<div id="monthlyWrap" class="monthly-actions">' +
+        '<p class="hint">Uses the <strong>calendar month</strong> of the selected date (dozens of requests; often ~1 minute).</p>' +
+        '<button type="button" id="btnMonthly" class="btn-monthly">Load monthly averages</button>' +
+        '<div id="monthlyOut"></div></div>'
+      );
+    }
+
+    function monthlyBlock(m) {
+      if (!m || !m.month) return "";
+      const e8 = m.eight_point;
+      const e4 = m.four_point;
+      const stationLabel = m.station_name
+        ? "Station " + esc(m.station) + " (" + esc(m.station_name) + ")"
+        : "Station " + esc(m.station);
+      let h =
+        '<section class="monthly"><h2>' +
+        stationLabel +
+        " · Month " +
+        esc(m.month) +
+        " — partial means</h2>";
+
+      h += '<div class="blk">';
+      h += "<p><strong>8-point window</strong> (all hours used for any daily 8-point mean in this month)</p>";
+      if (e8.mean != null) {
+        h +=
+          '<p class="mean-big">' +
+          copyValueHtml(e8.mean) +
+          "</p><p class=\"stat\">Average of " +
+          e8.used_count +
+          " available hours (of " +
+          e8.required_count +
+          " in scope).</p>";
+      } else {
+        h += '<p class="stat">No temperature data in scope for this method.</p>';
+      }
+      h += missingBlock("Missing hours", e8.missing || []);
+      h += "</div>";
+
+      h += '<div class="blk">';
+      h += "<p><strong>4-point window</strong> (02 / 08 / 14 / 20 each day)</p>";
+      if (e4.mean != null) {
+        h +=
+          '<p class="mean-big">' +
+          copyValueHtml(e4.mean) +
+          "</p><p class=\"stat\">Average of " +
+          e4.used_count +
+          " available hours (of " +
+          e4.required_count +
+          " in scope).</p>";
+      } else {
+        h += '<p class="stat">No temperature data in scope for this method.</p>';
+      }
+      h += missingBlock("Missing hours", e4.missing || []);
+      h += "</div></section>";
+      return h;
+    }
+
+    function copyValueHtml(v) {
+      const s = String(v);
+      return (
+        '<span class="copy-wrap"><code class="copy-num" title="Click to copy">' +
+        esc(s) +
+        "</code></span>"
+      );
+    }
+
+    $("f").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      syncUrl();
+      const out = $("result");
+      out.hidden = false;
+      out.innerHTML = "<p>Loading…</p>";
+      const qs = new URLSearchParams({
+        station: stationEl.value.trim(),
+        date: dateEl.value,
+      });
+      try {
+        const r = await fetch("/api/calculate?" + qs.toString());
+        const data = await r.json();
+        if (!r.ok) {
+          const msg = (data && data.error) || "Request failed";
+          const det = data && data.detail ? "\n\n" + data.detail : "";
+          out.innerHTML = '<p class="err">' + esc(msg + det) + "</p>";
+          return;
+        }
+
+        let html =
+          "<p>Station " +
+          esc(data.station) +
+          (data.station_name ? " (" + esc(data.station_name) + ")" : "") +
+          ", date " +
+          esc(data.date) +
+          "</p>";
+
+        html += '<p class="avg-line"><span class="e8">8-point: ';
+        html += data.ok
+          ? copyValueHtml(data.average)
+          : '<span class="na">unable</span>';
+        html += '</span><span class="sep">·</span><span class="e4">4-point: ';
+        html += data.four_point_ok
+          ? copyValueHtml(data.four_point_average)
+          : '<span class="na">unable</span>';
+        html += '</span></p><p class="hint">Unit: \u00b0C</p>';
+
+        html += '<h2 class="section-h">Daily 8-point hours</h2>';
+        if (data.ok) {
+          html += tableFromPoints(data.points);
+        } else {
+          html +=
+            '<p class="empty">Daily 8-point cannot be computed — missing hour(s)</p><ul>';
+          for (const m of data.missing) {
+            html += "<li>" + esc(m) + "</li>";
+          }
+          html += "</ul>" + tableFromPoints(data.points);
+        }
+
+        if (!data.four_point_ok && (data.four_point_missing || []).length) {
+          html +=
+            '<p class="empty" style="margin-top:0.75rem">Daily 4-point cannot be computed — missing: ' +
+            esc((data.four_point_missing || []).join(", ")) +
+            "</p>";
+        }
+
+        html += monthlyActionsHtml();
+        out.innerHTML = html;
+
+        const btnMonthly = out.querySelector("#btnMonthly");
+        const monthlyOut = out.querySelector("#monthlyOut");
+        btnMonthly.addEventListener("click", async () => {
+          btnMonthly.disabled = true;
+          btnMonthly.textContent = "Loading…";
+          monthlyOut.innerHTML = "<p class=\"hint\">Scanning month…</p>";
+          const qm = new URLSearchParams({
+            station: stationEl.value.trim(),
+            date: dateEl.value,
+          });
+          try {
+            const rm = await fetch("/api/monthly?" + qm.toString());
+            const dm = await rm.json();
+            if (!rm.ok) {
+              const msg = (dm && dm.error) || "Request failed";
+              const det = dm && dm.detail ? "\n\n" + dm.detail : "";
+              monthlyOut.innerHTML = '<p class="err">' + esc(msg + det) + "</p>";
+              return;
+            }
+            monthlyOut.innerHTML = monthlyBlock(dm);
+            btnMonthly.textContent = "Reload monthly averages";
+          } catch (errm) {
+            monthlyOut.innerHTML = '<p class="err">' + esc(String(errm)) + "</p>";
+          } finally {
+            btnMonthly.disabled = false;
+            if (btnMonthly.textContent === "Loading…") {
+              btnMonthly.textContent = "Load monthly averages";
+            }
+          }
+        });
+      } catch (err) {
+        out.innerHTML = '<p class="err">' + esc(String(err)) + "</p>";
+      }
+    });
+
+    if (stationEl.value.trim() && dateEl.value) {
+      $("f").requestSubmit();
+    }
+
+    $("result").addEventListener("click", async (e) => {
+      const valueEl = e.target.closest(".copy-num");
+      if (!valueEl) return;
+      const value = valueEl.textContent;
+      if (!value) return;
+      try {
+        await navigator.clipboard.writeText(value);
+        valueEl.title = "Copied";
+        setTimeout(() => {
+          valueEl.title = "Click to copy";
+        }, 900);
+      } catch (_err) {
+        valueEl.title = "Copy failed";
+        setTimeout(() => {
+          valueEl.title = "Click to copy";
+        }, 900);
+      }
+    });
+  </script>
+</body>
+</html>
