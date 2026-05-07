@@ -1027,7 +1027,21 @@
       return false;
     };
 
-    await writeClipboard(clipText);
+    const copied = await writeClipboard(clipText);
+    if (copied) {
+      // Close the native data-view panel after a successful copy.
+      const closeBtn = Array.from(document.querySelectorAll('div')).find((el) => {
+        if ((el.textContent || '').trim() !== '关闭') return false;
+        const style = el.getAttribute('style') || '';
+        return /float:\s*right/i.test(style) && /cursor:\s*pointer/i.test(style);
+      });
+      if (closeBtn) {
+        closeBtn.click();
+        console.log('[Tyarchive] Clicked native "关闭" button after copy');
+      } else {
+        console.warn('[Tyarchive] Native "关闭" button not found after copy');
+      }
+    }
 
     // ── Show success toast with enlarged date ────────────────────────────────
     const minLabel = min || '—';

@@ -25,6 +25,26 @@
     color: #ddd;
 }
 
+.forced-date-row {
+    margin-bottom: 10px;
+}
+
+#my-weather-forced-latest-date {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px 10px;
+    border: 1px solid #666;
+    border-radius: 6px;
+    background-color: #111;
+    color: #fff;
+    font-size: 13px;
+}
+
+#my-weather-forced-latest-date:focus {
+    outline: none;
+    border-color: #8ab4f8;
+}
+
 /* --- Layouts --- */
 
 /* Top Row: Left controls vs Right Run button */
@@ -36,6 +56,12 @@
 
 /* Bottom Row: Auto and Copy buttons */
 .control-layout-bottom {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.control-layout-single {
     display: flex;
     gap: 10px;
     margin-bottom: 10px;
@@ -105,6 +131,27 @@
 .btn-copy {
     background-color: #009688; /* Teal */
     flex: 1;
+    padding: 10px !important;
+    font-size: 14px !important;
+}
+
+.btn-daily {
+    background-color: #3F51B5; /* Indigo */
+    flex: 1;
+    padding: 10px !important;
+    font-size: 14px !important;
+}
+
+.btn-test {
+    background-color: #795548; /* Brown */
+    flex: 1;
+    padding: 10px !important;
+    font-size: 14px !important;
+}
+
+.btn-corrected {
+    background-color: #607D8B; /* Blue Grey */
+    width: 100%;
     padding: 10px !important;
     font-size: 14px !important;
 }

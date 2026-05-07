@@ -262,6 +262,13 @@ def is_valid_simple_number(s):
     pattern = r'^[+-]?(\d+(\.\d*)?|\.\d+)$'
     return bool(re.match(pattern, s))
 
+def is_valid_usaf(value):
+    if isinstance(value, int):
+        return True
+    if isinstance(value, str):
+        return value.strip().isdigit()
+    return False
+
 def safe_convert_to_float(text_num):
     try:
         return round(float(text_num), 1)
@@ -750,7 +757,7 @@ def scrape_by_usaf(usaf_list):
     print(f"Starting scrape maximum reach {len(usaf_list)} URLs...")
 
     for ele in station_list:
-        if not isinstance(ele['USAF'], int):
+        if not is_valid_usaf(ele['USAF']):
             results.append({'wmo': '', 'min': '', 'max': '', 'avg': ''})
             print(f'{ele['cn_name']}\t不是WMO交换站')
             continue
