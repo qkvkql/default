@@ -410,6 +410,13 @@ async function getAvgAndCorrectionMapForAllStations(stations, baseMinMaxMap, sta
             const latest = getLatestDayAverageOnly(recordsMap);
             avgMap.set(key, latest.hasAll ? latest.averageStr : '');
 
+            const targetDateCheck = checkTargetDateExistsInRecords(recordsMap);
+            if (!targetDateCheck.exists) {
+                correctedMinMap.set(key, '');
+                correctedMaxMap.set(key, '');
+                continue;
+            }
+
             const periodValues = getLatestStatisticPeriodValues(recordsMap);
             const base = baseMinMaxMap.get(key) || {};
             const corrected = getCorrectedMinMax(base.min, base.max, periodValues);
@@ -578,6 +585,27 @@ function getLatestDayAverageOnly(recordsMap) {
         averageStr: calc.hasAll ? calc.averageStr : '',
         latestDateStr: `${pad2(targetDate.getMonth() + 1)}/${pad2(targetDate.getDate())}`
     };
+}
+
+function checkTargetDateExistsInRecords(recordsMap) {
+    const parsedEntries = [];
+    for (const [key, temp] of recordsMap.entries()) {
+        const dt = parseMMDDHH(key);
+        if (!dt || typeof temp !== 'number' || Number.isNaN(temp)) continue;
+        parsedEntries.push({ dt });
+    }
+    if (!parsedEntries.length) {
+        return { exists: false, targetDate: null };
+    }
+
+    const targetDate = resolveTargetDateForRecords(parsedEntries);
+    const exists = parsedEntries.some(entry =>
+        entry.dt.getFullYear() === targetDate.getFullYear() &&
+        entry.dt.getMonth() === targetDate.getMonth() &&
+        entry.dt.getDate() === targetDate.getDate()
+    );
+
+    return { exists, targetDate };
 }
 
 function parseNumberMaybe(value) {
