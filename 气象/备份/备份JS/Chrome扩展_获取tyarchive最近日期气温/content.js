@@ -397,6 +397,52 @@
       color: #64748b;
       text-align: right;
     }
+
+    /* ── Update button ── */
+    #update-section {
+      margin-top: 8px;
+      border-top: 1px solid #334155;
+      padding-top: 8px;
+    }
+    #update-btn {
+      width: 100%;
+      padding: 7px 14px;
+      border-radius: 8px;
+      border: 1px solid #6d28d9;
+      background: rgba(109,40,217,0.12);
+      color: #a78bfa;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s, color 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-family: inherit;
+      letter-spacing: 0.02em;
+    }
+    #update-btn:hover:not(:disabled) {
+      background: rgba(109,40,217,0.28);
+      border-color: #7c3aed;
+      color: #c4b5fd;
+    }
+    #update-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+    #update-btn.updating {
+      background: rgba(59,130,246,0.12);
+      border-color: #3b82f6;
+      color: #93c5fd;
+    }
+    #update-btn.success {
+      background: rgba(16,185,129,0.15);
+      border-color: #10b981;
+      color: #6ee7b7;
+    }
+    #update-btn.fail {
+      background: rgba(239,68,68,0.12);
+      border-color: #ef4444;
+      color: #fca5a5;
+    }
   `;
   shadow.appendChild(style);
 
@@ -447,6 +493,10 @@
           </div>
           <button id="add-btn" title="添加站点">＋</button>
         </div>
+      </div>
+      <div id="update-section">
+        <input type="file" id="excel-file-input" accept=".xlsx,.xls" style="display:none" />
+        <button id="update-btn" title="从 Excel 更新站点列表（stations.json）">🔄 更新站点列表</button>
       </div>
       <div id="toast"></div>
     </div>
@@ -1346,17 +1396,26 @@
     }
   });
 
-  // ── Load data ───────────────────────────────────────────────────────────────
+  // ── Load data (storage cache → bundled stations.json fallback) ─────────────
   (async () => {
     try {
+      // Prefer stations cached by the Update button (chrome.storage.local)
+      const stored = await chrome.storage.local.get('stations_override');
+      if (stored.stations_override && stored.stations_override.length > 0) {
+        allStations = stored.stations_override;
+        renderTable(getAllDisplayStations());
+        statusBar.textContent = `${allStations.length} stations (cached)`;
+        return;
+      }
+      // Fall back to bundled stations.json
       const url  = chrome.runtime.getURL('stations.json');
       const resp = await fetch(url);
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       allStations = await resp.json();
       renderTable(getAllDisplayStations());
     } catch (err) {
-      console.error('[Tyarchive] Failed to load stations.json:', err);
-      stationsBody.innerHTML = `<tr class="empty-row error-row"><td colspan="2">❌ Failed to load stations.json — check extension console.</td></tr>`;
+      console.error('[Tyarchive] Failed to load stations:', err);
+      stationsBody.innerHTML = `<tr class="empty-row error-row"><td colspan="2">❌ Failed to load stations — check extension console.</td></tr>`;
       statusBar.textContent = 'Error';
     }
   })();
@@ -1400,6 +1459,73 @@
   addBtn.addEventListener('click', doAddStation);
   // Enter key in the ID field submits
   addIdInput.addEventListener('keydown', e => { if (e.key === 'Enter') doAddStation(); });
+
+  // ── Update button: read Excel → parse → save to storage → re-render ─────────
+  const updateBtn       = shadow.getElementById('update-btn');
+  const excelFileInput  = shadow.getElementById('excel-file-input');
+
+  function setUpdateBtnState(state, text) {
+    updateBtn.classList.remove('updating', 'success', 'fail');
+    if (state) updateBtn.classList.add(state);
+    updateBtn.textContent = text;
+    updateBtn.disabled = (state === 'updating');
+  }
+
+  updateBtn.addEventListener('click', () => {
+    excelFileInput.value = ''; // allow re-selecting same file
+    excelFileInput.click();
+  });
+
+  excelFileInput.addEventListener('change', async () => {
+    const file = excelFileInput.files[0];
+    if (!file) return;
+
+    setUpdateBtnState('updating', '⏳ 正在解析…');
+
+    try {
+      // Read the Excel file as raw bytes
+      const buffer = await file.arrayBuffer();
+      const byteArray = Array.from(new Uint8Array(buffer));
+
+      // Ask background to parse in the page's main world (xlsx.full.min.js)
+      const xlsxUrl = chrome.runtime.getURL('xlsx.full.min.js');
+      const stations = await new Promise((resolve, reject) => {
+        chrome.runtime.sendMessage(
+          { action: 'parseExcel', byteArray, xlsxUrl },
+          (resp) => {
+            if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message));
+            if (resp && resp.ok) resolve(resp.stations);
+            else reject(new Error(resp?.error || '解析失败'));
+          }
+        );
+      });
+
+      if (!stations || stations.length === 0) {
+        throw new Error('未找到中国站点数据，请检查 Excel 文件列名（需含 country、USAF、domes_id、level1、cn_name）。');
+      }
+
+      // Persist to chrome.storage.local (survives panel close/reopen)
+      await chrome.storage.local.set({ stations_override: stations });
+
+      // Update in-memory list and re-render immediately
+      allStations = stations;
+      rerender();
+
+      // Also ask background to save stations.json to Downloads folder
+      const jsonStr = JSON.stringify(stations, null, 2);
+      chrome.runtime.sendMessage({ action: 'saveStationsJson', json: jsonStr }, () => {});
+
+      setUpdateBtnState('success', `✓ 已更新 ${stations.length} 个站点`);
+      showToast(`✓ 已从 Excel 加载 ${stations.length} 个站点`, 'success');
+      setTimeout(() => setUpdateBtnState(null, '🔄 更新站点列表'), 3500);
+
+    } catch (err) {
+      console.error('[Tyarchive] Update error:', err);
+      setUpdateBtnState('fail', '❌ 更新失败');
+      showToast('❌ ' + err.message);
+      setTimeout(() => setUpdateBtnState(null, '🔄 更新站点列表'), 3500);
+    }
+  });
 
   // ── Close button ────────────────────────────────────────────────────────────
   closeBtn.addEventListener('click', () => { panel.style.display = 'none'; });
