@@ -132,4 +132,122 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
 
+  // ── fetchAvgTemp: open localhost:1004, poll DOM until avg value ready ──────
+  // Opens a new tab to http://localhost:1004/?station=<5-digit>&date=<YYYY-MM-DD>,
+  // waits for the page to load, then polls the first
+  // <code class="copy-num" title="Click to copy"> element every 1.5 s until it
+  // has a stable (non-transient) value, or 30 s have elapsed.
+  // Returns { ok: true, avg: <string> } or { ok: false, error }.
+  // If the page returns "unable", avg is "" (data missing for that date).
+  if (request.action === 'fetchAvgTemp') {
+    const { station, date } = request;
+    if (!station || !date) {
+      sendResponse({ ok: false, error: 'Missing station or date' });
+      return false;
+    }
+
+    const url = `http://localhost:1004/?station=${station}&date=${date}`;
+
+    (async () => {
+      let newTab;
+      try {
+        // 1. Open the helper page in a background tab (not focused)
+        newTab = await chrome.tabs.create({ url, active: false });
+        const tabId = newTab.id;
+
+        // 2. Wait for the tab's initial page load to complete (up to 10 s)
+        await new Promise((resolve) => {
+          const timeout = setTimeout(() => {
+            chrome.tabs.onUpdated.removeListener(listener);
+            resolve(); // proceed even if still "loading"
+          }, 10000);
+
+          const listener = (updatedTabId, info) => {
+            if (updatedTabId === tabId && info.status === 'complete') {
+              clearTimeout(timeout);
+              chrome.tabs.onUpdated.removeListener(listener);
+              resolve();
+            }
+          };
+          chrome.tabs.onUpdated.addListener(listener);
+        });
+
+        // 3. Poll the DOM until the avg value is ready (up to 30 s, every 1.5 s).
+        //    Transient / not-yet-computed states to skip:
+        //      - element absent (null)
+        //      - empty text ""
+        //      - placeholder strings: "calculating", "loading", "…", "--", "..."
+        const POLL_INTERVAL_MS = 1500;
+        const POLL_TIMEOUT_MS  = 30000;
+        // Values that mean "not ready yet — keep polling".
+        // NOTE: "unable" is intentionally NOT here; it is a terminal result
+        // (page finished computing but data is missing) → breaks the loop immediately.
+        const TRANSIENT = new Set(['', 'calculating', 'loading', '…', '--', '...']);
+
+
+        let rawAvg  = null;
+        let elapsed = 0;
+
+        while (elapsed < POLL_TIMEOUT_MS) {
+          await new Promise(r => setTimeout(r, POLL_INTERVAL_MS));
+          elapsed += POLL_INTERVAL_MS;
+
+          let results;
+          try {
+            results = await chrome.scripting.executeScript({
+              target: { tabId },
+              func: () => {
+                // Primary target: the copy-num code element
+                const el = document.querySelector('code.copy-num[title="Click to copy"]');
+                if (el) return el.textContent.trim();
+                // Fallback: if the page shows "unable" in the surrounding container
+                // before populating code.copy-num, detect it early so we don't
+                // keep polling unnecessarily for the full 30 s.
+                const container = document.querySelector('span.e8');
+                if (container && container.textContent.toLowerCase().includes('unable')) {
+                  return 'unable';
+                }
+                return null;
+              }
+            });
+          } catch (scriptErr) {
+            // Tab may still be navigating after load; keep polling
+            console.warn(`[Tyarchive BG] fetchAvgTemp script error at ${elapsed} ms:`, scriptErr.message);
+            continue;
+          }
+
+          const val = results && results[0] && results[0].result;
+
+          // Accept the value only when the element exists AND has a non-transient string
+          if (val !== null && val !== undefined && !TRANSIENT.has(val.toLowerCase())) {
+            rawAvg = val;
+            console.log(`[Tyarchive BG] fetchAvgTemp: got "${rawAvg}" after ${elapsed} ms`);
+            break;
+          }
+
+          console.log(`[Tyarchive BG] fetchAvgTemp: polling (${elapsed} ms) — value=${JSON.stringify(val)}`);
+        }
+
+        if (!rawAvg) {
+          console.warn(`[Tyarchive BG] fetchAvgTemp: timed out after ${elapsed} ms, no value found`);
+        }
+
+        // "unable" → page has no mean temp for that date → return empty string
+        const avg = (!rawAvg || rawAvg.toLowerCase() === 'unable') ? '' : rawAvg;
+        sendResponse({ ok: true, avg });
+
+      } catch (err) {
+        console.error('[Tyarchive BG] fetchAvgTemp error:', err);
+        sendResponse({ ok: false, error: err.message || String(err) });
+      } finally {
+        // Always close the helper tab when done (success or failure)
+        if (newTab && newTab.id) {
+          try { await chrome.tabs.remove(newTab.id); } catch (_) {}
+        }
+      }
+    })();
+
+    return true; // keep message channel open for async sendResponse
+  }
+
 });

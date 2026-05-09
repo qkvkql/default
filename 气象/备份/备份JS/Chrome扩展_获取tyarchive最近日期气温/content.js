@@ -29,7 +29,8 @@
       top: 0;
       left: 0;
       width: 340px;
-      height: 660px;
+      height: auto;
+      max-height: 95vh;
       background: #0f172a;
       border: 1px solid #334155;
       border-left: none;
@@ -125,9 +126,85 @@
     }
     #search-input::placeholder { color: #64748b; }
 
+    /* ── Target date input + avg toggle row ── */
+    #date-wrap {
+      margin-top: 8px;
+      border-top: 1px solid #334155;
+      padding-top: 8px;
+    }
+    #date-label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 5px;
+    }
+    #date-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    #target-date-input {
+      width: 50%;
+      flex: none;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid #334155;
+      background: rgba(30,41,59,0.8);
+      color: #f8fafc;
+      font-size: 13px;
+      font-family: monospace;
+      letter-spacing: 0.06em;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    #target-date-input:focus {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.2);
+    }
+    #target-date-input::placeholder { color: #64748b; }
+
+    /* ── Avg-fetch toggle button ── */
+    #fetch-avg-toggle {
+      flex-shrink: 0;
+      padding: 7px 10px;
+      border-radius: 8px;
+      border: 1px solid #475569;
+      background: rgba(51,65,85,0.4);
+      color: #64748b;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.2s, border-color 0.2s, color 0.2s;
+      font-family: inherit;
+      letter-spacing: 0.02em;
+      line-height: 1.2;
+      text-align: center;
+    }
+    #fetch-avg-toggle:hover {
+      background: rgba(71,85,105,0.55);
+      border-color: #64748b;
+      color: #94a3b8;
+    }
+    #fetch-avg-toggle.active {
+      background: rgba(16,185,129,0.18);
+      border-color: #10b981;
+      color: #6ee7b7;
+    }
+    #fetch-avg-toggle.active:hover {
+      background: rgba(16,185,129,0.30);
+      border-color: #34d399;
+      color: #a7f3d0;
+    }
+
     /* ── Table container ── */
     #table-wrap {
       flex: 1;
+      max-height: 40%;
       overflow-y: auto;
       border-radius: 8px;
       border: 1px solid #334155;
@@ -250,6 +327,17 @@
       font-size: 16px;
       font-weight: 700;
       letter-spacing: 0.02em;
+    }
+    /* red highlight for toast when target date has no data */
+    #toast.no-data {
+      background: #7f1d1d;
+      border-color: #ef4444;
+      color: #fca5a5;
+    }
+    /* red select button when target date has no data */
+    .btn-select.no-data {
+      background: #dc2626 !important;
+      color: #fff !important;
     }
 
     /* ── Result button (replaces Select after successful retrieval) ── */
@@ -498,22 +586,51 @@
         <input type="file" id="excel-file-input" accept=".xlsx,.xls" style="display:none" />
         <button id="update-btn" title="从 Excel 更新站点列表（stations.json）">🔄 更新站点列表</button>
       </div>
+      <div id="date-wrap">
+        <label id="date-label" for="target-date-input">目标日期</label>
+        <div id="date-row">
+          <input id="target-date-input" type="text" placeholder="MM-DD" autocomplete="off" />
+          <button id="fetch-avg-toggle" title="开启后额外从均温辅助页获取日均温（可能等待最长 30 秒）">获取均温<br>关</button>
+        </div>
+      </div>
       <div id="toast"></div>
     </div>
   `;
   shadow.appendChild(panel);
 
   // ── References ──────────────────────────────────────────────────────────────
-  const dragHeader   = shadow.getElementById('drag-header');
-  const closeBtn     = shadow.getElementById('close-btn');
-  const searchInput  = shadow.getElementById('search-input');
-  const stationsBody = shadow.getElementById('stations-body');
-  const statusBar    = shadow.getElementById('status-bar');
-  const toast        = shadow.getElementById('toast');
+  const dragHeader      = shadow.getElementById('drag-header');
+  const closeBtn        = shadow.getElementById('close-btn');
+  const searchInput     = shadow.getElementById('search-input');
+  const stationsBody    = shadow.getElementById('stations-body');
+  const statusBar       = shadow.getElementById('status-bar');
+  const toast           = shadow.getElementById('toast');
+  const targetDateInput = shadow.getElementById('target-date-input');
+  const fetchAvgToggle  = shadow.getElementById('fetch-avg-toggle');
+
+  // ── Avg-fetch toggle state (default OFF) ─────────────────────────────────
+  let fetchAvgEnabled = false;
+  fetchAvgToggle.addEventListener('click', () => {
+    fetchAvgEnabled = !fetchAvgEnabled;
+    fetchAvgToggle.classList.toggle('active', fetchAvgEnabled);
+    fetchAvgToggle.innerHTML = fetchAvgEnabled ? '获取均温<br>开' : '获取均温<br>关';
+  });
+
+  // ── Set default target date to today in MM-DD format ────────────────────────
+  (() => {
+    const now = new Date();
+    const mm  = String(now.getMonth() + 1).padStart(2, '0');
+    const dd  = String(now.getDate()).padStart(2, '0');
+    targetDateInput.value = `${mm}-${dd}`;
+  })();
 
   let allStations     = [];
   let toastTimer      = null;
   let activeSelectBtn = null;   // btn-select that most recently triggered a search
+  // Per-operation ID: incremented each time a Select button is clicked.
+  // showTextDataView captures the ID at entry and discards stale results if it changed.
+  let operationCounter = 0;
+  let activeOpId       = 0;   // 0 means no operation in flight
   // Persists retrieved results across renderTable re-renders.
   // Key: `${usaf}|${domesId}`, Value: { clipText, minLabel, maxLabel }
   const resultMap = new Map();
@@ -976,50 +1093,144 @@
   // Column layout (0-indexed, tab-separated):
   //   0: date | 1: rainfall | 2: climate avg (1991-2020) | 3: (unused) |
   //   4: daily avg temp | 5: daily max temp | 6: daily min temp | (7+: rest)
-  // Target: latest displayed date where min OR max is not NaN.
+  // Target: row whose date column (format: MM月DD日) matches the user-specified MM-DD target.
   async function showTextDataView(rawText) {
     // Helper: treat 'NaN' string as empty
     const clean = v => (v || '').trim() === 'NaN' ? '' : (v || '').trim();
     const isValid = v => clean(v) !== '';  // has a real value
+
+    // Read the user-specified target date (MM-DD) and convert to MM月DD日 for matching.
+    // Data rows use the Chinese date format, e.g. "05月09日", at the START of each row.
+    const targetMMDD = (targetDateInput.value || '').trim();  // e.g. "05-09"
+    let targetDateStr = '';  // will be e.g. "05月09日"
+    if (targetMMDD) {
+      const parts = targetMMDD.split('-');
+      if (parts.length === 2) {
+        targetDateStr = `${parts[0]}月${parts[1]}日`;
+      }
+    }
 
     // Split into lines, discard blanks
     const lines = rawText.split('\n')
       .map(l => l.trim())
       .filter(l => l.length > 0);
 
-    // Walk from the bottom, find the latest row that:
-    //   • starts with a digit (data row, not a header)
-    //   • has >= 7 tab-separated columns
-    //   • has a non-NaN value for min (col 6) OR max (col 5)
+    // Find the row whose date column starts with the target MM月DD日 string.
+    // Data rows start with a digit and have >= 7 tab-separated columns.
     let targetCols = null;
-    for (let i = lines.length - 1; i >= 0; i--) {
+    for (let i = 0; i < lines.length; i++) {
       const cols = lines[i].split('\t');
       if (cols.length >= 7 && /^\d/.test(cols[0].trim())) {
-        const maxVal = clean(cols[5]);
-        const minVal = clean(cols[6]);
-        if (isValid(maxVal) || isValid(minVal)) {
+        const rowDate = cols[0].trim();  // e.g. "05月09日"
+        // Match: the date cell starts with MM月DD日 (date is at the start position)
+        if (targetDateStr && rowDate.startsWith(targetDateStr)) {
           targetCols = cols;
           break;
         }
-        // Both NaN — skip this date and continue searching
-        console.log(`[Tyarchive] Skipping ${cols[0].trim()} (both min/max are NaN)`);
       }
     }
 
-    if (!targetCols) {
-      showToast('未能找到有效气温数据！');
-      console.warn('[Tyarchive] showTextDataView: no valid data line found in:\n', rawText);
+    // Determine whether the target date had valid data
+    const max = targetCols ? clean(targetCols[5]) : '';  // daily max temp
+    const min = targetCols ? clean(targetCols[6]) : '';  // daily min temp
+    const dateFound = !!targetCols;
+    const hasData   = isValid(max) || isValid(min);
+    const noData    = !dateFound || !hasData;  // target date missing or both NaN
+
+    const date     = targetCols ? targetCols[0].trim() : (targetDateStr || targetMMDD);
+    let clipText = `${min}\t${max}`;
+
+    console.log(`[Tyarchive] Target: ${targetMMDD} (→ ${targetDateStr}) | dateFound=${dateFound} | min=${min || 'NaN'} max=${max || 'NaN'}`);
+
+    // ── Capture operation identity before any async work ─────────────────────
+    // myOpId is compared at every checkpoint; if activeOpId changed, a newer
+    // Select was clicked and this result belongs to a different station → discard.
+    const myOpId    = activeOpId;
+    const currentBtn = activeSelectBtn;
+
+    let isBasicStation = false;
+    if (currentBtn && currentBtn.isConnected) {
+      const row = currentBtn.closest('tr');
+      const checkedRadio = row?.querySelector('input[type="radio"]:checked');
+      isBasicStation = !checkedRadio || checkedRadio.value === 'basic';
+    }
+
+    // ── If no data, show error toast and restore button ────────────────────────
+    if (noData) {
+      if (activeOpId !== myOpId) {
+        console.warn('[Tyarchive] showTextDataView: stale noData result discarded (op superseded)');
+        return;
+      }
+      // Target date not in data or both min/max are empty → red toast
+      const reason = !dateFound ? '数据视图中无此日期' : '该日期无气温数据';
+      showToast(`✗ ${date}  ${reason}`);
+      // Also turn the Select button red
+      if (currentBtn && currentBtn.isConnected) {
+        currentBtn.classList.add('no-data');
+        currentBtn.disabled = false;
+        currentBtn.textContent = 'Select';
+      }
+      activeSelectBtn = null;
+      if (activeOpId === myOpId) activeOpId = 0;
       return;
     }
 
-    const date = targetCols[0].trim();
-    const max  = clean(targetCols[5]);  // daily max temp
-    const min  = clean(targetCols[6]);  // daily min temp
+    // ── If basic station and has data, fetch the daily mean temperature ────────
+    // Only fetch avg when the toggle is explicitly enabled (default OFF).
+    let avg = '';
+    if (isBasicStation && hasData && currentBtn && fetchAvgEnabled) {
+      const usafRaw = currentBtn.getAttribute('data-usaf') || '';
+      // Station number: pad to 5 digits
+      const stationNum = usafRaw.padStart(5, '0');
+      // Build full YYYY-MM-DD date from the MM-DD input and current year
+      const now = new Date();
+      const yyyy = String(now.getFullYear());
+      const fullDate = `${yyyy}-${targetMMDD}`;
 
-    // Format: min\tmax  (NaN converted to empty string)
-    const clipText = `${min}\t${max}`;
+      console.log(`[Tyarchive] Fetching avg temp: station=${stationNum} date=${fullDate}`);
 
-    console.log(`[Tyarchive] Target date: ${date} | min=${min || 'NaN'} max=${max || 'NaN'}`);
+      // Show a waiting state on the button
+      if (currentBtn.isConnected) {
+        currentBtn.textContent = '⏳avg…';
+        currentBtn.disabled = true;
+      }
+
+      try {
+        const avgResp = await new Promise((resolve, reject) => {
+          chrome.runtime.sendMessage(
+            { action: 'fetchAvgTemp', station: stationNum, date: fullDate },
+            (resp) => {
+              if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message));
+              resolve(resp);
+            }
+          );
+        });
+
+        if (avgResp && avgResp.ok) {
+          avg = avgResp.avg || '';
+          console.log(`[Tyarchive] Avg temp received: "${avg}"`);
+        } else {
+          console.warn('[Tyarchive] fetchAvgTemp failed:', avgResp?.error);
+        }
+      } catch (e) {
+        console.warn('[Tyarchive] fetchAvgTemp error:', e.message);
+      }
+    }
+
+    // ── Guard: discard if a newer operation started while we awaited avg ──────
+    if (activeOpId !== myOpId) {
+      console.warn('[Tyarchive] showTextDataView: result discarded — operation was superseded while fetching avg');
+      // Restore the button that originally launched this op (if still in DOM)
+      if (currentBtn && currentBtn.isConnected && currentBtn.classList.contains('btn-select')) {
+        currentBtn.disabled = false;
+        currentBtn.textContent = 'Select';
+      }
+      return;
+    }
+
+    // ── Build final clip text ────────────────────────────────────────────────
+    // Include avg (with leading tab) only when the toggle is ON.
+    clipText = fetchAvgEnabled ? `${min}\t${max}\t${avg}` : `${min}\t${max}`;
     console.log(`[Tyarchive] Copying to clipboard: "${clipText}"`);
 
     // ── Robust clipboard write ─────────────────────────────────────────────────
@@ -1093,29 +1304,33 @@
       }
     }
 
-    // ── Show success toast with enlarged date ────────────────────────────────
+    // ── Success: show toast with enlarged date ────────────────────────────────
     const minLabel = min || '—';
     const maxLabel = max || '—';
-    // Build HTML: date in a larger span, then the values
-    showToast(`✓ <span class="toast-date">${date}</span>  min ${minLabel} / max ${maxLabel}`, 'success');
+    const avgLabel = avg || (isBasicStation ? '—' : '');
+    const avgPart  = isBasicStation ? ` / avg ${avgLabel}` : '';
+    showToast(`✓ <span class="toast-date">${date}</span>  min ${minLabel} / max ${maxLabel}${avgPart}`, 'success');
 
     // ── Persist result so re-renders (search bar) keep the button state ────
-    if (activeSelectBtn && activeSelectBtn.isConnected) {
-      const stationKey = `${activeSelectBtn.getAttribute('data-usaf') ?? ''}|${activeSelectBtn.getAttribute('data-domesid') ?? ''}`;
-      resultMap.set(stationKey, { clipText, minLabel, maxLabel });
+    if (currentBtn && currentBtn.isConnected) {
+      const stationKey = `${currentBtn.getAttribute('data-usaf') ?? ''}|${currentBtn.getAttribute('data-domesid') ?? ''}`;
+      resultMap.set(stationKey, { clipText, minLabel, maxLabel, avgLabel });
 
       // Transform the button in-place immediately
-      const btn = activeSelectBtn;
-      btn.classList.remove('btn-select', 'btn-copied');
+      const btn = currentBtn;
+      btn.classList.remove('btn-select', 'btn-copied', 'no-data');
       btn.classList.add('btn-result');
       btn.disabled = false;
       btn.removeAttribute('data-domesid');
       btn.removeAttribute('data-usaf');
       btn.removeAttribute('data-name');
       btn.setAttribute('data-result', clipText);
-      btn.textContent = `${minLabel}\t${maxLabel}`;
+      btn.textContent = isBasicStation
+        ? `${minLabel}\t${maxLabel}\t${avgLabel}`
+        : `${minLabel}\t${maxLabel}`;
     }
     activeSelectBtn = null;
+    if (activeOpId === myOpId) activeOpId = 0;  // release the operation lock
   }
 
   // Start watching for native ECharts textarea immediately
@@ -1158,9 +1373,16 @@
         ? `<button class="btn-delete-manual" data-skey="${stationKey}" title="删除此站点">×</button>`
         : '';
 
+      const resultBtnLabel = savedResult
+        ? (savedResult.avgLabel !== undefined
+            ? `${savedResult.minLabel}\t${savedResult.maxLabel}\t${savedResult.avgLabel}`
+            : `${savedResult.minLabel}\t${savedResult.maxLabel}`)
+        : '';
+
       const actionBtnHtml = savedResult
-        ? `<button class="btn-result" data-result="${savedResult.clipText}">${savedResult.minLabel}\t${savedResult.maxLabel}</button>${deleteBtn}`
+        ? `<button class="btn-result" data-result="${savedResult.clipText}">${resultBtnLabel}</button>${deleteBtn}`
         : `<button class="btn-select" data-domesid="${domesId}" data-usaf="${usaf}" data-name="${name}">Select</button>${deleteBtn}`;
+
 
       const tr = document.createElement('tr');
       tr.innerHTML = `
@@ -1274,6 +1496,21 @@
     if (e.target.classList.contains('btn-select')) {
       const btn     = e.target;
 
+      // ── Validate target date format (must be MM-DD) before doing anything ──
+      const rawDate = (targetDateInput.value || '').trim();
+      if (!/^\d{2}-\d{2}$/.test(rawDate)) {
+        showToast('目标日期格式无效，请使用 MM-DD（如 05-09）');
+        return;
+      }
+
+      // ── Block concurrent operations ──────────────────────────────────────────
+      // If another Select is still in flight, reject the new click so the result
+      // can never be attributed to the wrong station.
+      if (activeOpId !== 0) {
+        showToast('请等待当前站点数据获取完成后再操作');
+        return;
+      }
+
       // Prevent double-click / re-entry during the whole automation flow
       if (btn.disabled) return;
       btn.disabled = true;
@@ -1286,11 +1523,16 @@
       // Helper: pause for a given number of milliseconds
       const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-      // Helper: restore button state on failure
+      // Stamp a unique ID for this operation; fail() releases the lock if it still owns it
+      const opId = ++operationCounter;
+      activeOpId  = opId;
+
+      // Helper: restore button state on failure and release the operation lock
       const fail = msg => {
         showToast(msg);
         btn.disabled = false;
         btn.textContent = 'Select';
+        if (activeOpId === opId) activeOpId = 0;
       };
 
       // Remember which button triggered this search so we can transform it on success

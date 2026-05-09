@@ -8,10 +8,12 @@
     "activeTab",
     "scripting",
     "clipboardWrite",
-    "downloads"
+    "downloads",
+    "tabs"
   ],
   "host_permissions": [
-    "*://119.29.229.118/*"
+    "*://119.29.229.118/*",
+    "http://localhost:1004/*"
   ],
   "content_scripts": [
     {

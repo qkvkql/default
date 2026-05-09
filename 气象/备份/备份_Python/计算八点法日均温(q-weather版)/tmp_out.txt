@@ -1,0 +1,2 @@
+﻿[{"usaf": "54342", "level1": "辽宁", "cn_name": "沈阳"}, {"usaf": "54252", "level1": "辽宁", "cn_name": "西丰"}, {"usaf": "54161", "level1": "吉林", "cn_name": "长春"}, {"usaf": "54273", "level1": "吉林", "cn_name": "桦甸"}, {"usaf": "50953", "level1": "黑龙江", "cn_name": "哈尔滨"}, {"usaf": "50673", "level1": "黑龙江", "cn_name": "嘉荫"}, {"usaf": "50353", "level1": "黑龙江", "cn_name": "呼玛"}, {"usaf": "50246", "level1": "黑龙江", "cn_name": "塔河"}, {"usaf": "50247", "level1": "黑龙江", "cn_name": "呼中"}, {"usaf": "50136", "level1": "黑龙江", "cn_name": "漠河"}]
+Total: 111

@@ -10,7 +10,15 @@
       color: #1a1a1a;
       background: #f4f6f8;
     }
-    body { margin: 0; padding: 1.5rem; line-height: 1.5; }
+    html { box-sizing: border-box; }
+    *, *::before, *::after { box-sizing: inherit; }
+    body {
+      margin: 0;
+      padding: 1.5rem;
+      line-height: 1.5;
+      min-height: 100vh;
+      min-height: 100dvh;
+    }
     main {
       max-width: 42rem;
       margin: 0 auto;
@@ -18,6 +26,10 @@
       padding: 1.5rem 1.75rem;
       border-radius: 10px;
       box-shadow: 0 1px 3px rgba(0,0,0,.08);
+      min-height: calc(100vh - 3rem);
+      min-height: calc(100dvh - 3rem);
+      display: flex;
+      flex-direction: column;
     }
     h1 { font-size: 1.35rem; margin: 0 0 0.35rem; }
     .sub { font-size: 0.9rem; color: #555; margin: 0 0 1.25rem; }
@@ -30,7 +42,7 @@
     @media (min-width: 520px) {
       .grid { grid-template-columns: 1fr 1fr; align-items: end; }
     }
-    input, button {
+    input, button, select {
       font: inherit;
       padding: 0.55rem 0.65rem;
       border-radius: 8px;
@@ -38,7 +50,11 @@
       width: 100%;
       box-sizing: border-box;
     }
-    input:focus {
+    select {
+      background: #fff;
+      cursor: pointer;
+    }
+    input:focus, select:focus {
       outline: 2px solid #2563eb;
       outline-offset: 1px;
       border-color: #2563eb;
@@ -71,6 +87,22 @@
       padding-top: 1.25rem;
       border-top: 2px solid #e5e7eb;
     }
+    .monthly-standalone {
+      flex-shrink: 0;
+      margin-top: auto;
+      padding-top: 1.25rem;
+      border-top: 2px solid #e5e7eb;
+    }
+    .monthly-standalone h2 {
+      font-size: 1.05rem;
+      margin: 0 0 0.5rem;
+      color: #111827;
+    }
+    .monthly-standalone .sub-sec {
+      font-size: 0.85rem;
+      color: #6b7280;
+      margin: 0 0 1rem;
+    }
     .hint { font-size: 0.8rem; color: #6b7280; margin-top: 0.35rem; }
     #result { margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid #e5e7eb; }
     .avg-line {
@@ -101,6 +133,48 @@
     th { background: #f9fafb; }
     .err { color: #b91c1c; white-space: pre-wrap; font-size: 0.85rem; }
     code { font-size: 0.82em; background: #f3f4f6; padding: 0.12em 0.4em; border-radius: 4px; }
+    /* ── Station Search ── */
+    .station-wrap { position: relative; }
+    #stationDropdown {
+      position: absolute;
+      left: 0; right: 0;
+      top: calc(100% + 2px);
+      z-index: 200;
+      background: #fff;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      box-shadow: 0 6px 20px rgba(0,0,0,.10);
+      max-height: 14rem;
+      overflow-y: auto;
+      display: none;
+    }
+    #stationDropdown.open { display: block; }
+    .stn-item {
+      display: flex;
+      align-items: baseline;
+      gap: 0.55rem;
+      padding: 0.45rem 0.75rem;
+      cursor: pointer;
+      font-size: 0.85rem;
+      border-bottom: 1px solid #f1f5f9;
+      transition: background 0.1s;
+    }
+    .stn-item:last-child { border-bottom: none; }
+    .stn-item:hover, .stn-item.active { background: #eff6ff; }
+    .stn-usaf {
+      font-family: monospace;
+      font-size: 0.82rem;
+      color: #2563eb;
+      min-width: 3.5rem;
+      font-weight: 600;
+    }
+    .stn-name { color: #111827; font-weight: 500; }
+    .stn-prov { color: #6b7280; font-size: 0.78rem; }
+    .stn-no-results {
+      padding: 0.6rem 0.75rem;
+      color: #6b7280;
+      font-size: 0.84rem;
+    }
     .monthly {
       margin-top: 1.75rem;
       padding-top: 1.25rem;
@@ -128,6 +202,7 @@
 </head>
 <body>
   <main>
+    <div>
     <h1>8-point &amp; 4-point daily mean temperature</h1>
     <p class="sub">
       Data from <a href="https://q-weather.info/" target="_blank" rel="noopener">q-weather.info</a>.
@@ -135,22 +210,21 @@
       <code>02, 05, 08, 11, 14, 17, 20</code> (all required for that mean).
       <strong>Daily 4-point:</strong> selected day <code>02, 08, 14, 20</code> only.
       After a daily result, use <strong>Load monthly averages</strong> to scan the whole calendar month (slow); partial means exclude missing hours from the average and list them.
+      Or use the <strong>Monthly averages</strong> block below with year and month only.
     </p>
     <form id="f">
       <div class="grid">
-        <div>
+        <div class="station-wrap">
           <label for="station">Weather station number</label>
           <input
             id="station"
             name="station"
             type="text"
-            inputmode="numeric"
-            pattern="[0-9]+"
             autocomplete="off"
-            placeholder="e.g. 50136"
-            title="Digits only"
+            placeholder="e.g. 50136 · or search name / province"
             required
           />
+          <div id="stationDropdown" role="listbox" aria-label="Station suggestions"></div>
         </div>
         <div>
           <label for="date">Date</label>
@@ -160,13 +234,135 @@
       <div class="hint">Source page for your inputs: <code id="linkSample"></code></div>
       <button type="submit">Calculate</button>
     </form>
+
     <div id="result" hidden></div>
+    </div>
+
+    <section class="monthly-standalone" aria-labelledby="monthlyStandaloneH">
+      <h2 id="monthlyStandaloneH">Monthly averages</h2>
+      <p class="sub-sec">
+        Same rules as “Load monthly averages”: partial means over all required hours in that calendar month (8-point and 4-point windows). Uses the station number above. Many requests — often about a minute.
+      </p>
+      <div class="grid">
+        <div>
+          <label for="monthlyYear">Year</label>
+          <select id="monthlyYear" name="monthlyYear"></select>
+        </div>
+        <div>
+          <label for="monthlyMonth">Month</label>
+          <select id="monthlyMonth" name="monthlyMonth"></select>
+        </div>
+      </div>
+      <button type="button" id="btnMonthlyStandalone" class="btn-monthly">
+        Calculate monthly averages
+      </button>
+      <div id="monthlyStandaloneOut"></div>
+    </section>
   </main>
   <script>
     const $ = (id) => document.getElementById(id);
     const params = new URLSearchParams(location.search);
     const stationEl = $("station");
     const dateEl = $("date");
+    const monthlyYearEl = $("monthlyYear");
+    const monthlyMonthEl = $("monthlyMonth");
+    const btnMonthlyStandalone = $("btnMonthlyStandalone");
+    const monthlyStandaloneOut = $("monthlyStandaloneOut");
+    const stationDropdownEl = $("stationDropdown");
+
+    // ── Station search ──────────────────────────────────────────────────────
+    let _stationsCache = null;   // null = not yet fetched
+    let _stnActiveIdx = -1;
+
+    async function loadStations() {
+      if (_stationsCache) return _stationsCache;
+      try {
+        const r = await fetch("/api/stations");
+        _stationsCache = await r.json();
+      } catch (_) {
+        _stationsCache = [];
+      }
+      return _stationsCache;
+    }
+
+    function renderDropdown(items) {
+      _stnActiveIdx = -1;
+      if (!items.length) {
+        stationDropdownEl.innerHTML =
+          '<div class="stn-no-results">No matching stations</div>';
+        stationDropdownEl.classList.add("open");
+        return;
+      }
+      stationDropdownEl.innerHTML = items.slice(0, 60).map((s, i) =>
+        `<div class="stn-item" role="option" data-usaf="${s.usaf}" data-idx="${i}">` +
+        `<span class="stn-usaf">${s.usaf}</span>` +
+        `<span class="stn-name">${esc(s.cn_name)}</span>` +
+        `<span class="stn-prov">${esc(s.level1)}</span>` +
+        `</div>`
+      ).join("");
+      stationDropdownEl.classList.add("open");
+    }
+
+    function closeDropdown() {
+      stationDropdownEl.classList.remove("open");
+      _stnActiveIdx = -1;
+    }
+
+    function selectStation(usaf) {
+      stationEl.value = usaf;
+      closeDropdown();
+      sampleLink();
+      syncUrl();
+    }
+
+    stationEl.addEventListener("input", async () => {
+      const q = stationEl.value.trim().toLowerCase();
+      if (!q) { closeDropdown(); return; }
+      const all = await loadStations();
+      const hits = all.filter(s =>
+        s.usaf.includes(q) ||
+        s.cn_name.toLowerCase().includes(q) ||
+        s.level1.toLowerCase().includes(q)
+      );
+      renderDropdown(hits);
+    });
+
+    stationEl.addEventListener("keydown", (e) => {
+      const items = stationDropdownEl.querySelectorAll(".stn-item");
+      if (e.key === "Escape") { closeDropdown(); return; }
+      if (!items.length) return;
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        _stnActiveIdx = Math.min(_stnActiveIdx + 1, items.length - 1);
+        items.forEach((el, i) => el.classList.toggle("active", i === _stnActiveIdx));
+        items[_stnActiveIdx]?.scrollIntoView({ block: "nearest" });
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        _stnActiveIdx = Math.max(_stnActiveIdx - 1, 0);
+        items.forEach((el, i) => el.classList.toggle("active", i === _stnActiveIdx));
+        items[_stnActiveIdx]?.scrollIntoView({ block: "nearest" });
+      } else if (e.key === "Enter") {
+        if (_stnActiveIdx >= 0 && items[_stnActiveIdx]) {
+          e.preventDefault();
+          selectStation(items[_stnActiveIdx].dataset.usaf);
+        }
+      }
+    });
+
+    stationDropdownEl.addEventListener("mousedown", (e) => {
+      const item = e.target.closest(".stn-item");
+      if (item) { e.preventDefault(); selectStation(item.dataset.usaf); }
+    });
+
+    // Pre-warm station list on first focus
+    stationEl.addEventListener("focus", loadStations, { once: true });
+
+    // Close dropdown when clicking outside
+    document.addEventListener("mousedown", (e) => {
+      if (!stationDropdownEl.contains(e.target) && e.target !== stationEl) {
+        closeDropdown();
+      }
+    });
 
     function todayISO() {
       const d = new Date();
@@ -200,6 +396,46 @@
     stationEl.addEventListener("input", sampleLink);
     dateEl.addEventListener("change", sampleLink);
     sampleLink();
+
+    function fillMonthlyYearMonthSelects() {
+      const now = new Date();
+      const cy = now.getFullYear();
+      const cm = now.getMonth() + 1;
+      let yHtml = "";
+      for (let y = cy + 1; y >= 1990; y--) {
+        yHtml += "<option value=\"" + y + "\">" + y + "</option>";
+      }
+      monthlyYearEl.innerHTML = yHtml;
+      monthlyYearEl.value = String(cy);
+      let mHtml = "";
+      const monthNames = [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+      ];
+      for (let m = 1; m <= 12; m++) {
+        mHtml +=
+          "<option value=\"" +
+          m +
+          "\">" +
+          m +
+          " — " +
+          monthNames[m - 1] +
+          "</option>";
+      }
+      monthlyMonthEl.innerHTML = mHtml;
+      monthlyMonthEl.value = String(cm);
+    }
+    fillMonthlyYearMonthSelects();
 
     function esc(s) {
       const d = document.createElement("div");
@@ -310,6 +546,14 @@
 
     $("f").addEventListener("submit", async (e) => {
       e.preventDefault();
+      closeDropdown();
+      // Validate that the station field contains only digits before submitting
+      if (!/^\d+$/.test(stationEl.value.trim())) {
+        const out = $("result");
+        out.hidden = false;
+        out.innerHTML = '<p class="err">Station number must be digits only. Please select a station from the dropdown or enter a numeric ID.</p>';
+        return;
+      }
       syncUrl();
       const out = $("result");
       out.hidden = false;
@@ -407,7 +651,44 @@
       $("f").requestSubmit();
     }
 
-    $("result").addEventListener("click", async (e) => {
+    btnMonthlyStandalone.addEventListener("click", async () => {
+      const st = stationEl.value.trim();
+      if (!st) {
+        monthlyStandaloneOut.innerHTML =
+          '<p class="err">Enter a weather station number in the form above.</p>';
+        return;
+      }
+      btnMonthlyStandalone.disabled = true;
+      const prevLabel = btnMonthlyStandalone.textContent;
+      btnMonthlyStandalone.textContent = "Loading…";
+      monthlyStandaloneOut.innerHTML =
+        '<p class="hint">Scanning month…</p>';
+      const qm = new URLSearchParams({
+        station: st,
+        year: monthlyYearEl.value,
+        month: monthlyMonthEl.value,
+      });
+      try {
+        const rm = await fetch("/api/monthly?" + qm.toString());
+        const dm = await rm.json();
+        if (!rm.ok) {
+          const msg = (dm && dm.error) || "Request failed";
+          const det = dm && dm.detail ? "\n\n" + dm.detail : "";
+          monthlyStandaloneOut.innerHTML =
+            '<p class="err">' + esc(msg + det) + "</p>";
+          return;
+        }
+        monthlyStandaloneOut.innerHTML = monthlyBlock(dm);
+      } catch (errm) {
+        monthlyStandaloneOut.innerHTML =
+          '<p class="err">' + esc(String(errm)) + "</p>";
+      } finally {
+        btnMonthlyStandalone.disabled = false;
+        btnMonthlyStandalone.textContent = prevLabel;
+      }
+    });
+
+    document.querySelector("main").addEventListener("click", async (e) => {
       const valueEl = e.target.closest(".copy-num");
       if (!valueEl) return;
       const value = valueEl.textContent;
