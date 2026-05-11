@@ -968,8 +968,19 @@
       if (chartInst) {
         console.log('[Tyarchive] ECharts instance found:', chartInst);
 
-        // ── Sub-strategy 1a: Use our custom data view (most reliable) ──────
-        showCustomDataView(chartInst);
+        // ── Sub-strategy 1a: Dispatch native ECharts dataView action ───────
+        // This triggers the native textarea that watchNativeDataView intercepts,
+        // which then calls showTextDataView → clipboard write + fetchAvgTemp.
+        // (showCustomDataView was previously used here but it bypassed the entire
+        //  min/max extraction and fetchAvgTemp pipeline, so localhost:1004 was
+        //  never opened when the ECharts instance was accessible.)
+        try {
+          chartInst.dispatchAction({ type: 'dataView' });
+          console.log('[Tyarchive] Dispatched native dataView action via ECharts instance');
+        } catch (e) {
+          console.warn('[Tyarchive] dispatchAction dataView failed, falling back to custom view:', e);
+          showCustomDataView(chartInst);
+        }
         return;
       }
 
