@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>3D Earth — Weather Station Temperatures</title>
+  <meta name="description" content="Interactive 3D globe showing weather station min/max/avg temperatures." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.162.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.162.0/examples/jsm/"
+    }
+  }
+  </script>
+
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <!-- Loading Screen -->
+  <div id="loading-screen">
+    <div class="loader-content">
+      <div class="loader-globe">
+        <div class="loader-ring"></div>
+        <div class="loader-ring ring-2"></div>
+        <div class="loader-dot"></div>
+      </div>
+      <p class="loader-text">Loading Earth...</p>
+      <div class="loader-bar"><div class="loader-fill" id="loader-fill"></div></div>
+    </div>
+  </div>
+
+  <!-- UI Overlay -->
+  <header id="top-bar">
+    <div class="top-bar-left">
+      <span class="globe-icon">🌏</span>
+      <div>
+        <h1 class="app-title">Weather Station Globe</h1>
+        <p class="app-subtitle">3D Temperature Visualization</p>
+      </div>
+    </div>
+    <div class="top-bar-right">
+      <div class="stat-chip" id="stat-total">
+        <span class="stat-val" id="stat-total-val">—</span>
+        <span class="stat-label">Stations</span>
+      </div>
+      <div class="stat-chip" id="stat-data">
+        <span class="stat-val" id="stat-data-val">—</span>
+        <span class="stat-label">With Data</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Legend -->
+  <div id="legend-panel">
+    <p class="legend-title">Avg Temperature (°C)</p>
+    <div class="legend-gradient"></div>
+    <div class="legend-labels">
+      <span>≤ −20</span>
+      <span>0</span>
+      <span>15</span>
+      <span>≥ 35</span>
+    </div>
+    <div class="legend-separator"></div>
+    <div class="legend-item"><span class="legend-dot no-data"></span><span>No data</span></div>
+  </div>
+
+  <!-- Controls hint -->
+  <div id="controls-hint">
+    <span>🖱 Drag to rotate &nbsp;·&nbsp; Scroll to zoom</span>
+  </div>
+
+  <!-- Three.js canvas container -->
+  <div id="globe-container"></div>
+
+  <!-- Station detail popup -->
+  <div id="station-popup" class="hidden">
+    <button id="popup-close">✕</button>
+    <div class="popup-name" id="popup-name"></div>
+    <div class="popup-coords" id="popup-coords"></div>
+    <div class="popup-temps" id="popup-temps"></div>
+  </div>
+
+  <div id="animation-ui" class="hidden">
+    <!-- Animation controls: Play/Pause + Quit -->
+    <div id="anim-controls">
+      <button id="anim-play-btn">&#9654; Start</button>
+      <button id="anim-quit-btn" class="hidden">&#x2715; Quit</button>
+    </div>
+
+    <!-- Animation info overlay (visible during animation) — clickable to open station list -->
+    <div id="anim-info" class="hidden" title="Click to browse all stations">
+      <div id="anim-countdown"></div>
+      <div id="anim-station-name"></div>
+      <div id="anim-meta"></div>
+      <div id="anim-info-hint">📋 Browse stations</div>
+    </div>
+  </div>
+
+  <!-- Station List Drawer -->
+  <div id="station-list-overlay" class="hidden">
+    <div id="station-list-panel">
+      <div id="station-list-header">
+        <span id="station-list-title">📡 All Stations</span>
+        <button id="station-list-close">✕</button>
+      </div>
+      <div id="station-list-search-wrap">
+        <input id="station-list-search" type="text" placeholder="Search stations…" autocomplete="off" />
+      </div>
+      <div id="station-list-body"></div>
+    </div>
+  </div>
+
+  <!-- Bottom-left toolbar -->
+  <div id="bottom-left-toolbar">
+    <button id="ui-toggle-btn" title="Toggle info panels">☰</button>
+    <button id="goto-btn" title="Set camera position">📍</button>
+    <button id="anim-toggle-btn" title="Toggle animation UI">&#9654;</button>
+  </div>
+
+  <!-- Camera Goto Panel -->
+  <div id="goto-panel" class="hidden">
+    <div class="goto-panel-title">📍 Camera Position</div>
+    <div class="goto-row">
+      <label class="goto-label">Lat</label>
+      <input id="goto-lat" type="number" step="0.1" min="-90" max="90" placeholder="e.g. 35.0" />
+    </div>
+    <div class="goto-row">
+      <label class="goto-label">Lon</label>
+      <input id="goto-lon" type="number" step="0.1" min="-180" max="180" placeholder="e.g. 105.0" />
+    </div>
+    <div class="goto-row">
+      <label class="goto-label">Zoom</label>
+      <input id="goto-zoom" type="number" step="0.1" min="1.15" max="8" placeholder="1.15 – 8" />
+    </div>
+    <button id="goto-apply-btn">Go →</button>
+  </div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
