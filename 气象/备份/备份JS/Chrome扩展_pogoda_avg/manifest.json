@@ -8,7 +8,12 @@
   ],
   "content_scripts": [
     {
-      "matches": ["http://www.pogodaiklimat.ru/history/*"],
+    "matches":[
+        "http://www.pogodaiklimat.ru/history/*",
+        "https://www.pogodaiklimat.ru/history/*",
+        "http://pogodaiklimat.ru/history/*",
+        "https://pogodaiklimat.ru/history/*"
+    ],
       "js": ["content.js"],
       "css": ["styles.css"],
       "run_at": "document_idle"

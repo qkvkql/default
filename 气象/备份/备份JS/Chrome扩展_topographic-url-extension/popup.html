@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Topographic URL Copier</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: Arial, sans-serif;
+      }
+
+      body {
+        width: 280px;
+        margin: 0;
+        padding: 14px;
+        background: Canvas;
+        color: CanvasText;
+      }
+
+      button {
+        width: 100%;
+        min-height: 42px;
+        border: 0;
+        border-radius: 6px;
+        background: #1769aa;
+        color: #fff;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      button:disabled {
+        cursor: wait;
+        opacity: 0.7;
+      }
+
+      #status {
+        min-height: 36px;
+        margin: 10px 0 0;
+        overflow-wrap: anywhere;
+        font-size: 13px;
+        line-height: 1.35;
+      }
+
+      .ok {
+        color: #0b7a3b;
+      }
+
+      .error {
+        color: #b3261e;
+      }
+    </style>
+  </head>
+  <body>
+    <button id="copyButton" type="button">Copy Topographic URL</button>
+    <p id="status" aria-live="polite"></p>
+    <script src="popup.js"></script>
+  </body>
+</html>

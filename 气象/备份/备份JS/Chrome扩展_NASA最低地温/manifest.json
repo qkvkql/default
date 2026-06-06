@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "NASA Worldview Brightness Temperature Celsius",
+  "version": "1.0.0",
+  "description": "Shows the open Brightness Temperature layer minimum value in Celsius in the NASA Worldview title.",
+  "content_scripts": [
+    {
+      "matches": ["https://worldview.earthdata.nasa.gov/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

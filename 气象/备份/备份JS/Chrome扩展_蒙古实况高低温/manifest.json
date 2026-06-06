@@ -13,5 +13,11 @@
       "js": ["content.js"],
       "css": ["styles.css"]
     }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["stations.json"],
+      "matches": ["<all_urls>"]
+    }
   ]
 }

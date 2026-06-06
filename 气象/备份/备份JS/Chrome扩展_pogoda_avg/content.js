@@ -5,6 +5,8 @@ window.addEventListener('load', () => {
     }, 1000);
 });
 
+let latestAverageValues = [];
+
 function initExtension() {
     createUI();
     
@@ -80,8 +82,8 @@ function runUserLogic(startYear, years_continue) {
         tempO['min_climate'] = Math.min(...v2);
         tempO['max'] = Math.max(...v1);
         tempO['max_climate'] = Math.max(...v2);
-        tempO['avg'] = Number(getAvg(v1));
-        tempO['avg_climate'] = Number(getAvg(v2));
+        tempO['avg'] = getAvg(v1);
+        tempO['avg_climate'] = getAvg(v2);
         tempO['min_years'] = getYearV(tempO['obj'], k1, tempO['min']);
         tempO['min_climate_years'] = getYearV(tempO['obj_climate'], k2, tempO['min_climate']);
         tempO['max_years'] = getYearV(tempO['obj'], k1, tempO['max']);
@@ -173,7 +175,7 @@ function runUserLogic(startYear, years_continue) {
         for(let i=0; i<arr.length; i++){
             sum += arr[i];
         }
-        return arr.length === 0 ? 'undefined' : (sum/arr.length).toFixed(2);
+        return arr.length === 0 ? 'undefined' : (sum/arr.length).toFixed(5);
     }
     function getYearV(o, ka, v){
         let ra = [];
@@ -214,6 +216,10 @@ function runUserLogic(startYear, years_continue) {
         tempO['样本/总体'] = stat_obj[columns[i]]['total_climate'] + '/' + year_continue.toString();
         summary_arr.push(tempO);
     }
+    latestAverageValues = summary_arr.map(row => {
+        const avgKey = Object.keys(row).find(key => key.includes('均温'));
+        return avgKey ? row[avgKey] : '';
+    });
 
     displayOutput(stat_obj, 'log');
     displayOutput(summary_arr, 'table');
@@ -240,7 +246,7 @@ function runUserLogic(startYear, years_continue) {
 // UI & HELPER FUNCTIONS
 // -----------------------------------------------------------
 
-const REGEX_TEMP = /(-?\d{1,2}\.?(\d{1,2})?)|\d{4}/g;
+const REGEX_TEMP = /\d{4}|-?\d{1,3}(?:\.\d{1,5})?/g;
 //const REGEX_TEMP = /-?\d{1,2}(\.\d{1,2})?/g;
 //const REGEX_TEMP = /-?\d{1,2}\.?\d{1,2}/g; //错误的regexp
 
@@ -275,7 +281,8 @@ function displayOutput(data, type) {
             const tr = document.createElement('tr');
             keys.forEach(key => {
                 const td = document.createElement('td');
-                td.innerHTML = processTextForCopying(String(row[key]));
+                const isAverageColumn = key.includes('均温') || key.includes('鍧囨俯');
+                td.innerHTML = isAverageColumn ? formatAverageForCopying(row[key]) : processTextForCopying(String(row[key]));
                 tr.appendChild(td);
             });
             tbody.appendChild(tr);
@@ -289,6 +296,16 @@ function processTextForCopying(text) {
     return text.replace(REGEX_TEMP, (match) => {
         return `<span class="temp-value" title="Click to copy">${match}</span>`;
     });
+}
+
+function formatAverageForCopying(value) {
+    const text = String(value).replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+    const parts = text.split('.');
+    const intPart = parts[0];
+    const fracPart = parts[1] || '';
+    const dotClass = fracPart ? 'avg-dot' : 'avg-dot avg-dot-hidden';
+
+    return `<span class="temp-value temp-average" title="Click to copy" data-copy-value="${text}"><span class="avg-int">${intPart}</span><span class="${dotClass}">.</span><span class="avg-frac">${fracPart}</span></span>`;
 }
 
 // ROBUST COPY FUNCTION (Works on HTTP)
@@ -350,6 +367,7 @@ function createUI() {
                 <input type="number" id="inp-limit" value="30">
             </div>
             <button id="weather-run-btn">Run Analysis</button>
+            <button id="weather-copy-avg-btn">Copy 13 Averages</button>
         </div>
 
         <div id="weather-content-area"></div>
@@ -370,10 +388,19 @@ function createUI() {
         runUserLogic(y, l);
     });
 
+    document.getElementById('weather-copy-avg-btn').addEventListener('click', () => {
+        if (latestAverageValues.length === 0) {
+            showToast('No averages yet');
+            return;
+        }
+        copyText(latestAverageValues.join('\t'));
+    });
+
     // Copy Click Listener
     root.addEventListener('click', (e) => {
-        if (e.target.classList.contains('temp-value')) {
-            copyText(e.target.innerText);
+        const tempValue = e.target.closest('.temp-value');
+        if (tempValue) {
+            copyText(tempValue.dataset.copyValue || tempValue.innerText);
         }
     });
 }

@@ -100,13 +100,16 @@ class StationUrlGenerators:
 # ==========================================
 # 3. Read Data and Apply Logic
 # ==========================================
-def clean_number_string(val):
+def clean_number_string(val, min_length=None):
     if pd.isna(val) or str(val).strip() == "":
         return ""
     try:
-        return str(int(float(val)))
+        cleaned = str(int(float(val)))
     except (ValueError, TypeError):
-        return str(val).strip()
+        cleaned = str(val).strip()
+    if min_length and cleaned.isdigit():
+        cleaned = cleaned.zfill(min_length)
+    return cleaned
 
 def load_and_process_data(file_path):
     print(f"Reading file: {file_path}")
@@ -131,7 +134,7 @@ def load_and_process_data(file_path):
         if pd.notna(id_val) and pd.notna(name_val) and str(name_val).strip() != "":
             
             # Clean Data
-            usaf_clean = clean_number_string(row.get('USAF'))
+            usaf_clean = clean_number_string(row.get('USAF'), min_length=5)
             rp5_clean = clean_number_string(row.get('rp5'))
             
             row_dict = row.fillna('').to_dict()
@@ -271,6 +274,7 @@ def generate_html(stations, output_file="站点大全.html"):
         rp5 = str(data.get('rp5', ''))
         lat = str(data.get('latitude', ''))
         lon = str(data.get('longitude', ''))
+        elev = str(data.get('elev', ''))
 
         display_name = f"{level1} {cn_name}".strip()
         
@@ -299,6 +303,9 @@ def generate_html(stations, output_file="站点大全.html"):
                 <span class="meta-label">Coords:</span> 
                 <span class="copyable" onclick="copyText(this)" data-value="{coord_val}" 
                       style="white-space: pre;">{coord_val if coord_val else '-'}</span>
+                <br>
+                <span class="meta-label">Elev:</span> 
+                <span class="copyable" onclick="copyText(this)" data-value="{elev}">{elev if elev else '-'}</span>
             </div>
             <div class="btn-container">
         """

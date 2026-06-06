@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "Topographic URL Copier",
+  "description": "Reads latitude and longitude from the clipboard and copies a topographic-map URL.",
+  "version": "1.0.0",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Copy topographic URL"
+  },
+  "permissions": [
+    "clipboardRead",
+    "clipboardWrite"
+  ]
+}

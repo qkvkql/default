@@ -63,7 +63,8 @@
     width: 100px;
 }
 
-#weather-run-btn {
+#weather-run-btn,
+#weather-copy-avg-btn {
     background-color: #007bff;
     color: white;
     border: none;
@@ -74,7 +75,8 @@
     height: fit-content;
     align-self: flex-end;
 }
-#weather-run-btn:hover { background-color: #0056b3; }
+#weather-run-btn:hover,
+#weather-copy-avg-btn:hover { background-color: #0056b3; }
 
 #weather-close-btn {
     background: #d32f2f;
@@ -119,10 +121,30 @@
     padding: 2px 4px;
     cursor: pointer;
     border-bottom: 1px dashed #666;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+}
+.weather-table .temp-average {
+    display: inline-grid;
+    grid-template-columns: 4ch auto 5ch;
+    text-align: left;
+}
+.temp-average .avg-int {
+    text-align: right;
+}
+.temp-average .avg-frac {
+    text-align: left;
+}
+.temp-average .avg-dot-hidden {
+    visibility: hidden;
 }
 .temp-value:hover {
     background-color: #fff;
     color: #000 !important;
+}
+.temp-average:hover {
+    background-color: rgba(79, 195, 247, 0.14);
+    color: #4fc3f7 !important;
 }
 
 /* Toast */

@@ -1,0 +1,463 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   NASA Worldview Color-Temperature Table Extension — Injected Styles
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Custom Font ──────────────────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* ── Hint Button ──────────────────────────────────────────────────────────── */
+
+#nct-hint-btn {
+  position: fixed;
+  bottom: 32px;
+  right: 32px;
+  z-index: 2147483640;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #1a2a4a 0%, #0f1e38 100%);
+  border: 1px solid rgba(56, 139, 253, 0.55);
+  border-radius: 40px;
+  color: #e6f0ff;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.55),
+    0 0 0 0 rgba(56, 139, 253, 0.4);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  letter-spacing: 0.01em;
+}
+
+#nct-hint-btn:hover {
+  background: linear-gradient(135deg, #1e3560 0%, #132546 100%);
+  border-color: rgba(56, 139, 253, 0.85);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.65),
+    0 0 0 3px rgba(56, 139, 253, 0.2);
+  transform: translateY(-2px);
+}
+
+#nct-hint-btn:active {
+  transform: translateY(0);
+}
+
+.nct-hint-icon {
+  font-size: 17px;
+  filter: drop-shadow(0 0 4px rgba(255,200,80,0.5));
+}
+
+/* ── Main Panel ───────────────────────────────────────────────────────────── */
+
+#nct-panel {
+  position: fixed;
+  top: 80px;
+  right: 32px;
+  z-index: 2147483641;
+  width: 560px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(160deg, #0f1e38 0%, #0a1525 100%);
+  border: 1px solid rgba(56, 139, 253, 0.3);
+  border-radius: 14px;
+  box-shadow:
+    0 20px 80px rgba(0, 0, 0, 0.75),
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+    0 1px 0 rgba(255, 255, 255, 0.08) inset;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 13px;
+  color: #c9d8ef;
+  opacity: 0;
+  transform: translateY(12px) scale(0.98);
+  transition: opacity 0.28s ease, transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+  overflow: hidden;
+  backdrop-filter: blur(16px);
+}
+
+#nct-panel.nct-visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+
+#nct-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 12px;
+  background: linear-gradient(90deg, rgba(56,139,253,0.10) 0%, rgba(56,139,253,0.03) 100%);
+  border-bottom: 1px solid rgba(56, 139, 253, 0.18);
+  gap: 12px;
+  user-select: none;
+}
+
+#nct-header-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+#nct-icon {
+  font-size: 22px;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 6px rgba(255, 190, 50, 0.5));
+}
+
+#nct-title-block {
+  min-width: 0;
+}
+
+#nct-layer-name {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #e8f2ff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 350px;
+  letter-spacing: 0.01em;
+}
+
+#nct-subtitle {
+  font-size: 11.5px;
+  color: #7ba3cc;
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.nct-badge {
+  display: inline-block;
+  padding: 1px 7px;
+  background: rgba(56, 139, 253, 0.2);
+  border: 1px solid rgba(56, 139, 253, 0.35);
+  border-radius: 4px;
+  color: #88b8f8;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.nct-badge-squash {
+  background: rgba(255, 160, 50, 0.15);
+  border-color: rgba(255, 160, 50, 0.35);
+  color: #ffa040;
+}
+
+#nct-close-btn {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: #8fa8cc;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  transition: all 0.18s;
+}
+
+#nct-close-btn:hover {
+  background: rgba(220, 70, 70, 0.25);
+  border-color: rgba(220, 70, 70, 0.45);
+  color: #ff8080;
+}
+
+/* ── Toolbar ────────────────────────────────────────────────────────────── */
+
+#nct-toolbar {
+  display: flex;
+  gap: 8px;
+  padding: 8px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.nct-btn {
+  padding: 5px 14px;
+  background: rgba(56, 139, 253, 0.12);
+  border: 1px solid rgba(56, 139, 253, 0.28);
+  border-radius: 6px;
+  color: #7eb8f5;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s;
+  letter-spacing: 0.01em;
+}
+
+.nct-btn:hover {
+  background: rgba(56, 139, 253, 0.22);
+  border-color: rgba(56, 139, 253, 0.5);
+  color: #aad4ff;
+  transform: translateY(-1px);
+}
+
+.nct-btn:active {
+  transform: translateY(0);
+}
+
+.nct-btn-success {
+  background: rgba(50, 200, 100, 0.15) !important;
+  border-color: rgba(50, 200, 100, 0.4) !important;
+  color: #60d890 !important;
+}
+
+/* ── Stats Bar ─────────────────────────────────────────────────────────── */
+
+#nct-stats {
+  display: flex;
+  gap: 18px;
+  padding: 7px 14px;
+  background: rgba(56, 139, 253, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 11.5px;
+  color: #5a7899;
+  font-weight: 500;
+}
+
+#nct-stats span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ── Table Container ────────────────────────────────────────────────────── */
+
+#nct-table-wrapper {
+  overflow-y: auto;
+  flex: 1;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(56, 139, 253, 0.35) transparent;
+}
+
+#nct-table-wrapper::-webkit-scrollbar {
+  width: 6px;
+}
+#nct-table-wrapper::-webkit-scrollbar-track {
+  background: transparent;
+}
+#nct-table-wrapper::-webkit-scrollbar-thumb {
+  background: rgba(56, 139, 253, 0.3);
+  border-radius: 3px;
+}
+#nct-table-wrapper::-webkit-scrollbar-thumb:hover {
+  background: rgba(56, 139, 253, 0.5);
+}
+
+/* ── Table ──────────────────────────────────────────────────────────────── */
+
+#nct-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+#nct-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+#nct-table thead tr {
+  background: linear-gradient(90deg, #0c1930 0%, #0a1622 100%);
+  border-bottom: 1px solid rgba(56, 139, 253, 0.25);
+}
+
+#nct-table th {
+  padding: 9px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #5b82aa;
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+/* Column widths */
+#nct-table th:nth-child(1),
+#nct-table td:nth-child(1) { width: 50px; }
+#nct-table th:nth-child(2),
+#nct-table td:nth-child(2) { width: 110px; }
+#nct-table th:nth-child(3),
+#nct-table td:nth-child(3),
+#nct-table th:nth-child(4),
+#nct-table td:nth-child(4),
+#nct-table th:nth-child(5),
+#nct-table td:nth-child(5) { width: auto; }
+
+#nct-table tbody tr {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  transition: background 0.12s;
+}
+
+#nct-table tbody tr:hover {
+  background: rgba(56, 139, 253, 0.08);
+}
+
+#nct-table tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.015);
+}
+
+#nct-table tbody tr:nth-child(even):hover {
+  background: rgba(56, 139, 253, 0.08);
+}
+
+#nct-table td {
+  padding: 6px 10px;
+  vertical-align: middle;
+}
+
+/* Color swatch column */
+.nct-td-swatch {
+  text-align: center !important;
+  padding: 5px 8px !important;
+}
+
+.nct-swatch {
+  width: 28px;
+  height: 18px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  display: inline-block;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+}
+
+/* Hex code column */
+.nct-td-hex {
+  font-size: 12px;
+}
+
+.nct-mono {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+  color: #88cff8;
+  letter-spacing: 0.04em;
+}
+
+/* Numeric columns */
+.nct-td-num {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums;
+  color: #b8d5f0;
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
+/* ── Loading State ──────────────────────────────────────────────────────── */
+
+#nct-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 48px 32px;
+  color: #5a7899;
+  font-size: 13px;
+}
+
+.nct-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(56, 139, 253, 0.15);
+  border-top-color: rgba(56, 139, 253, 0.8);
+  border-radius: 50%;
+  animation: nct-spin 0.8s linear infinite;
+}
+
+@keyframes nct-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Error State ─────────────────────────────────────────────────────────── */
+
+.nct-error {
+  text-align: center;
+  color: #e08080;
+  line-height: 1.7;
+  padding: 16px;
+}
+
+.nct-error-icon {
+  font-size: 28px;
+  display: block;
+  margin-bottom: 10px;
+}
+
+.nct-error code {
+  background: rgba(255,255,255,0.08);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-family: monospace;
+  color: #f8a8a8;
+}
+
+/* ── Layer Picker ────────────────────────────────────────────────────────── */
+
+#nct-picker-list {
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  max-height: 70vh;
+}
+
+.nct-picker-item {
+  padding: 12px 14px;
+  background: rgba(56, 139, 253, 0.06);
+  border: 1px solid rgba(56, 139, 253, 0.15);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+
+.nct-picker-item:hover {
+  background: rgba(56, 139, 253, 0.14);
+  border-color: rgba(56, 139, 253, 0.35);
+  transform: translateX(3px);
+}
+
+.nct-picker-item:focus {
+  outline: 2px solid rgba(56, 139, 253, 0.6);
+  outline-offset: -2px;
+}
+
+.nct-picker-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #d0e8ff;
+  margin-bottom: 4px;
+}
+
+.nct-picker-meta {
+  font-size: 11.5px;
+  color: #6888aa;
+}
+
+.nct-picker-meta strong {
+  color: #88b8f8;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+
+@media (max-width: 620px) {
+  #nct-panel {
+    width: calc(100vw - 20px);
+    right: 10px;
+    top: 60px;
+  }
+}
