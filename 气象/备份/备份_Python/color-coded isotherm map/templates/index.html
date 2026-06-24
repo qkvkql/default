@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Color-coded Isotherm Map</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="control-panel" aria-label="Map controls">
+        <div class="brand-row">
+          <div>
+            <h1>Color-coded Isotherm Map</h1>
+            <p>Load station values, clip them to KML boundaries, and render a Kriging-filled map.</p>
+          </div>
+          <span class="status-pill" id="statusPill">Ready</span>
+        </div>
+
+        <div class="workflow-grid">
+          <div class="panel-section">
+            <h2>1. Excel Source</h2>
+            <label class="file-drop">
+              <input id="excelFile" type="file" accept=".xlsx,.xls" />
+              <span>Choose Excel file</span>
+              <strong id="excelName">No file selected</strong>
+            </label>
+          </div>
+
+          <div class="panel-section">
+            <h2>2. Columns</h2>
+            <div class="select-grid">
+              <label>
+                Latitude
+                <select id="latColumn" disabled></select>
+              </label>
+              <label>
+                Longitude
+                <select id="lonColumn" disabled></select>
+              </label>
+              <label>
+                Value
+                <select id="valueColumn" disabled></select>
+              </label>
+            </div>
+          </div>
+
+          <div class="panel-section">
+            <h2>3. KML Boundaries</h2>
+            <label class="file-drop">
+              <input id="kmlFiles" type="file" accept=".kml" multiple />
+              <span>Choose one or more KML files</span>
+              <strong id="kmlName">No files selected</strong>
+            </label>
+          </div>
+        </div>
+
+        <div class="action-row">
+          <button id="drawButton" class="primary-button" type="button">Draw Isotherm Image</button>
+          <div id="message" class="message" role="status"></div>
+        </div>
+      </section>
+
+      <!-- ── Color Rule Builder ─────────────────────────────────────────── -->
+      <section class="color-rule-section" aria-label="Color rule builder">
+        <button
+          id="colorRuleToggle"
+          class="collapse-toggle"
+          type="button"
+          aria-expanded="false"
+          aria-controls="colorRuleBody"
+        >
+          <span class="toggle-icon">▶</span>
+          <span>4. Color Rule</span>
+          <span id="colorRuleStatus" class="rule-badge rule-badge--undefined">Not defined</span>
+        </button>
+
+        <div id="colorRuleBody" class="collapse-body" hidden>
+          <div class="cr-layout">
+            <!-- Left: control-point editor -->
+            <div class="cr-editor">
+              <div class="cr-editor-header">
+                <span class="cr-col-label">Value (integer)</span>
+                <span class="cr-col-label">Color — click swatch or type hex</span>
+                <span class="cr-col-label cr-col-note">Role</span>
+                <span></span><!-- action column header -->
+              </div>
+
+              <div id="cpList" class="cp-list">
+                <!-- rows injected by JS -->
+              </div>
+
+              <div class="cr-editor-actions">
+                <button id="addCpBtn" class="secondary-button" type="button">＋ Add Intermediate Value</button>
+                <button id="generateRuleBtn" class="primary-button" type="button">Generate Color Rule</button>
+                <div class="cr-editor-io">
+                  <button id="importRuleBtn" class="io-button" type="button" title="Load a previously saved color rule JSON file">📂 Import Rule</button>
+                  <button id="saveRuleBtn" class="io-button" type="button" title="Save the current control points to a JSON file">💾 Save Rule</button>
+                </div>
+              </div>
+
+              <div id="crMessage" class="cr-message" role="alert"></div>
+            </div>
+            <!-- Hidden file input for rule import -->
+            <input id="importRuleInput" type="file" accept=".json" hidden />
+
+            <!-- Right: generated rule preview -->
+            <div class="cr-preview">
+              <div class="cr-preview-header">Generated Color Map</div>
+              <div id="crPreviewBody" class="cr-preview-body">
+                <span class="cr-preview-empty">Click "Generate Color Rule" to preview.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="result-section" aria-label="Finished isotherm image">
+        <div class="image-frame">
+          <img id="resultImage" alt="Finished clipped isotherm" />
+          <div id="imagePlaceholder" class="image-placeholder">No image drawn yet.</div>
+        </div>
+        <aside class="result-card">
+          <h2>Finished Image</h2>
+          <div id="stats" class="stats muted">No image drawn yet.</div>
+          <div id="legend" class="legend"></div>
+        </aside>
+      </section>
+    </main>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Coordinate Converter</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-icon">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="currentColor" opacity="0.9"/>
+          <circle cx="12" cy="9" r="2.5" fill="white"/>
+        </svg>
+      </div>
+      <div class="header-text">
+        <h1>Coordinate Converter</h1>
+        <p class="subtitle">Google Maps → Tab-Separated</p>
+      </div>
+      <div class="status-dot" id="statusDot" title="Extension active"></div>
+    </header>
+
+    <!-- Status card -->
+    <div class="status-card">
+      <div class="status-icon">
+        <svg viewBox="0 0 24 24" fill="none">
+          <path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
+        </svg>
+      </div>
+      <div>
+        <div class="status-label">Extension Active</div>
+        <div class="status-desc">Monitoring clipboard on all pages</div>
+      </div>
+    </div>
+
+    <!-- How it works -->
+    <section class="section">
+      <h2 class="section-title">How it works</h2>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-text">Right-click a location on Google Maps and click <strong>Copy coordinates</strong></div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-text">The extension instantly converts the clipboard from <code>lat, lng</code> to <code>lat<span class="tab-badge">TAB</span>lng</code></div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-text">Paste directly into Excel / Google Sheets — each value lands in its own cell!</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Live test area -->
+    <section class="section">
+      <h2 class="section-title">Quick test</h2>
+      <div class="test-area">
+        <input
+          id="testInput"
+          class="test-input"
+          type="text"
+          placeholder="e.g. 39.9042, 116.4074"
+          spellcheck="false"
+          autocomplete="off"
+        />
+        <button id="convertBtn" class="convert-btn">Convert</button>
+      </div>
+      <div class="result-row" id="resultRow">
+        <span class="result-label">Result:</span>
+        <code id="resultValue" class="result-value"></code>
+        <button id="copyResultBtn" class="copy-mini-btn" title="Copy to clipboard">
+          <svg viewBox="0 0 24 24" fill="none">
+            <rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" stroke-width="2"/>
+            <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" stroke-width="2"/>
+          </svg>
+        </button>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <span>Converts <code>lat, lng</code> → <code>lat<span class="tab-badge">⇥</span>lng</code> on copy</span>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

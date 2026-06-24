@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "controlPoints": [
+    {
+      "value": -32,
+      "color": "#ffffff"
+    },
+    {
+      "value": -28,
+      "color": "#f72585"
+    },
+    {
+      "value": -24,
+      "color": "#b5179e"
+    },
+    {
+      "value": -20,
+      "color": "#7209b7"
+    },
+    {
+      "value": -16,
+      "color": "#3a0ca3"
+    },
+    {
+      "value": -12,
+      "color": "#3f37c9"
+    },
+    {
+      "value": -8,
+      "color": "#4361ee"
+    },
+    {
+      "value": -4,
+      "color": "#4895ef"
+    },
+    {
+      "value": 0,
+      "color": "#4cc9f0"
+    },
+    {
+      "value": 5,
+      "color": "#f3e9d1"
+    },
+    {
+      "value": 10,
+      "color": "#d8d174"
+    },
+    {
+      "value": 15,
+      "color": "#8ea604"
+    },
+    {
+      "value": 20,
+      "color": "#4f772d"
+    },
+    {
+      "value": 25,
+      "color": "#31572c"
+    },
+    {
+      "value": 30,
+      "color": "#132a13"
+    }
+  ]
+}

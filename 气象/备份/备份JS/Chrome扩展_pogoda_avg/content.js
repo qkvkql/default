@@ -18,6 +18,118 @@ function initExtension() {
 // YOUR CUSTOM LOGIC GOES HERE
 // -----------------------------------------------------------
 
+function extractCoordinates() {
+    // Look inside .chronicle-info for lat/lon text
+    const infoEl = document.querySelector('.chronicle-info');
+    if (!infoEl) return null;
+    const text = infoEl.innerText || infoEl.textContent || '';
+
+    // PRIMARY: Russian station info format
+    // "широта 53.0749 долгота 132.9506 высота над уровнем моря 540 м."
+    // широта = latitude, долгота = longitude
+    const ruMatch = text.match(/широта\s+([+-]?\d+(?:[.,]\d+)?)\s+долгота\s+([+-]?\d+(?:[.,]\d+)?)/i);
+    if (ruMatch) {
+        const lat = parseFloat(ruMatch[1].replace(',', '.'));
+        const lon = parseFloat(ruMatch[2].replace(',', '.'));
+        return { lat, lon };
+    }
+
+    // FALLBACK 1: degree notation  44.8678°N  110.117°E
+    const latMatch = text.match(/([+-]?\d+(?:\.\d+)?)\s*°?\s*([NS])/i);
+    const lonMatch = text.match(/([+-]?\d+(?:\.\d+)?)\s*°?\s*([EW])/i);
+    if (latMatch && lonMatch) {
+        let lat = parseFloat(latMatch[1]);
+        let lon = parseFloat(lonMatch[1]);
+        if (/S/i.test(latMatch[2])) lat = -lat;
+        if (/W/i.test(lonMatch[2])) lon = -lon;
+        return { lat, lon };
+    }
+
+    // FALLBACK 2: two plain decimals separated by comma/space
+    const plain = text.match(/([+-]?\d{1,3}\.\d+)[\s,]+([+-]?\d{1,3}\.\d+)/);
+    if (plain) return { lat: parseFloat(plain[1]), lon: parseFloat(plain[2]) };
+
+    return null;
+}
+
+function extractStationMeta() {
+    // Station name: last <li> text inside .bread-crumbs ul
+    let stationName = null;
+    const breadcrumbUl = document.querySelector('.bread-crumbs ul');
+    if (breadcrumbUl) {
+        const lis = breadcrumbUl.querySelectorAll('li');
+        if (lis.length > 0) {
+            stationName = lis[lis.length - 1].innerText.trim();
+        }
+    }
+
+    // Elevation: "высота над уровнем моря NNN м"
+    let elevation = null;
+    const infoEl = document.querySelector('.chronicle-info');
+    if (infoEl) {
+        const text = infoEl.innerText || infoEl.textContent || '';
+        const elevMatch = text.match(/высота\s+над\s+уровнем\s+моря\s+([\d.]+)/i);
+        if (elevMatch) {
+            elevation = elevMatch[1];
+        }
+    }
+
+    return { stationName, elevation };
+}
+
+function showCoordinateBar() {
+    // Remove any existing bar
+    const existing = document.getElementById('coord-bar');
+    if (existing) existing.remove();
+
+    const coords = extractCoordinates();
+    const meta = extractStationMeta();
+    const container = document.getElementById('weather-content-area');
+
+    const bar = document.createElement('div');
+    bar.id = 'coord-bar';
+
+    if (!coords) {
+        bar.className = 'coord-bar coord-bar--missing';
+        bar.innerHTML = `<span class="coord-label">📍 Coordinates not found in chronicle-info</span>`;
+    } else {
+        const latStr = coords.lat.toString();
+        const lonStr = coords.lon.toString();
+        const copyValue = `${latStr}\t${lonStr}`;
+
+        const nameHtml = meta.stationName
+            ? `<span class="coord-station-name">${meta.stationName}</span>`
+            : '';
+        const elevHtml = meta.elevation
+            ? `<span class="coord-elevation" title="Elevation (m)">▲ ${meta.elevation} м</span>`
+            : '';
+
+        bar.className = 'coord-bar';
+        bar.innerHTML = `
+            <span class="coord-label">📍</span>
+            ${nameHtml}
+            <button class="coord-copy-btn" id="coord-copy-btn" title="Copy as lat TAB lon" data-copy="${copyValue}">
+                📋 Copy lat⇥lon
+            </button>
+            ${elevHtml}
+            <span class="coord-chip">
+                <span class="coord-part coord-lat" title="Latitude">${latStr}</span>
+                <span class="coord-sep">⇥</span>
+                <span class="coord-part coord-lon" title="Longitude">${lonStr}</span>
+            </span>
+        `;
+    }
+    // Insert as first child of content area
+    container.insertBefore(bar, container.firstChild);
+
+    if (coords) {
+        document.getElementById('coord-copy-btn').addEventListener('click', (e) => {
+            const val = e.currentTarget.dataset.copy;
+            copyText(val);
+        });
+    }
+}
+
 function runUserLogic(startYear, years_continue) {
     // 1. CLEAR previous results
     document.getElementById('weather-content-area').innerHTML = '';
@@ -221,6 +333,7 @@ function runUserLogic(startYear, years_continue) {
         return avgKey ? row[avgKey] : '';
     });
 
+    showCoordinateBar();
     displayOutput(stat_obj, 'log');
     displayOutput(summary_arr, 'table');
     let tempR = '\n极端冷月平均气温: ' + stat_obj['YM']['min'].toString() + ' ( ' + getYMAT(stat_obj['YM']['min_YM']) +' )\n\n极端热月平均气温: '

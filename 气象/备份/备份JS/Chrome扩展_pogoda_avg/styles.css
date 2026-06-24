@@ -162,3 +162,89 @@
     pointer-events: none;
     z-index: 2147483648;
 }
+
+/* Coordinate Bar */
+.coord-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #0d1f33;
+    border: 1px solid #1e4d78;
+    border-left: 4px solid #4fc3f7;
+    border-radius: 6px;
+    padding: 10px 16px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+}
+.coord-bar--missing {
+    border-left-color: #888;
+    background: #1a1a1a;
+    color: #777;
+    font-style: italic;
+}
+.coord-label {
+    font-size: 12px;
+    font-weight: bold;
+    color: #4fc3f7;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+.coord-chip {
+    display: inline-flex;
+    align-items: center;
+    background: #112233;
+    border: 1px solid #2a5080;
+    border-radius: 4px;
+    padding: 4px 10px;
+    font-family: 'Courier New', monospace;
+    font-size: 15px;
+    gap: 6px;
+}
+.coord-part {
+    color: #e0f0ff;
+    font-weight: bold;
+    font-variant-numeric: tabular-nums;
+}
+.coord-lat { color: #80deea; }
+.coord-lon { color: #a5d6a7; }
+.coord-sep {
+    color: #555;
+    font-size: 16px;
+    font-weight: 900;
+    padding: 0 2px;
+}
+.coord-copy-btn {
+    background: #1565c0;
+    color: #e3f2fd;
+    border: 1px solid #1976d2;
+    border-radius: 4px;
+    padding: 5px 14px;
+    font-size: 13px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    white-space: nowrap;
+}
+.coord-copy-btn:hover {
+    background: #1976d2;
+    transform: translateY(-1px);
+}
+.coord-copy-btn:active {
+    transform: translateY(0);
+    background: #0d47a1;
+}
+.coord-station-name {
+    color: #fff;
+    font-size: 15px;
+    font-weight: bold;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+}
+.coord-elevation {
+    color: #ffcc80;
+    font-size: 13px;
+    font-weight: bold;
+    white-space: nowrap;
+    opacity: 0.85;
+}
