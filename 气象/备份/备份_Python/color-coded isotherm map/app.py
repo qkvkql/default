@@ -215,7 +215,7 @@ def first_descendant_named(element: ET.Element, name: str) -> ET.Element | None:
     return matches[0] if matches else None
 
 
-def polygon_from_element(element: ET.Element) -> Polygon | None:
+def polygon_from_element(element: ET.Element) -> Polygon | MultiPolygon | None:
     outer_boundary = first_descendant_named(element, "outerBoundaryIs")
     if outer_boundary is None:
         return None
@@ -241,9 +241,9 @@ def polygon_from_element(element: ET.Element) -> Polygon | None:
     return polygon if not polygon.is_empty else None
 
 
-def parse_kml_boundaries(files) -> tuple[Polygon | MultiPolygon, list[Polygon]]:
+def parse_kml_boundaries(files) -> tuple[Polygon | MultiPolygon, list[Polygon | MultiPolygon]]:
     """Return (unioned boundary, list of individual province polygons)."""
-    polygons: list[Polygon] = []
+    polygons: list[Polygon | MultiPolygon] = []
 
     for file_storage in files:
         tree = ET.parse(file_storage)
@@ -328,17 +328,126 @@ def make_grid(bounds: tuple[float, float, float, float], point_count: int = 300)
     return np.linspace(min_lon, max_lon, nx), np.linspace(min_lat, max_lat, ny)
 
 
-def kriging_surface(data: pd.DataFrame, grid_lon: np.ndarray, grid_lat: np.ndarray) -> np.ndarray:
+def kriging_surface(
+    data: pd.DataFrame,
+    grid_lon: np.ndarray,
+    grid_lat: np.ndarray,
+    mode: str = "mean",
+) -> np.ndarray:
+    """Interpolate station values onto a regular grid using Ordinary Kriging.
+
+    Parameters
+    ----------
+    mode : {"mean", "low", "high"}
+        Controls how the surface is corrected where Kriging smoothing causes it
+        to deviate significantly from the source station values.
+
+        ``"mean"``
+            Pure Kriging — no correction applied.  Smoothing is maximal.  Best
+            for daily-mean or normal temperature maps where isolated cold
+            mountain stations should not dominate their neighbourhood.
+
+        ``"low"``
+            Cold-biased correction.  Where a station's exact minimum is colder
+            than the Kriging estimate, a smooth Gaussian correction (σ ≈ 2°)
+            is blended in so the coldest recorded value always appears on the
+            map.  Warm corrections are suppressed wherever cold ones are active.
+            Designed for all-time or seasonal *minimum* temperature maps.
+
+        ``"high"``
+            Warm-biased correction — the mirror of ``"low"``.  Where a
+            station's maximum exceeds the Kriging estimate, that extreme is
+            blended back in.  Cold corrections are suppressed wherever warm ones
+            are active.  Designed for all-time or seasonal *maximum*
+            temperature maps.
+    """
+    # Deduplicate stations at identical coordinates to prevent singular matrix errors
+    deduped = (
+        data
+        .assign(_lon_r=data["lon"].round(6), _lat_r=data["lat"].round(6))
+        .groupby(["_lon_r", "_lat_r"], as_index=False)
+        .agg(lon=("lon", "mean"), lat=("lat", "mean"), value=("value", "mean"))
+    )
+
+    # Basic, smooth Kriging configuration
     kriging = OrdinaryKriging(
-        data["lon"].to_numpy(),
-        data["lat"].to_numpy(),
-        data["value"].to_numpy(),
+        deduped["lon"].to_numpy(),
+        deduped["lat"].to_numpy(),
+        deduped["value"].to_numpy(),
         variogram_model="spherical",
+        nlags=20,
         verbose=False,
         enable_plotting=False,
     )
+
     values, _ = kriging.execute("grid", grid_lon, grid_lat)
-    return np.asarray(values, dtype=float)
+    values = np.asarray(values, dtype=float)
+
+    if mode == "mean":
+        # No correction — return the smooth Kriging surface as-is.
+        return values
+
+    # --- Smooth correction pass (used by "low" and "high" modes) ---
+    # For every station where the interpolated surface misses the exact value by
+    # more than 0.5 units, inject a radial Gaussian correction (sigma ≈ 2°)
+    # centred on that station.  The correction delta decays smoothly to zero at
+    # the edges so the contour lines remain perfectly smooth with no pixel
+    # artefacts.
+    #
+    # Accumulation rule: cold deltas and warm deltas are collected independently
+    # (each cell keeps the most-extreme value seen across all stations).
+    # When combining:
+    #   "low"  mode → cold wins; warm is suppressed where cold is active.
+    #   "high" mode → warm wins; cold is suppressed where warm is active.
+    lon_step = float(grid_lon[1] - grid_lon[0])
+    lat_step = float(grid_lat[1] - grid_lat[0])
+    sigma_deg = 2.0            # correction radius ≈ 200 km — wide enough to be smooth
+    sigma_lon_cells = sigma_deg / lon_step
+    sigma_lat_cells = sigma_deg / lat_step
+
+    lon_grid, lat_grid = np.meshgrid(grid_lon, grid_lat)
+
+    max_cold_delta = np.zeros_like(values)   # most-negative delta (colder than Kriging)
+    max_warm_delta = np.zeros_like(values)   # most-positive  delta (warmer than Kriging)
+
+    for _, row in deduped.iterrows():
+        lat_idx = int(np.argmin(np.abs(grid_lat - row["lat"])))
+        lon_idx = int(np.argmin(np.abs(grid_lon - row["lon"])))
+        diff = float(row["value"]) - values[lat_idx, lon_idx]
+
+        if abs(diff) <= 0.5:
+            continue
+
+        # Gaussian weight field centred on this station
+        dist_lon = (lon_grid - row["lon"]) / lon_step
+        dist_lat = (lat_grid - row["lat"]) / lat_step
+        gauss = np.exp(-0.5 * ((dist_lon / sigma_lon_cells) ** 2 +
+                                (dist_lat / sigma_lat_cells) ** 2))
+        center_val = gauss[lat_idx, lon_idx]
+        if abs(center_val) < 1e-12:
+            continue
+
+        # delta field: equals diff at the station centre, decays outward
+        delta = diff * gauss / center_val
+
+        if diff < 0:
+            max_cold_delta = np.minimum(max_cold_delta, delta)
+        else:
+            max_warm_delta = np.maximum(max_warm_delta, delta)
+
+    has_cold = max_cold_delta < 0
+    has_warm = max_warm_delta > 0
+
+    if mode == "low":
+        # Cold corrections win; apply warm only where cold is absent
+        values[has_cold] += max_cold_delta[has_cold]
+        values[has_warm & ~has_cold] += max_warm_delta[has_warm & ~has_cold]
+    else:  # mode == "high"
+        # Warm corrections win; apply cold only where warm is absent
+        values[has_warm] += max_warm_delta[has_warm]
+        values[has_cold & ~has_warm] += max_cold_delta[has_cold & ~has_warm]
+
+    return values
 
 
 def clip_surface_to_boundary(surface: np.ndarray, grid_lon: np.ndarray, grid_lat: np.ndarray, boundary) -> np.ma.MaskedArray:
@@ -405,12 +514,14 @@ def draw_boundary_outline(ax, boundary, center_lon: float, center_lat: float) ->
 
 def draw_province_borders(ax, province_polygons: list, center_lon: float, center_lat: float) -> None:
     """Draw individual province borders as dotted dark-grey lines."""
-    for polygon in province_polygons:
-        exterior_lon, exterior_lat = polygon.exterior.xy
-        exterior_x, exterior_y = orthographic_project(
-            np.array(exterior_lon), np.array(exterior_lat), center_lon, center_lat
-        )
-        ax.plot(exterior_x, exterior_y, color="#b0b0b0", linewidth=0.6, linestyle="solid", antialiased=True)
+    for geom in province_polygons:
+        polys = list(geom.geoms) if isinstance(geom, MultiPolygon) else [geom]
+        for polygon in polys:
+            exterior_lon, exterior_lat = polygon.exterior.xy
+            exterior_x, exterior_y = orthographic_project(
+                np.array(exterior_lon), np.array(exterior_lat), center_lon, center_lat
+            )
+            ax.plot(exterior_x, exterior_y, color="#b0b0b0", linewidth=0.6, linestyle="solid", antialiased=True)
 
 
 def ring_to_path_parts(coordinates) -> tuple[list[tuple[float, float]], list[int]]:
@@ -439,6 +550,20 @@ def boundary_clip_patch(boundary, center_lon: float, center_lat: float) -> PathP
     return PathPatch(MplPath(vertices, codes), facecolor="none", edgecolor="none", antialiased=True)
 
 
+def get_merged_intervals(intervals: list[tuple[float, float]]) -> list[tuple[float, float]]:
+    if not intervals:
+        return []
+    intervals.sort(key=lambda x: x[0])
+    merged = [intervals[0]]
+    for current in intervals[1:]:
+        previous = merged[-1]
+        if current[0] <= previous[1] + 1e-9:
+            merged[-1] = (previous[0], max(previous[1], current[1]))
+        else:
+            merged.append(current)
+    return merged
+
+
 def save_surface_image(
     surface: np.ndarray,
     grid_lon: np.ndarray,
@@ -450,6 +575,8 @@ def save_surface_image(
     under_color: str = "#ffffff",
     over_color: str = "#000000",
     value_levels: list[int] | None = None,
+    extra_lats: list[float] | None = None,
+    extra_lons: list[float] | None = None,
 ) -> str:
     filename = f"isotherm-{uuid.uuid4().hex}.png"
     output_path = OUTPUT_DIR / filename
@@ -476,54 +603,131 @@ def save_surface_image(
     cmap = ListedColormap(colors)
     cmap.set_under(under_color)
     cmap.set_over(over_color)
+    # BoundaryNorm uses left-closed intervals [boundaries[i], boundaries[i+1]).
+    # Our color rule defines RIGHT-closed intervals (prev, value].
+    # Subtract a tiny epsilon so that a value exactly equal to an integer boundary
+    # falls just below the edge — landing in the correct lower band.
+    shifted_surface = surface - 1e-9
+
     norm = BoundaryNorm(boundaries, cmap.N)
-    contour = ax.contourf(
+
+    # contourf draws smooth filled regions between exact level boundaries —
+    # no visible grid cells.  The bullseye rings were produced by the Kriging
+    # surface itself (ill-conditioned solver → local spikes); now that
+    # pseudo_inv=True yields a clean surface, contourf is artifact-free.
+    contour_fill = ax.contourf(
         x_mesh,
         y_mesh,
-        surface,
+        shifted_surface,
         levels=boundaries,
         cmap=cmap,
         norm=norm,
         extend="both",
         antialiased=False,
     )
-    contour.set_clip_path(clip_patch)
+    contour_fill.set_clip_path(clip_patch)
 
-    # Draw interval contour lines only at multiples of 10, in solid black.
-    # Use value_levels (the actual integer data values) rather than the half-integer
-    # BoundaryNorm edges stored in `boundaries`, which would never match multiples of 10.
-    levels_to_check = value_levels if value_levels is not None else boundaries
-    multiples_of_10 = [lvl for lvl in levels_to_check if isinstance(lvl, (int, float)) and abs(lvl % 10) < 1e-9]
-    if multiples_of_10:
+    # Draw contour lines at the pre-filtered multiples-of-10 levels.
+    if value_levels:
         contour_lines = ax.contour(
             x_mesh,
             y_mesh,
-            surface,
-            levels=sorted(multiples_of_10),
+            shifted_surface,
+            levels=sorted(value_levels),
             colors="black",
             linewidths=0.7,
             linestyles="solid",
             antialiased=True,
         )
         contour_lines.set_clip_path(clip_patch)
-        texts = ax.clabel(
-            contour_lines,
-            levels=sorted(multiples_of_10),
-            fmt="%g",
-            fontsize=8,
-            colors="black",
-            inline=True,
-            inline_spacing=2,
-        )
-        # Hide labels whose position falls outside the KML boundary clip path
+        
+        # Calculate valid label locations strictly inside the KML boundary
+        # to ensure non-closed lines get labels properly placed inside.
         clip_mpl_path = clip_patch.get_path()
-        for txt in texts:
-            tx, ty = txt.get_position()
-            if not clip_mpl_path.contains_point((tx, ty)):
-                txt.set_visible(False)
+        label_locations = []
+        
+        paths = []
+        if hasattr(contour_lines, "collections") and contour_lines.collections:
+            for col in contour_lines.collections:
+                paths.extend(col.get_paths())
+        elif hasattr(contour_lines, "get_paths"):
+            paths.extend(contour_lines.get_paths())
+
+        for path in paths:
+            vertices = path.vertices
+            if len(vertices) == 0:
+                continue
+            inside = clip_mpl_path.contains_points(vertices)
+            if not inside.any():
+                continue
+            indices = np.where(inside)[0]
+            groups = np.split(indices, np.where(np.diff(indices) > 1)[0] + 1)
+            longest_group = max(groups, key=len)
+            if len(longest_group) > 0:
+                mid_idx = longest_group[len(longest_group) // 2]
+                label_locations.append(tuple(vertices[mid_idx]))
+                
+        if label_locations:
+            texts = ax.clabel(
+                contour_lines,
+                levels=sorted(value_levels),
+                fmt="%g",
+                fontsize=8,
+                colors="black",
+                inline=True,
+                inline_spacing=2,
+                manual=label_locations,
+            )
+        else:
+            texts = ax.clabel(
+                contour_lines,
+                levels=sorted(value_levels),
+                fmt="%g",
+                fontsize=8,
+                colors="black",
+                inline=True,
+                inline_spacing=2,
+            )
+            for txt in texts:
+                tx, ty = txt.get_position()
+                if not clip_mpl_path.contains_point((tx, ty)):
+                    txt.set_visible(False)
 
     if province_polygons:
         draw_province_borders(ax, province_polygons, center_lon, center_lat)
+
+    if extra_lats or extra_lons:
+        polygons = list(boundary.geoms) if isinstance(boundary, MultiPolygon) else [boundary]
+        lon_intervals = []
+        lat_intervals = []
+        for poly in polygons:
+            poly_min_lon, poly_min_lat, poly_max_lon, poly_max_lat = poly.bounds
+            lon_intervals.append((poly_min_lon, poly_max_lon))
+            lat_intervals.append((poly_min_lat, poly_max_lat))
+        
+        lon_intervals = get_merged_intervals(lon_intervals)
+        lat_intervals = get_merged_intervals(lat_intervals)
+
+    if extra_lats:
+        for lat in extra_lats:
+            for int_min_lon, int_max_lon in lon_intervals:
+                num_points = max(10, int((int_max_lon - int_min_lon) * 2))
+                lons = np.linspace(int_min_lon, int_max_lon, num_points)
+                lats_arr = np.full_like(lons, lat)
+                x, y = orthographic_project(lons, lats_arr, center_lon, center_lat)
+                line, = ax.plot(x, y, color="grey", linestyle=":", linewidth=1.0, antialiased=True)
+                line.set_clip_path(clip_patch)
+
+    if extra_lons:
+        for lon in extra_lons:
+            for int_min_lat, int_max_lat in lat_intervals:
+                num_points = max(10, int((int_max_lat - int_min_lat) * 2))
+                lats_arr = np.linspace(int_min_lat, int_max_lat, num_points)
+                lons_arr = np.full_like(lats_arr, lon)
+                x, y = orthographic_project(lons_arr, lats_arr, center_lon, center_lat)
+                line, = ax.plot(x, y, color="grey", linestyle=":", linewidth=1.0, antialiased=True)
+                line.set_clip_path(clip_patch)
+
     draw_boundary_outline(ax, boundary, center_lon, center_lat)
     ax.set_xlim(min_x - margin, max_x + margin)
     ax.set_ylim(min_y - margin, max_y + margin)
@@ -565,6 +769,9 @@ def render_map():
         lon_col = request.form["lon_col"]
         value_col = request.form["value_col"]
 
+        extra_lats = json.loads(request.form.get("extra_lats", "[]"))
+        extra_lons = json.loads(request.form.get("extra_lons", "[]"))
+
         # ── Parse the dynamic color rule sent by the frontend ──────────────
         raw_color_rule = request.form.get("color_rule")
         if not raw_color_rule:
@@ -574,42 +781,64 @@ def render_map():
         if len(entries) < 2:
             raise ValueError("Color rule must contain at least two entries.")
 
-        # Sort by value and build BoundaryNorm inputs
+        # Sort by value and build BoundaryNorm inputs.
+        # Each entry represents a color RANGE where:
+        #   - entry[0] with value V0 covers the range (V0-1, V0]
+        #   - entry[i] with value Vi covers the range (V_{i-1}, Vi]
+        # So the boundaries are exact integers: [V0-1, V0, V1, V2, ...]
         entries.sort(key=lambda e: e["value"])
         entry_values = [int(e["value"]) for e in entries]
         entry_colors = [str(e["color"]) for e in entries]
 
-        # boundaries: N+1 edges for N color bands
-        # We create half-integer boundaries between each pair of adjacent integers
-        # so that each integer value maps to exactly one color cell.
-        boundaries = [entry_values[0] - 0.5] + [v + 0.5 for v in entry_values]
+        # Build exact-integer BoundaryNorm boundaries: N colors → N+1 edges
+        boundaries = [entry_values[0] - 1] + list(entry_values)
         colors = entry_colors
-        under_color = entry_colors[0]   # values below min
-        over_color  = entry_colors[-1]  # values above max
+        under_color = entry_colors[0]   # values below lower bound
+        over_color  = entry_colors[-1]  # values above upper bound
 
-        labels = [
-            str(v)
-            for v in entry_values
-        ]
-        legend_items = [
-            {"color": entry_colors[i], "label": labels[i], "range": labels[i]}
-            for i in range(len(entry_values))
-        ]
+        # Legend: each entry represents the range (prev, value]
+        legend_items = []
+        for i, v in enumerate(entry_values):
+            lower = entry_values[i - 1] if i > 0 else entry_values[0] - 1
+            label = f"{lower} to {v}"
+            legend_items.append({"color": entry_colors[i], "label": label, "range": label})
 
         data = dataframe_from_upload(excel, lat_col, lon_col, value_col)
         boundary, province_polygons = parse_kml_boundaries(kml_files)
         min_lon, min_lat, max_lon, max_lat = boundary.bounds
         grid_lon, grid_lat = make_grid((min_lon, min_lat, max_lon, max_lat))
-        surface = kriging_surface(data, grid_lon, grid_lat)
+        interp_mode = request.form.get("interp_mode", "mean")
+        if interp_mode not in ("mean", "low", "high"):
+            interp_mode = "mean"
+        surface = kriging_surface(data, grid_lon, grid_lat, mode=interp_mode)
+
+        # Clamp the kriging surface to the actual source data value range to
+        # prevent extrapolation from producing values beyond what the data supports.
+        data_min = float(data["value"].min())
+        data_max = float(data["value"].max())
+        surface = np.clip(surface, data_min, data_max)
+
         clipped = clip_surface_to_boundary(surface, grid_lon, grid_lat, boundary)
 
         visible_values = clipped.compressed()
         if len(visible_values) == 0:
             raise ValueError("No interpolated grid cells fall inside the selected KML boundaries.")
+
+        # Contour lines at multiples of 10 that lie within the data range
+        multiples_of_10 = [
+            v for v in range(
+                math.ceil(data_min / 10) * 10,
+                math.floor(data_max / 10) * 10 + 1,
+                10,
+            )
+        ]
+
         image_url = save_surface_image(
             surface, grid_lon, grid_lat, boundary, boundaries, colors, province_polygons,
             under_color=under_color, over_color=over_color,
-            value_levels=entry_values,
+            value_levels=multiples_of_10,
+            extra_lats=extra_lats,
+            extra_lons=extra_lons,
         )
 
         return jsonify(

@@ -15,6 +15,8 @@ import concurrent.futures
 from dotenv import load_dotenv
 from flask_wtf.csrf import CSRFProtect, generate_csrf
 import json
+import re
+from shapely.geometry import Polygon, Point
 
 load_dotenv()
 
@@ -792,6 +794,30 @@ def get_data():
                     if source == 'GHCND': temp_st_df = temp_st_df[temp_st_df['ID'].str[:2].str.upper() == country_limit]
                     else: temp_st_df = temp_st_df[temp_st_df['CTRY'].str.upper() == country_limit]
                 if source == 'GSOD' and wban_limit == '99999': temp_st_df = temp_st_df[temp_st_df['WBAN'] == '99999']
+
+                kml_content = req.get('kml_content', '')
+                if kml_content:
+                    kml_polygons = []
+                    coords_texts = re.findall(r'<coordinates>(.*?)</coordinates>', kml_content, re.DOTALL)
+                    for text in coords_texts:
+                        points = []
+                        # Split by space, newline, or carriage return
+                        for coord_str in text.strip().split():
+                            parts = coord_str.split(',')
+                            if len(parts) >= 2:
+                                try:
+                                    points.append((float(parts[0]), float(parts[1])))
+                                except ValueError:
+                                    pass
+                        if len(points) >= 3:
+                            kml_polygons.append(Polygon(points))
+                    
+                    if kml_polygons:
+                        def in_kml(row):
+                            if pd.isna(row['LON']) or pd.isna(row['LAT']): return False
+                            pt = Point(row['LON'], row['LAT'])
+                            return any(poly.contains(pt) or poly.touches(pt) for poly in kml_polygons)
+                        temp_st_df = temp_st_df[temp_st_df.apply(in_kml, axis=1)]
 
                 temp_st_df['DIST'] = haversine_vectorized(center_lat, center_lon, temp_st_df['LAT'], temp_st_df['LON'])
                 if max_dist != 'no_limit':

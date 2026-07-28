@@ -14,6 +14,12 @@ const stats            = document.querySelector("#stats");
 const resultImage      = document.querySelector("#resultImage");
 const imagePlaceholder = document.querySelector("#imagePlaceholder");
 
+// Extra Grid Lines
+const extraLatsInput     = document.querySelector("#extraLats");
+const extraLonsInput     = document.querySelector("#extraLons");
+const checkExtraLinesBtn = document.querySelector("#checkExtraLinesBtn");
+const extraLinesMessage  = document.querySelector("#extraLinesMessage");
+
 // Color-rule panel
 const colorRuleToggle  = document.querySelector("#colorRuleToggle");
 const colorRuleBody    = document.querySelector("#colorRuleBody");
@@ -392,7 +398,16 @@ generateRuleBtn.addEventListener("click", () => {
 
 // ─── Color rule – preview ─────────────────────────────────────────────────────
 function renderColorPreview(colorRule, stops) {
-  const gradientCss = `linear-gradient(to right, ${colorRule.map((e) => e.color).join(",")})`;
+  // Build a stepped (discrete) color bar: each entry gets an equal-width block.
+  // Using a CSS linear-gradient would blur adjacent colors together — instead
+  // we render individual <span> elements so colors show as sharp, distinct bands.
+  const barBlocks = colorRule
+    .map((e) => `<span class="preview-bar-block" style="background:${e.color}" title="${e.value}: ${e.color}"></span>`)
+    .join("");
+
+  // Range labels: show (min-1, min] … to (max-1, max]
+  const firstVal = colorRule[0].value;
+  const lastVal  = colorRule[colorRule.length - 1].value;
 
   const stopRows = stops.map((cp, i) => {
     const role = i === 0 ? "Min" : i === stops.length - 1 ? "Max" : "Internal";
@@ -405,18 +420,18 @@ function renderColorPreview(colorRule, stops) {
   }).join("");
 
   crPreviewBody.innerHTML = `
-    <div class="preview-gradient-bar" style="background:${gradientCss}" title="Full color gradient"></div>
+    <div class="preview-stepped-bar">${barBlocks}</div>
     <div class="preview-range-label">
-      <span>${colorRule[0].value}</span>
-      <span>${colorRule[colorRule.length - 1].value}</span>
+      <span>${firstVal - 1} →</span>
+      <span>→ ${lastVal}</span>
     </div>
     <div class="preview-table-wrap">
       <table class="preview-table">
-        <thead><tr><th>Value</th><th>Color</th><th>Hex</th><th>Role</th></tr></thead>
+        <thead><tr><th>Value (upper bound)</th><th>Color</th><th>Hex</th><th>Role</th></tr></thead>
         <tbody>${stopRows}</tbody>
       </table>
     </div>
-    <div class="preview-total">${colorRule.length} total integer entries</div>
+    <div class="preview-total">${colorRule.length} color bands (each band = 1 integer unit range)</div>
   `;
 }
 
@@ -526,6 +541,34 @@ kmlInput.addEventListener("change", () => {
     count === 0 ? "No files selected" : count === 1 ? kmlInput.files[0].name : `${count} files selected`;
 });
 
+// ─── Extra Grid Lines ─────────────────────────────────────────────────────────
+function parseExtraLines(raw) {
+  return raw.split('\t')
+    .map(s => s.trim())
+    .filter(s => s !== '')
+    .map(Number)
+    .filter(n => !isNaN(n));
+}
+
+checkExtraLinesBtn.addEventListener("click", () => {
+  const lats = parseExtraLines(extraLatsInput.value);
+  const lons = parseExtraLines(extraLonsInput.value);
+  
+  let msg = [];
+  if (lats.length > 0) {
+    msg.push(`Latitudes: ${lats.join(', ')}`);
+  }
+  if (lons.length > 0) {
+    msg.push(`Longitudes: ${lons.join(', ')}`);
+  }
+  
+  if (msg.length === 0) {
+    extraLinesMessage.textContent = "No extra lines will be drawn.";
+  } else {
+    extraLinesMessage.textContent = "Will draw lines at " + msg.join("; ") + ".";
+  }
+});
+
 // ─── Draw button ──────────────────────────────────────────────────────────────
 drawButton.addEventListener("click", async () => {
   if (!excelInput.files[0]) {
@@ -537,7 +580,7 @@ drawButton.addEventListener("click", async () => {
     return;
   }
   if (!generatedColorMap) {
-    setMessage("Please define and generate the Color Rule (section 4) before drawing.", "error");
+    setMessage("Please define and generate the Color Rule (section 6) before drawing.", "error");
     if (colorRuleBody.hidden) colorRuleToggle.click();
     generateRuleBtn.classList.add("btn-pulse");
     setTimeout(() => generateRuleBtn.classList.remove("btn-pulse"), 1200);
@@ -551,6 +594,11 @@ drawButton.addEventListener("click", async () => {
   formData.append("lon_col",    lonColumn.value);
   formData.append("value_col",  valueColumn.value);
   formData.append("color_rule", JSON.stringify(generatedColorMap.colorRule));
+  formData.append("extra_lats", JSON.stringify(parseExtraLines(extraLatsInput.value)));
+  formData.append("extra_lons", JSON.stringify(parseExtraLines(extraLonsInput.value)));
+  
+  const interpMode = document.querySelector('input[name="interpMode"]:checked').value;
+  formData.append("interp_mode", interpMode);
 
   drawButton.disabled = true;
   setMessage("Running Kriging interpolation and clipping to KML boundaries...", "busy");

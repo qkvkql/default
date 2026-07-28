@@ -747,6 +747,17 @@ async function fetchData(keepSort = false) {
         multi_limit: multiLimit
     };
 
+    const kmlInput = document.getElementById('kmlUpload');
+    if (kmlInput && kmlInput.files.length > 0) {
+        const file = kmlInput.files[0];
+        payload.kml_content = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = e => resolve(e.target.result);
+            reader.onerror = () => resolve('');
+            reader.readAsText(file);
+        });
+    }
+
     try {
         const response = await fetch('/get_data', {
             method: 'POST',
@@ -885,3 +896,46 @@ function updateStatRow(prefix, data) {
 }
 
 // Removed unused element filter functions
+
+function togglePogodaiklimatInputs() {
+    const cb = document.getElementById('enablePogodaiklimatLink');
+    const inputsDiv = document.getElementById('pogodaiklimatInputs');
+    if (cb && cb.checked) {
+        inputsDiv.style.display = 'flex';
+    } else {
+        inputsDiv.style.display = 'none';
+    }
+}
+
+function applyPogodaiklimatLinks() {
+    const startIndex = parseInt(document.getElementById('pogodaStartIndex').value, 10);
+    const endIndex = parseInt(document.getElementById('pogodaEndIndex').value, 10);
+    
+    if (isNaN(startIndex) || isNaN(endIndex) || startIndex < 0 || endIndex < startIndex) {
+        alert("Invalid start or end index.");
+        return;
+    }
+    
+    const table = document.getElementById('multiStationTable');
+    if (!table) return;
+    
+    const rows = table.querySelectorAll('tbody tr');
+    rows.forEach(tr => {
+        // The first cell is the ID
+        const td = tr.querySelector('td');
+        if (td) {
+            // Get the raw text content without HTML tags
+            const originalText = td.textContent.trim();
+            // Ensure this is a valid station row (not the 'No matching stations found' row)
+            if (originalText && originalText !== '-' && !originalText.includes('No matching stations')) {
+                // Ensure indices are within bounds
+                const actualEnd = Math.min(endIndex, originalText.length);
+                const subStr = originalText.substring(startIndex, actualEnd);
+                if (subStr) {
+                    td.innerHTML = `<a href="https://www.pogodaiklimat.ru/history/${subStr}.htm" target="_blank" onclick="event.stopPropagation()">${originalText}</a>`;
+                    td.classList.remove('copy-cell');
+                }
+            }
+        }
+    });
+}

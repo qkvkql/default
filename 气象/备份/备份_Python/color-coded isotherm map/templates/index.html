@@ -55,6 +55,37 @@
           </div>
         </div>
 
+        <div class="panel-section extra-lines-section">
+          <h2>4. Extra Grid Lines (Optional)</h2>
+          <div class="select-grid" style="align-items: end;">
+            <label>
+              Latitudes (tab-separated)
+              <input type="text" id="extraLats" placeholder="20&#9;30&#9;40&#9;50" value="20&#9;30&#9;40&#9;50" class="cp-value-input" style="width: 100%; box-sizing: border-box;" />
+            </label>
+            <label>
+              Longitudes (tab-separated)
+              <input type="text" id="extraLons" placeholder="70&#9;80&#9;90&#9;100&#9;110&#9;120&#9;130&#9;140&#9;150" value="70&#9;80&#9;90&#9;100&#9;110&#9;120&#9;130&#9;140&#9;150" class="cp-value-input" style="width: 100%; box-sizing: border-box;" />
+            </label>
+            <button id="checkExtraLinesBtn" class="secondary-button" type="button" style="margin-bottom: 2px;">Check Lines</button>
+          </div>
+          <div id="extraLinesMessage" class="muted" style="margin-top: 0.5rem; font-size: 0.85rem;"></div>
+        </div>
+
+        <div class="panel-section interp-mode-section">
+          <h2>5. Interpolation Mode</h2>
+          <div class="interp-mode-group" role="radiogroup" aria-label="Interpolation mode" style="display: flex; gap: 16px; align-items: center;">
+            <label title="Cold-biased correction — ensures lowest temperature readings always appear on the map. Best for minimum temperature maps." style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 500; font-size: 14px;">
+              <input type="radio" name="interpMode" id="modeLow" value="low" style="margin: 0;" /> Low
+            </label>
+            <label title="Pure Kriging smoothing — best for daily-mean temperature maps where isolated mountain cold spots should not dominate their surroundings." style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 500; font-size: 14px;">
+              <input type="radio" name="interpMode" id="modeMean" value="mean" checked style="margin: 0;" /> Mean
+            </label>
+            <label title="Warm-biased correction — ensures highest temperature readings always appear on the map. Best for maximum temperature maps." style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 500; font-size: 14px;">
+              <input type="radio" name="interpMode" id="modeHigh" value="high" style="margin: 0;" /> High
+            </label>
+          </div>
+        </div>
+
         <div class="action-row">
           <button id="drawButton" class="primary-button" type="button">Draw Isotherm Image</button>
           <div id="message" class="message" role="status"></div>
@@ -71,7 +102,7 @@
           aria-controls="colorRuleBody"
         >
           <span class="toggle-icon">▶</span>
-          <span>4. Color Rule</span>
+          <span>6. Color Rule</span>
           <span id="colorRuleStatus" class="rule-badge rule-badge--undefined">Not defined</span>
         </button>
 

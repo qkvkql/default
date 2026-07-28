@@ -414,6 +414,12 @@
     "level1": "甘肃"
   },
   {
+    "USAF": "50344",
+    "cn_name": "白山景区上",
+    "domes_id": "",
+    "level1": "黑龙江"
+  },
+  {
     "USAF": "50341",
     "cn_name": "白山景区下",
     "domes_id": "",
@@ -973,13 +979,13 @@
   },
   {
     "USAF": "",
-    "cn_name": "黑石北湖",
+    "cn_name": "黑石北湖北",
     "domes_id": "Y9590",
     "level1": "新疆"
   },
   {
     "USAF": "",
-    "cn_name": "吉木乃冰川站",
+    "cn_name": "吉木乃冰川",
     "domes_id": "Y5316",
     "level1": "新疆"
   },
@@ -1066,5 +1072,71 @@
     "cn_name": "芒硝湖",
     "domes_id": "Y8014",
     "level1": "新疆"
+  },
+  {
+    "USAF": "",
+    "cn_name": "莫尔道嘎恩和",
+    "domes_id": "",
+    "level1": "内蒙古"
+  },
+  {
+    "USAF": "",
+    "cn_name": "普若岗日",
+    "domes_id": "U6021",
+    "level1": "西藏"
+  },
+  {
+    "USAF": "57354",
+    "cn_name": "神农顶",
+    "domes_id": "",
+    "level1": "湖北"
+  },
+  {
+    "USAF": "",
+    "cn_name": "冈仁波齐3",
+    "domes_id": "U7502",
+    "level1": "西藏"
+  },
+  {
+    "USAF": "",
+    "cn_name": "冈仁波齐4",
+    "domes_id": "U7101",
+    "level1": "西藏"
+  },
+  {
+    "USAF": "",
+    "cn_name": "扎敦水利枢纽",
+    "domes_id": "C0316",
+    "level1": "内蒙古"
+  },
+  {
+    "USAF": "",
+    "cn_name": "革吉亚热却藏",
+    "domes_id": "U7073",
+    "level1": "西藏"
+  },
+  {
+    "USAF": "55026",
+    "cn_name": "松西",
+    "domes_id": "",
+    "level1": "西藏"
+  },
+  {
+    "USAF": "",
+    "cn_name": "新鑫盐矿",
+    "domes_id": "Y8049",
+    "level1": "新疆"
+  },
+  {
+    "USAF": "",
+    "cn_name": "三堡乡",
+    "domes_id": "Y5774",
+    "level1": "新疆"
+  },
+  {
+    "USAF": "",
+    "cn_name": "伊木河",
+    "domes_id": "C0239",
+    "level1": "内蒙古"
   }
 ]

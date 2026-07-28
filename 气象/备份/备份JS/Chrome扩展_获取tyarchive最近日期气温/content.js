@@ -1054,7 +1054,48 @@
         for (const node of mutation.addedNodes) {
           if (node.nodeType !== 1) continue;
 
-          // Check if this node IS the textarea, or contains one
+          // ── NEW: detect the updated rt-data-view-table (website changed from textarea to table) ──
+          const tbl = (node.classList && node.classList.contains('rt-data-view-table')) ? node
+                    : node.querySelector?.('table.rt-data-view-table');
+          if (tbl) {
+            setTimeout(() => {
+              console.log('[Tyarchive] Native 数据视图 TABLE detected (rt-data-view-table)');
+
+              // Hide the native ECharts data-view container
+              let nativeContainer = tbl.parentElement;
+              while (nativeContainer &&
+                     nativeContainer !== document.body &&
+                     nativeContainer !== document.documentElement) {
+                const cs = window.getComputedStyle(nativeContainer);
+                if (cs.position === 'absolute' && nativeContainer.style.zIndex) {
+                  nativeContainer.style.display = 'none';
+                  break;
+                }
+                nativeContainer = nativeContainer.parentElement;
+              }
+
+              // Convert table rows to the same tab-separated text that showTextDataView expects.
+              // Table columns (0-indexed): 0=日期, 1=日降水量, 2=累计曲线, 3=9120气候值(降水),
+              //   4=平均气温, 5=最高气温, 6=最低气温, 7=5日滑动均温, …
+              // showTextDataView reads: cols[5]=max, cols[6]=min — matches exactly.
+              const rows = Array.from(tbl.querySelectorAll('tbody tr'));
+              if (!rows.length) {
+                console.warn('[Tyarchive] rt-data-view-table has no body rows');
+                return;
+              }
+              const tsvLines = rows.map(tr => {
+                const cells = Array.from(tr.querySelectorAll('td'));
+                return cells.map(td => (td.textContent || '').trim()).join('\t');
+              });
+              const syntheticText = tsvLines.join('\n');
+              console.log('[Tyarchive] Converted table to TSV, rows:', rows.length);
+              showTextDataView(syntheticText);
+            }, 60);
+
+            return; // handled
+          }
+
+          // ── ORIGINAL: detect legacy ECharts textarea data-view ──
           const ta = (node.tagName === 'TEXTAREA') ? node
                    : node.querySelector?.('textarea');
           if (!ta) continue;
@@ -1096,7 +1137,7 @@
     });
 
     observer.observe(document.body, { childList: true, subtree: true });
-    console.log('[Tyarchive] MutationObserver watching for native 数据视图 textarea');
+    console.log('[Tyarchive] MutationObserver watching for native 数据视图 textarea/table');
     return observer; // caller can disconnect() if needed
   }
 
@@ -1107,7 +1148,11 @@
   // Target: row whose date column (format: MM月DD日) matches the user-specified MM-DD target.
   async function showTextDataView(rawText) {
     // Helper: treat 'NaN' string as empty
-    const clean = v => (v || '').trim() === 'NaN' ? '' : (v || '').trim();
+    const clean = v => {
+      const s = (v || '').trim();
+      if (s === 'NaN' || s === '-') return '';  // NaN = old textarea; '-' = new table missing value
+      return s;
+    };
     const isValid = v => clean(v) !== '';  // has a real value
 
     // Read the user-specified target date (MM-DD) and convert to MM月DD日 for matching.

@@ -151,7 +151,8 @@
       "max": "Max",
       "wban_limit": "WBAN Limit (GSOD):",
       "limit_to_99999": "Limit to 99999",
-      "include_opposite": "Include Opposite Hemisphere"
+      "include_opposite": "Include Opposite Hemisphere",
+      "area_limit_kml": "Area Limit by KML:"
     },
     "tables": {
       "type": "Type",
@@ -390,7 +391,8 @@
       "max": "最大",
       "wban_limit": "WBAN限制(GSOD):",
       "limit_to_99999": "限制为99999",
-      "include_opposite": "包含对侧半球"
+      "include_opposite": "包含对侧半球",
+      "area_limit_kml": "KML范围限制:"
     },
     "tables": {
       "type": "日温类型",

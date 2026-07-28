@@ -534,10 +534,18 @@ select {
   color: #9ba8b6;
 }
 
-.preview-gradient-bar {
+/* Stepped (discrete) color preview bar — replaces the blurred linear-gradient bar */
+.preview-stepped-bar {
   height: 28px;
   border-radius: 6px;
   border: 1px solid #dbe2ea;
+  display: flex;
+  overflow: hidden;
+}
+
+.preview-bar-block {
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .preview-range-label {

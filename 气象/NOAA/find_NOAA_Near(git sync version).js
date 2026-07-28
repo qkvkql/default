@@ -17,16 +17,16 @@ for(let i = 0; i < sheets.length; i++)
 let config = {
     USAF: '45011',
     searchType: 1, //按什么搜索，0代表按站号搜索
-    coorArr: [51.49809441, 104.1092043], //如果是按坐标搜索(searchType = 1), 需要在这给出坐标
+    coorArr: [39.83, 88.73], //如果是按坐标搜索(searchType = 1), 需要在这给出坐标
     filters: {
         byCoordsRange: 0, ////是否筛选经纬度
         byElev: 0, //是否筛选海拔
 
-        maxDistance: 500, //方圆多少km
+        maxDistance: 1675, //方圆多少km
         
-        countryCode: 'rs', //留空则不筛选国家
+        countryCode: 'kz', //留空则不筛选国家
         
-        lat1: 60, //纬度范围：起始纬度
+        lat1: 30, //纬度范围：起始纬度
         lat2: 90, //纬度范围：终止纬度
         lon1: -180, //经度范围：起始经度
         lon2: 180, //经度范围：终止经度
