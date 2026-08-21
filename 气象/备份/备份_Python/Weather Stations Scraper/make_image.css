@@ -230,10 +230,21 @@ thead {
 }
 
 #title-cell {
+    position: relative;
     padding: 14px 4px;
     color: #ffffff;
-    text-align: center;
-    font-size: 60px
+    text-align: right;
+    padding-right: 160px;
+    font-size: 60px;
+    vertical-align: middle;
+}
+
+.author-subtitle {
+    position: absolute;
+    top: 12px;
+    left: 60px;
+    font-size: 30px;
+    color: #888888;
 }
 
 #date-cell {

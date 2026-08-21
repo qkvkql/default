@@ -157,7 +157,7 @@ function loadDataToTable(sourceKey) {
     // Adjust Header Row colspans: title spans 5, date spans the rest
     titleCell.colSpan = 5;
     dateCell.colSpan = columns.length - 5;
-    titleCell.innerHTML = base_title;
+    titleCell.innerHTML = `<div>${base_title}(℃)</div><div class="author-subtitle" style="text-align: left">作者:<br>@蒙古冷迷</div>`;
 
     // --- RENDER HEADERS ---
     columns.forEach(colName => {
