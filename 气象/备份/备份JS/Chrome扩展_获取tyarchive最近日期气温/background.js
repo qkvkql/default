@@ -22,11 +22,73 @@ chrome.action.onClicked.addListener(async (tab) => {
   }
 });
 
+
+
 // ── Clipboard relay ─────────────────────────────────────────────────────────────
 // Content scripts lose the user-gesture context by the time the chart data
 // arrives.  The background can use chrome.scripting.executeScript to run code
 // in the tab's page context — this is always trusted and requires no gesture.
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+
+  // ── triggerDataViewMain ───────────────────────────────────────────────────
+  // Runs in world:'MAIN' to access window.echarts.  Instead of trying to click
+  // the in-canvas toolbox icon, we extract chart data directly via getOption()
+  // and return it as TSV text for showTextDataView() to consume.
+  if (request.action === 'triggerDataViewMain' && sender.tab && sender.tab.id) {
+    chrome.scripting.executeScript({
+      target: { tabId: sender.tab.id },
+      world: 'MAIN',
+      func: () => {
+        // ── Find the ECharts instance ─────────────────────────────────────
+        let chartInst = null;
+        if (window.echarts) {
+          for (const div of document.querySelectorAll('div')) {
+            try {
+              const inst = window.echarts.getInstanceByDom(div);
+              if (inst) { chartInst = inst; break; }
+            } catch (_) {}
+          }
+        }
+        if (!chartInst) return { ok: false, error: 'ECharts instance not found' };
+
+        // ── Extract data via getOption() ──────────────────────────────────
+        try {
+          const opt = chartInst.getOption();
+          const xAxis = opt.xAxis && opt.xAxis[0];
+          const dates = (xAxis && xAxis.data) || [];
+          const series = opt.series || [];
+          if (!dates.length) return { ok: false, error: 'No xAxis data' };
+
+          // Build TSV: each row = date \t s0 \t s1 \t ...
+          // This mirrors the native ECharts data-view output format.
+          const lines = [];
+          for (let i = 0; i < dates.length; i++) {
+            const cols = [dates[i]];
+            for (const s of series) {
+              let val = s.data && s.data[i];
+              // Handle various ECharts data formats
+              if (val == null) { cols.push(''); continue; }
+              if (typeof val === 'object' && !Array.isArray(val)) val = val.value;
+              if (Array.isArray(val)) val = val.length > 1 ? val[1] : val[0];
+              cols.push(val != null && val !== '' ? String(val) : '');
+            }
+            lines.push(cols.join('\t'));
+          }
+          return { ok: true, method: 'directExtract', data: lines.join('\n') };
+        } catch (e) {
+          return { ok: false, error: 'getOption extract failed: ' + e.message };
+        }
+      }
+    }).then((results) => {
+      const r = results && results[0] && results[0].result;
+      sendResponse(r || { ok: false, error: 'No result' });
+    }).catch((e) => {
+      console.error('[Tyarchive BG] triggerDataViewMain failed:', e);
+      sendResponse({ ok: false, error: e.message || String(e) });
+    });
+    return true; // keep channel open
+  }
+
 
   // ── copyToClipboard ───────────────────────────────────────────────
   if (request.action === 'copyToClipboard' && sender.tab && sender.tab.id) {

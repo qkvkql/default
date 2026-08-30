@@ -599,14 +599,14 @@
   shadow.appendChild(panel);
 
   // ── References ──────────────────────────────────────────────────────────────
-  const dragHeader      = shadow.getElementById('drag-header');
-  const closeBtn        = shadow.getElementById('close-btn');
-  const searchInput     = shadow.getElementById('search-input');
-  const stationsBody    = shadow.getElementById('stations-body');
-  const statusBar       = shadow.getElementById('status-bar');
-  const toast           = shadow.getElementById('toast');
+  const dragHeader = shadow.getElementById('drag-header');
+  const closeBtn = shadow.getElementById('close-btn');
+  const searchInput = shadow.getElementById('search-input');
+  const stationsBody = shadow.getElementById('stations-body');
+  const statusBar = shadow.getElementById('status-bar');
+  const toast = shadow.getElementById('toast');
   const targetDateInput = shadow.getElementById('target-date-input');
-  const fetchAvgToggle  = shadow.getElementById('fetch-avg-toggle');
+  const fetchAvgToggle = shadow.getElementById('fetch-avg-toggle');
 
   // ── Avg-fetch toggle state (default OFF) ─────────────────────────────────
   let fetchAvgEnabled = false;
@@ -619,18 +619,18 @@
   // ── Set default target date to today in MM-DD format ────────────────────────
   (() => {
     const now = new Date();
-    const mm  = String(now.getMonth() + 1).padStart(2, '0');
-    const dd  = String(now.getDate()).padStart(2, '0');
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
     targetDateInput.value = `${mm}-${dd}`;
   })();
 
-  let allStations     = [];
-  let toastTimer      = null;
+  let allStations = [];
+  let toastTimer = null;
   let activeSelectBtn = null;   // btn-select that most recently triggered a search
   // Per-operation ID: incremented each time a Select button is clicked.
   // showTextDataView captures the ID at entry and discards stale results if it changed.
   let operationCounter = 0;
-  let activeOpId       = 0;   // 0 means no operation in flight
+  let activeOpId = 0;   // 0 means no operation in flight
   // Persists retrieved results across renderTable re-renders.
   // Key: `${usaf}|${domesId}`, Value: { clipText, minLabel, maxLabel }
   const resultMap = new Map();
@@ -779,7 +779,7 @@
   // ── showCustomDataView: extract ECharts data and show our own overlay ────────
   function showCustomDataView(chart) {
     const opt = chart.getOption();
-    const xAxis  = opt.xAxis  && opt.xAxis[0];
+    const xAxis = opt.xAxis && opt.xAxis[0];
     const series = opt.series || [];
 
     // x-axis categories / data
@@ -871,7 +871,7 @@
     shadow.getElementById('dv-close').addEventListener('click', () => overlay.remove());
 
     // Copy-to-clipboard: build TSV
-    shadow.getElementById('dv-copy').addEventListener('click', async function() {
+    shadow.getElementById('dv-copy').addEventListener('click', async function () {
       let tsv = '';
       series.forEach(s => {
         const sName = s.name || '';
@@ -928,118 +928,164 @@
       clearInterval(poller);
       console.log('[Tyarchive] Chart canvas found, attempting 数据视图…');
 
-      // ── Strategy 1: Find ECharts instance via internal DOM property ─────────
-      // ECharts stores instance ID on the container as an attribute: _ec_<id>
-      // Also check window.echarts.getInstanceByDom() walking up the DOM tree
-      const findChartInstance = () => {
-        // Method A: walk up the DOM and try echarts.getInstanceByDom()
-        if (window.echarts) {
-          let el = canvas.parentElement;
-          while (el && el !== document.documentElement) {
-            try {
-              const inst = echarts.getInstanceByDom(el);
-              if (inst) return inst;
-            } catch (_) {}
-            el = el.parentElement;
-          }
-        }
-
-        // Method B: scan all DOM elements for ECharts internal property keys
-        // ECharts sets a property like "_ec_XXXX" on the container element
-        const allDivs = document.querySelectorAll('div');
-        for (const div of allDivs) {
-          const keys = Object.keys(div);
-          const ecKey = keys.find(k => k.startsWith('_ec_'));
-          if (ecKey) {
-            // The value is the instance id; retrieve via echarts if available
-            if (window.echarts) {
-              try {
-                const inst = echarts.getInstanceByDom(div);
-                if (inst) return inst;
-              } catch (_) {}
-            }
-          }
-        }
-        return null;
-      };
-
-      const chartInst = findChartInstance();
-
-      if (chartInst) {
-        console.log('[Tyarchive] ECharts instance found:', chartInst);
-
-        // ── Sub-strategy 1a: Dispatch native ECharts dataView action ───────
-        // This triggers the native textarea that watchNativeDataView intercepts,
-        // which then calls showTextDataView → clipboard write + fetchAvgTemp.
-        // (showCustomDataView was previously used here but it bypassed the entire
-        //  min/max extraction and fetchAvgTemp pipeline, so localhost:1004 was
-        //  never opened when the ECharts instance was accessible.)
-        try {
-          chartInst.dispatchAction({ type: 'dataView' });
-          console.log('[Tyarchive] Dispatched native dataView action via ECharts instance');
-        } catch (e) {
-          console.warn('[Tyarchive] dispatchAction dataView failed, falling back to custom view:', e);
-          showCustomDataView(chartInst);
-        }
-        return;
-      }
-
-      console.warn('[Tyarchive] ECharts instance not found, trying canvas simulation…');
-
-      // ── Strategy 2: ZRender handler.dispatch() ──────────────────────────────
-      // ZRender instance is accessible via canvas.parentElement.__zr (internal)
-      // and we can fire a click event at a specific pixel position
-      const tryZRender = () => {
-        try {
-          const zrEl = canvas.parentElement;
-          // ZRender stores itself as __zr or zrender on the container
-          const zr = zrEl.__zr || zrEl.zrender || zrEl._zr;
-          if (zr && zr.handler) {
-            const rect = canvas.getBoundingClientRect();
-            const dpr  = window.devicePixelRatio || 1;
-            // ECharts toolbox default: top-right, itemSize=15, itemGap=8
-            // Each icon is 15px wide + 8px gap = 23px each, rightmost first
-            const topY = 10; // toolbox top padding ~10px in canvas coords
-            // Try multiple x positions from right edge inward
-            const canvasW = rect.width;
-            const xPositions = [canvasW - 12, canvasW - 35, canvasW - 58, canvasW - 81, canvasW - 104];
-            for (const cx of xPositions) {
-              zr.handler.dispatch('click', {
-                zrX: cx, zrY: topY,
-                type: 'click',
-                target: null
-              });
-            }
-            console.log('[Tyarchive] 数据视图 attempted via ZRender handler.dispatch()');
+      // ── Strategy 0: Find the new HTML DOM "数据视图" button ─────────────────
+      // The website was updated and now renders toolbox icons as custom HTML
+      // elements above the chart rather than inside the ECharts canvas toolbox.
+      const tryHTMLDataViewButton = () => {
+        // 0a: search by title / aria-label / tooltip attribute
+        const attrSelectors = [
+          '[title*="数据视图"]',
+          '[aria-label*="数据视图"]',
+          '[data-title*="数据视图"]',
+          '[tooltip*="数据视图"]',
+          '[alt*="数据视图"]',
+        ];
+        for (const sel of attrSelectors) {
+          const el = document.querySelector(sel);
+          if (el) {
+            el.click();
+            console.log(`[Tyarchive] 数据视图 clicked via HTML attribute selector: ${sel}`);
             return true;
           }
-        } catch (e) { console.warn('[Tyarchive] ZRender dispatch error:', e); }
+        }
+
+        // 0b: search by visible text content "数据视图" in small icon containers
+        const allClickables = document.querySelectorAll(
+          'button, [role="button"], [onclick], a, li, span, div'
+        );
+        for (const el of allClickables) {
+          // Only look at elements whose direct or shallow text includes 数据视图
+          const txt = el.textContent?.trim();
+          if (txt && txt.includes('数据视图') && txt.length < 30) {
+            el.click();
+            console.log('[Tyarchive] 数据视图 clicked via text content match:', txt);
+            return true;
+          }
+        }
+
+        // 0c: ECharts renders toolbox icons as SVG <path> elements inside a
+        // container that has a "title" child with text "数据视图".
+        // Walk all SVG <title> elements to find the data-view icon group.
+        const svgTitles = document.querySelectorAll('svg title, svg text, svg tspan');
+        for (const t of svgTitles) {
+          if ((t.textContent || '').includes('数据视图')) {
+            // click the closest parent SVG or <g> element
+            const clickTarget = t.closest('g') || t.closest('svg') || t.parentElement;
+            if (clickTarget) {
+              clickTarget.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+              console.log('[Tyarchive] 数据视图 clicked via SVG title search');
+              return true;
+            }
+          }
+        }
+
+        // 0d: Look for ECharts toolbox container elements that are rendered as
+        // HTML (not canvas) — newer ECharts versions (≥5.4) support HTML toolbox.
+        // The container usually has class names like "ec-extension-*" or
+        // a data attribute "ec-toolbox".
+        const toolboxSelectors = [
+          '.ec-extension-data-zoom',
+          '[class*="toolbox"]',
+          '[class*="dataview"]',
+          '[class*="data-view"]',
+          '.chart-toolbox',
+          '.chart-toolbar',
+          '.rt-toolbox',
+          '.rt-chart-toolbar',
+        ];
+        for (const sel of toolboxSelectors) {
+          const container = document.querySelector(sel);
+          if (container) {
+            // Try to find the first icon inside that might be data-view
+            const icons = container.querySelectorAll('button, [role="button"], svg, i, span');
+            for (const icon of icons) {
+              const iconTitle = icon.getAttribute('title') || icon.getAttribute('aria-label') || icon.textContent?.trim();
+              if (iconTitle && iconTitle.includes('数据视图')) {
+                icon.click();
+                console.log('[Tyarchive] 数据视图 clicked via toolbox container child:', sel);
+                return true;
+              }
+            }
+          }
+        }
+
         return false;
       };
 
-      if (tryZRender()) return;
+      if (tryHTMLDataViewButton()) return;
 
-      // ── Strategy 3: Canvas MouseEvent simulation ────────────────────────────
-      const rect = canvas.getBoundingClientRect();
-      const dpr  = window.devicePixelRatio || 1;
-      // Spray positions across the top-right area of the canvas
-      const xOffsets = [15, 38, 61, 84, 107, 130];
-      const yOffsets = [8, 13, 18, 22, 28];
-
-      xOffsets.forEach(xOff => {
-        yOffsets.forEach(yOff => {
-          const evOpts = {
-            clientX: rect.right - xOff,
-            clientY: rect.top  + yOff,
-            bubbles: true, cancelable: true
-          };
-          canvas.dispatchEvent(new MouseEvent('mousemove', evOpts));
-          canvas.dispatchEvent(new MouseEvent('mousedown', evOpts));
-          canvas.dispatchEvent(new MouseEvent('mouseup',   evOpts));
-          canvas.dispatchEvent(new MouseEvent('click',     evOpts));
-        });
+      // ── Strategy 1: Extract chart data directly in page's MAIN world ────────
+      // Content scripts can't access window.echarts (isolated context). The
+      // background injects into world:'MAIN', finds the ECharts instance, and
+      // extracts series data via getOption() — returning TSV text that
+      // showTextDataView() can consume directly.  No icon click needed.
+      console.log('[Tyarchive] Extracting chart data via background MAIN world…');
+      chrome.runtime.sendMessage({ action: 'triggerDataViewMain' }, (resp) => {
+        if (resp && resp.ok && resp.data) {
+          console.log('[Tyarchive] Direct data extraction succeeded, feeding to showTextDataView');
+          showTextDataView(resp.data);
+        } else {
+          console.warn('[Tyarchive] MAIN-world extraction failed:', resp && resp.error);
+          // Last resort: try canvas fallback (ZRender / MouseEvent spray)
+          tryCanvasFallback();
+        }
       });
-      console.log('[Tyarchive] 数据视图 attempted via canvas MouseEvent spray');
+
+      function tryCanvasFallback() {
+        const zrEl = canvas.parentElement; // ZRender attaches its listeners HERE
+        const rect  = canvas.getBoundingClientRect();
+
+        // ── Strategy 2: ZRender handler.dispatch() ────────────────────────────
+        // zrX/zrY are CSS-pixel offsets from the container top-left.
+        const tryZRender = () => {
+          try {
+            const zr = zrEl.__zr || zrEl.zrender || zrEl._zr;
+            if (zr && zr.handler) {
+              const yPositions = [8, 12, 15, 18, 22, 26];
+              const xPositions = [
+                rect.width - 10, rect.width - 18, rect.width - 26,
+                rect.width - 33, rect.width - 41, rect.width - 49,
+                rect.width - 56, rect.width - 64, rect.width - 72,
+                rect.width - 79, rect.width - 87, rect.width - 95,
+              ];
+              for (const zrY of yPositions) {
+                for (const zrX of xPositions) {
+                  try {
+                    zr.handler.dispatch('mousemove', { zrX, zrY, type: 'mousemove', target: null });
+                    zr.handler.dispatch('mousedown', { zrX, zrY, type: 'mousedown', target: null });
+                    zr.handler.dispatch('mouseup',   { zrX, zrY, type: 'mouseup',   target: null });
+                    zr.handler.dispatch('click',     { zrX, zrY, type: 'click',     target: null });
+                  } catch (_) {}
+                }
+              }
+              console.log('[Tyarchive] 数据视图 attempted via ZRender handler.dispatch()');
+              return true;
+            }
+          } catch (e) { console.warn('[Tyarchive] ZRender dispatch error:', e); }
+          return false;
+        };
+
+        if (tryZRender()) return;
+
+        // ── Strategy 3: MouseEvent spray on ZRender container (NOT canvas) ───
+        // ZRender ignores events dispatched directly on the <canvas> element.
+        const yOffsets = [8, 12, 15, 18, 22, 26];
+        const xOffsets = [10, 18, 26, 33, 41, 49, 56, 64, 72, 79, 87, 95];
+        yOffsets.forEach(yOff => {
+          xOffsets.forEach(xOff => {
+            const evOpts = {
+              clientX: rect.right - xOff,
+              clientY: rect.top   + yOff,
+              bubbles: true, cancelable: true
+            };
+            zrEl.dispatchEvent(new MouseEvent('mousemove', evOpts));
+            zrEl.dispatchEvent(new MouseEvent('mousedown', evOpts));
+            zrEl.dispatchEvent(new MouseEvent('mouseup',   evOpts));
+            zrEl.dispatchEvent(new MouseEvent('click',     evOpts));
+          });
+        });
+        console.log('[Tyarchive] 数据视图 attempted via zrContainer MouseEvent spray');
+      }
     }, INTERVAL);
   }
 
@@ -1056,7 +1102,7 @@
 
           // ── NEW: detect the updated rt-data-view-table (website changed from textarea to table) ──
           const tbl = (node.classList && node.classList.contains('rt-data-view-table')) ? node
-                    : node.querySelector?.('table.rt-data-view-table');
+            : node.querySelector?.('table.rt-data-view-table');
           if (tbl) {
             setTimeout(() => {
               console.log('[Tyarchive] Native 数据视图 TABLE detected (rt-data-view-table)');
@@ -1064,8 +1110,8 @@
               // Hide the native ECharts data-view container
               let nativeContainer = tbl.parentElement;
               while (nativeContainer &&
-                     nativeContainer !== document.body &&
-                     nativeContainer !== document.documentElement) {
+                nativeContainer !== document.body &&
+                nativeContainer !== document.documentElement) {
                 const cs = window.getComputedStyle(nativeContainer);
                 if (cs.position === 'absolute' && nativeContainer.style.zIndex) {
                   nativeContainer.style.display = 'none';
@@ -1097,7 +1143,7 @@
 
           // ── ORIGINAL: detect legacy ECharts textarea data-view ──
           const ta = (node.tagName === 'TEXTAREA') ? node
-                   : node.querySelector?.('textarea');
+            : node.querySelector?.('textarea');
           if (!ta) continue;
 
           // ECharts data-view textareas have inline monospace font style
@@ -1116,8 +1162,8 @@
             let nativeContainer = ta.parentElement;
             // Walk up to find the outermost injected container (usually 2–3 levels)
             while (nativeContainer &&
-                   nativeContainer !== document.body &&
-                   nativeContainer !== document.documentElement) {
+              nativeContainer !== document.body &&
+              nativeContainer !== document.documentElement) {
               const cs = window.getComputedStyle(nativeContainer);
               // ECharts data-view uses a full-cover absolutely-positioned div
               if (cs.position === 'absolute' && nativeContainer.style.zIndex) {
@@ -1190,10 +1236,10 @@
     const max = targetCols ? clean(targetCols[5]) : '';  // daily max temp
     const min = targetCols ? clean(targetCols[6]) : '';  // daily min temp
     const dateFound = !!targetCols;
-    const hasData   = isValid(max) || isValid(min);
-    const noData    = !dateFound || !hasData;  // target date missing or both NaN
+    const hasData = isValid(max) || isValid(min);
+    const noData = !dateFound || !hasData;  // target date missing or both NaN
 
-    const date     = targetCols ? targetCols[0].trim() : (targetDateStr || targetMMDD);
+    const date = targetCols ? targetCols[0].trim() : (targetDateStr || targetMMDD);
     let clipText = `${min}\t${max}`;
 
     console.log(`[Tyarchive] Target: ${targetMMDD} (→ ${targetDateStr}) | dateFound=${dateFound} | min=${min || 'NaN'} max=${max || 'NaN'}`);
@@ -1201,7 +1247,7 @@
     // ── Capture operation identity before any async work ─────────────────────
     // myOpId is compared at every checkpoint; if activeOpId changed, a newer
     // Select was clicked and this result belongs to a different station → discard.
-    const myOpId    = activeOpId;
+    const myOpId = activeOpId;
     const currentBtn = activeSelectBtn;
 
     let isBasicStation = false;
@@ -1364,7 +1410,7 @@
     const minLabel = min || '—';
     const maxLabel = max || '—';
     const avgLabel = avg || (isBasicStation ? '—' : '');
-    const avgPart  = isBasicStation ? ` / avg ${avgLabel}` : '';
+    const avgPart = isBasicStation ? ` / avg ${avgLabel}` : '';
     showToast(`✓ <span class="toast-date">${date}</span>  min ${minLabel} / max ${maxLabel}${avgPart}`, 'success');
 
     // ── Persist result so re-renders (search bar) keep the button state ────
@@ -1403,20 +1449,20 @@
     const frag = document.createDocumentFragment();
     stations.forEach(s => {
       // Use empty string as the copy value when a field is missing
-      const usaf     = s.USAF     ?? '';
-      const domesId  = s.domes_id ?? '';
-      const province = s.level1   || '-';
-      const name     = s.cn_name  || '-';
+      const usaf = s.USAF ?? '';
+      const domesId = s.domes_id ?? '';
+      const province = s.level1 || '-';
+      const name = s.cn_name || '-';
 
       // Label shown on pill button: the raw value, or a greyed placeholder
-      const usafLabel   = usaf    || '—';
-      const domesLabel  = domesId || '—';
+      const usafLabel = usaf || '—';
+      const domesLabel = domesId || '—';
 
       // Determine default station type from the data rule, then check override
-      const stationKey  = `${usaf}|${domesId}`;
+      const stationKey = `${usaf}|${domesId}`;
       const defaultType = (!!usaf && !domesId) ? 'basic'
-                        : (!!domesId && !usaf)  ? 'auto'
-                        : 'basic';   // both or neither → default basic
+        : (!!domesId && !usaf) ? 'auto'
+          : 'basic';   // both or neither → default basic
       const currentType = typeOverrideMap.get(stationKey) ?? defaultType;
       const savedResult = resultMap.get(stationKey);
 
@@ -1425,14 +1471,14 @@
 
       const isManual = !!s._manual;
       const manualBadge = isManual ? '<span class="manual-badge">自定义</span>' : '';
-      const deleteBtn   = isManual
+      const deleteBtn = isManual
         ? `<button class="btn-delete-manual" data-skey="${stationKey}" title="删除此站点">×</button>`
         : '';
 
       const resultBtnLabel = savedResult
         ? (savedResult.avgLabel !== undefined
-            ? `${savedResult.minLabel}\t${savedResult.maxLabel}\t${savedResult.avgLabel}`
-            : `${savedResult.minLabel}\t${savedResult.maxLabel}`)
+          ? `${savedResult.minLabel}\t${savedResult.maxLabel}\t${savedResult.avgLabel}`
+          : `${savedResult.minLabel}\t${savedResult.maxLabel}`)
         : '';
 
       const actionBtnHtml = savedResult
@@ -1480,9 +1526,9 @@
     const q = searchInput.value.toLowerCase().trim();
     if (!q) { renderTable(getAllDisplayStations()); return; }
     const filtered = getAllDisplayStations().filter(s =>
-      (String(s.USAF     || '')).toLowerCase().includes(q) ||
+      (String(s.USAF || '')).toLowerCase().includes(q) ||
       (String(s.domes_id || '')).toLowerCase().includes(q) ||
-      (s.level1  || '').toLowerCase().includes(q) ||
+      (s.level1 || '').toLowerCase().includes(q) ||
       (s.cn_name || '').toLowerCase().includes(q)
     );
     renderTable(filtered);
@@ -1531,8 +1577,8 @@
 
     // Result buttons (already-retrieved — quick copy, no re-search)
     if (e.target.classList.contains('btn-result')) {
-      const btn       = e.target;
-      const clipText  = btn.getAttribute('data-result') || '';
+      const btn = e.target;
+      const clipText = btn.getAttribute('data-result') || '';
       try { await navigator.clipboard.writeText(clipText); } catch (_) {
         const ta = document.createElement('textarea');
         ta.value = clipText;
@@ -1550,7 +1596,7 @@
 
     // Select buttons
     if (e.target.classList.contains('btn-select')) {
-      const btn     = e.target;
+      const btn = e.target;
 
       // ── Validate target date format (must be MM-DD) before doing anything ──
       const rawDate = (targetDateInput.value || '').trim();
@@ -1572,16 +1618,16 @@
       btn.disabled = true;
       btn.textContent = '…';
 
-      const usaf    = btn.getAttribute('data-usaf');
+      const usaf = btn.getAttribute('data-usaf');
       const domesId = btn.getAttribute('data-domesid');
-      const name    = btn.getAttribute('data-name');
+      const name = btn.getAttribute('data-name');
 
       // Helper: pause for a given number of milliseconds
       const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
       // Stamp a unique ID for this operation; fail() releases the lock if it still owns it
       const opId = ++operationCounter;
-      activeOpId  = opId;
+      activeOpId = opId;
 
       // Helper: restore button state on failure and release the operation lock
       const fail = msg => {
@@ -1595,13 +1641,13 @@
       activeSelectBtn = btn;
 
       // Determine station type from the row's radio selection
-      const row          = btn.closest('tr');
+      const row = btn.closest('tr');
       const checkedRadio = row?.querySelector('input[type="radio"]:checked');
-      const isBasic      = !checkedRadio || checkedRadio.value === 'basic';
+      const isBasic = !checkedRadio || checkedRadio.value === 'basic';
 
       // Read current mode from the host page's toggle button
-      const modeToggle  = document.getElementById('toggleStationType');
-      const isAutoMode  = modeToggle ? modeToggle.classList.contains('active') : false;
+      const modeToggle = document.getElementById('toggleStationType');
+      const isAutoMode = modeToggle ? modeToggle.classList.contains('active') : false;
       const needsToggle = (isBasic && isAutoMode) || (!isBasic && !isAutoMode);
 
       // Every station has exactly one ID; radio only controls which website mode to use
@@ -1629,7 +1675,7 @@
           window.HTMLInputElement.prototype, 'value'
         ).set;
         nativeInputSetter.call(pageSearch, stationNum);
-        pageSearch.dispatchEvent(new Event('input',  { bubbles: true }));
+        pageSearch.dispatchEvent(new Event('input', { bubbles: true }));
         pageSearch.dispatchEvent(new Event('change', { bubbles: true }));
         pageSearch.focus();
         console.log(`[Tyarchive] Typed "${stationNum}" into search box`);
@@ -1660,7 +1706,7 @@
 
         // ── Step 8: find and click the search submit button ────────────────
         const searchForm = pageSearch.closest('form');
-        const submitBtn  = searchForm
+        const submitBtn = searchForm
           ? searchForm.querySelector('button[type="submit"]')
           : document.querySelector('button[type="submit"] .fa-search')?.closest('button');
 
@@ -1672,9 +1718,9 @@
 
         submitBtn.focus();
         const enterOpts = { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true };
-        submitBtn.dispatchEvent(new KeyboardEvent('keydown',  enterOpts));
+        submitBtn.dispatchEvent(new KeyboardEvent('keydown', enterOpts));
         submitBtn.dispatchEvent(new KeyboardEvent('keypress', enterOpts));
-        submitBtn.dispatchEvent(new KeyboardEvent('keyup',    enterOpts));
+        submitBtn.dispatchEvent(new KeyboardEvent('keyup', enterOpts));
         submitBtn.click();
         console.log('[Tyarchive] Submitted search form');
 
@@ -1706,7 +1752,7 @@
         return;
       }
       // Fall back to bundled stations.json
-      const url  = chrome.runtime.getURL('stations.json');
+      const url = chrome.runtime.getURL('stations.json');
       const resp = await fetch(url);
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       allStations = await resp.json();
@@ -1723,21 +1769,21 @@
 
   // ── Add-station form ────────────────────────────────────────────────────────
   const addNameInput = shadow.getElementById('add-name');
-  const addIdInput   = shadow.getElementById('add-id');
-  const addBtn       = shadow.getElementById('add-btn');
+  const addIdInput = shadow.getElementById('add-id');
+  const addBtn = shadow.getElementById('add-btn');
 
   function doAddStation() {
-    const idVal   = addIdInput.value.trim();
+    const idVal = addIdInput.value.trim();
     const nameVal = addNameInput.value.trim();
     if (!idVal) { showToast('请输入站号！'); return; }
 
     const selectedType = shadow.querySelector('input[name="add-type"]:checked')?.value || 'basic';
     const newStation = {
-      cn_name:  nameVal || idVal,
-      level1:   '',
-      USAF:     selectedType === 'basic' ? idVal : '',
-      domes_id: selectedType === 'auto'  ? idVal : '',
-      _manual:  true,
+      cn_name: nameVal || idVal,
+      level1: '',
+      USAF: selectedType === 'basic' ? idVal : '',
+      domes_id: selectedType === 'auto' ? idVal : '',
+      _manual: true,
     };
 
     // Reject duplicates
@@ -1748,7 +1794,7 @@
     }
 
     manualStations.push(newStation);
-    addIdInput.value   = '';
+    addIdInput.value = '';
     addNameInput.value = '';
     rerender();
     showToast(`✓ 已添加 ${newStation.cn_name}`, 'success');
@@ -1759,8 +1805,8 @@
   addIdInput.addEventListener('keydown', e => { if (e.key === 'Enter') doAddStation(); });
 
   // ── Update button: read Excel → parse → save to storage → re-render ─────────
-  const updateBtn       = shadow.getElementById('update-btn');
-  const excelFileInput  = shadow.getElementById('excel-file-input');
+  const updateBtn = shadow.getElementById('update-btn');
+  const excelFileInput = shadow.getElementById('excel-file-input');
 
   function setUpdateBtnState(state, text) {
     updateBtn.classList.remove('updating', 'success', 'fail');
@@ -1811,7 +1857,7 @@
 
       // Also ask background to save stations.json to Downloads folder
       const jsonStr = JSON.stringify(stations, null, 2);
-      chrome.runtime.sendMessage({ action: 'saveStationsJson', json: jsonStr }, () => {});
+      chrome.runtime.sendMessage({ action: 'saveStationsJson', json: jsonStr }, () => { });
 
       setUpdateBtnState('success', `✓ 已更新 ${stations.length} 个站点`);
       showToast(`✓ 已从 Excel 加载 ${stations.length} 个站点`, 'success');
