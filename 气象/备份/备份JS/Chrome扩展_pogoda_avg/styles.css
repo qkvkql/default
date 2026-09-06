@@ -248,3 +248,479 @@
     white-space: nowrap;
     opacity: 0.85;
 }
+
+/* ----------------------------------------------------------- */
+/* Seasonal Analysis Section Styles                            */
+/* ----------------------------------------------------------- */
+
+.weather-seasonal-section {
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 2px dashed #444;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.seasonal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.seasonal-title-wrap {
+    display: flex;
+    flex-direction: column;
+}
+
+.seasonal-title {
+    margin: 0;
+    color: #fff;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.seasonal-subtitle {
+    color: #888;
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+.seasonal-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.seasonal-hemi-group {
+    display: flex;
+    align-items: center;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 6px;
+    padding: 3px 6px;
+    gap: 6px;
+}
+
+.seasonal-bar-label {
+    font-size: 12px;
+    color: #aaa;
+    font-weight: bold;
+    padding-left: 4px;
+}
+
+.seasonal-pill-btn {
+    background: transparent;
+    border: 1px solid transparent;
+    color: #aaa;
+    padding: 5px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s;
+}
+
+.seasonal-pill-btn:hover {
+    color: #fff;
+    background: #2a2a2a;
+}
+
+.seasonal-pill-btn.active {
+    background: #007bff;
+    color: #fff;
+    font-weight: bold;
+    border-color: #0056b3;
+}
+
+.seasonal-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.seasonal-action-btn {
+    background-color: #1976d2;
+    color: #fff;
+    border: 1px solid #1565c0;
+    padding: 6px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: bold;
+    transition: background-color 0.2s, transform 0.1s;
+    white-space: nowrap;
+}
+
+.seasonal-action-btn:hover {
+    background-color: #1565c0;
+    transform: translateY(-1px);
+}
+
+.seasonal-action-btn:active {
+    transform: translateY(0);
+}
+
+#weather-jump-seasonal-btn {
+    background-color: #2e7d32;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    height: fit-content;
+    align-self: flex-end;
+    transition: background-color 0.2s;
+}
+
+#weather-jump-seasonal-btn:hover {
+    background-color: #1b5e20;
+}
+
+.seasonal-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 16px;
+}
+
+.seasonal-card {
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.seasonal-card-winter {
+    background: linear-gradient(135deg, #091a2b 0%, #0d2744 100%);
+    border: 1px solid #1e4d78;
+    border-left: 4px solid #4fc3f7;
+}
+
+.seasonal-card-summer {
+    background: linear-gradient(135deg, #2b1a09 0%, #442a0d 100%);
+    border: 1px solid #78481e;
+    border-left: 4px solid #ff9800;
+}
+
+.seasonal-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    padding-bottom: 8px;
+    margin-bottom: 12px;
+}
+
+.seasonal-card-icon {
+    font-size: 18px;
+}
+
+.seasonal-card-title {
+    font-weight: bold;
+    font-size: 15px;
+    color: #fff;
+    flex-grow: 1;
+    margin-left: 8px;
+}
+
+.seasonal-card-count {
+    font-size: 12px;
+    color: #aaa;
+}
+
+.seasonal-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.seasonal-stat-row {
+    display: flex;
+    align-items: center;
+    font-size: 13px;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.seasonal-stat-row .stat-label {
+    color: #bbb;
+    min-width: 145px;
+}
+
+.winter-text {
+    color: #80deea !important;
+    font-weight: bold;
+}
+
+.summer-text {
+    color: #ffb74d !important;
+    font-weight: bold;
+}
+
+.stat-sub {
+    color: #888;
+    font-size: 12px;
+}
+
+.seasonal-table-filter {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #161616;
+    border: 1px solid #333;
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+.seasonal-table-filter input {
+    background: #242424;
+    border: 1px solid #555;
+    color: #fff;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 13px;
+    width: 180px;
+}
+
+.seasonal-row-count {
+    color: #888;
+    margin-left: auto;
+    font-size: 12px;
+}
+
+.seasonal-table-wrapper {
+    max-height: 520px;
+    overflow-y: auto;
+    border: 1px solid #444;
+    border-radius: 6px;
+}
+
+.seasonal-table {
+    margin-top: 0 !important;
+}
+
+.seasonal-table th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: #252525;
+}
+
+.seasonal-table td {
+    padding: 8px 10px;
+}
+
+.seasonal-table td.seasonal-detail-td {
+    padding: 6px 10px;
+}
+
+.temp-missing {
+    color: #666;
+    font-style: italic;
+}
+
+.season-detail-cell {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.season-month-detail {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: #9e9e9e;
+}
+
+.season-month-detail span {
+    white-space: nowrap;
+}
+
+.season-cell-copy-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    margin: 0;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    color: #888;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.15s ease;
+    user-select: none;
+    opacity: 0.35;
+}
+
+.season-cell-copy-btn svg {
+    display: block;
+    pointer-events: none;
+}
+
+.seasonal-table tr:hover .season-cell-copy-btn,
+.season-detail-cell:hover .season-cell-copy-btn {
+    opacity: 0.85;
+    border-color: rgba(255, 255, 255, 0.25);
+    color: #bbb;
+}
+
+.season-cell-copy-btn:hover {
+    opacity: 1 !important;
+    background: rgba(79, 195, 247, 0.15) !important;
+    border-color: #4fc3f7 !important;
+    color: #4fc3f7 !important;
+    transform: scale(1.1);
+}
+
+.season-cell-copy-btn:active {
+    transform: scale(0.95);
+    background: rgba(79, 195, 247, 0.28) !important;
+}
+
+.season-cell-copy-btn.copied {
+    opacity: 1 !important;
+    background: rgba(129, 199, 132, 0.2) !important;
+    border-color: #81c784 !important;
+    color: #81c784 !important;
+}
+
+/* ----------------------------------------------------------- */
+/* Sortable Table Styles (Seasonal & Monthly History)          */
+/* ----------------------------------------------------------- */
+
+.sortable-th {
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.15s, color 0.15s;
+    position: relative;
+    white-space: nowrap;
+}
+
+.sortable-th:hover {
+    background-color: #383838 !important;
+    color: #4fc3f7 !important;
+}
+
+.sort-indicator {
+    display: inline-block;
+    font-size: 11px;
+    margin-left: 4px;
+    opacity: 0.55;
+    vertical-align: middle;
+}
+
+.active-sort-th {
+    background-color: #1a334d !important;
+    color: #4fc3f7 !important;
+    border-bottom: 2px solid #4fc3f7 !important;
+}
+
+.active-sort-th .sort-indicator {
+    opacity: 1;
+    color: #4fc3f7;
+    font-weight: bold;
+}
+
+.sorted-cell {
+    background-color: rgba(79, 195, 247, 0.08) !important;
+}
+
+/* ----------------------------------------------------------- */
+/* Monthly History Table Section Styles                        */
+/* ----------------------------------------------------------- */
+
+.weather-monthly-history-section {
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 2px dashed #444;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 25px;
+}
+
+.monthly-history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.monthly-history-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.active-sort-badge {
+    background: #0f2438;
+    border: 1px solid #1e4d78;
+    color: #80deea;
+    border-radius: 4px;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: bold;
+    letter-spacing: 0.02em;
+}
+
+.monthly-table-wrapper {
+    max-height: 550px;
+    overflow-y: auto;
+    border: 1px solid #444;
+    border-radius: 6px;
+}
+
+.monthly-history-table {
+    margin-top: 0 !important;
+}
+
+.monthly-history-table th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: #252525;
+    padding: 8px 6px;
+    text-align: center;
+    font-size: 13px;
+}
+
+.monthly-history-table td {
+    padding: 6px 8px;
+    text-align: right;
+    font-size: 13px;
+}
+
+.monthly-history-table td:first-child {
+    text-align: center;
+}
+
+#weather-jump-monthly-btn {
+    background-color: #6a1b9a;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    height: fit-content;
+    align-self: flex-end;
+    transition: background-color 0.2s;
+}
+
+#weather-jump-monthly-btn:hover {
+    background-color: #4a148c;
+}
+
+
