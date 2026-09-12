@@ -54,6 +54,8 @@
       "loading_data": "Loading data...",
       "type_name_or_id": "Type Name or ID...",
       "custom_all": "Custom / All",
+      "wea6190": "WEA6190",
+      "wea9120": "WEA9120",
       "all_days": "All Days",
       "go": "Go"
     },
@@ -338,6 +340,8 @@
       "loading_data": "正在加载数据...",
       "type_name_or_id": "输入站名或站号...",
       "custom_all": "全部",
+      "wea6190": "6190冬均",
+      "wea9120": "9120冬均",
       "all_days": "全部日期",
       "go": "确认"
     },

@@ -138,6 +138,8 @@ function applyQuickDateRange() {
     const endInput = document.getElementById('endDate');
     if (selector.value === '1991-2020') { startInput.value = '1991-01-01'; endInput.value = '2020-12-31'; }
     else if (selector.value === '1961-1990') { startInput.value = '1961-01-01'; endInput.value = '1990-12-31'; }
+    else if (selector.value === 'WEA6190') { startInput.value = '1960-07-16'; endInput.value = '1990-07-15'; }
+    else if (selector.value === 'WEA9120') { startInput.value = '1990-07-16'; endInput.value = '2020-07-15'; }
     else { startInput.value = '1800-01-01'; endInput.value = '2100-12-31'; }
 }
 
