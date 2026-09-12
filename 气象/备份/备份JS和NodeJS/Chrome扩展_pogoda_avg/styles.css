@@ -388,6 +388,27 @@
     gap: 16px;
 }
 
+.seasonal-summary-grid--climate {
+    margin-top: 8px;
+    padding-top: 14px;
+    border-top: 1px dashed #2a3a4a;
+    position: relative;
+}
+
+.seasonal-summary-grid--climate::before {
+    content: '— 周期内概况 —';
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #111;
+    padding: 0 10px;
+    font-size: 11px;
+    color: #557;
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+}
+
 .seasonal-card {
     border-radius: 8px;
     padding: 16px;

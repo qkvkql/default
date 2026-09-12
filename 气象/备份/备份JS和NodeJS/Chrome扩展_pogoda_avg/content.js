@@ -359,6 +359,15 @@ function runUserLogic(startYear, years_continue) {
         + getArrText(stat_obj[columns[columns.length - 1]]['max_years']) + ' )\n\n';
     displayOutput(tempR, 'log');
 
+    // Render in-period (climate baseline) extreme stats
+    let tempR_c = '\n【' + start.toString() + '~' + (start + year_continue - 1).toString() + ' 周期内极端统计】\n\n'
+        + '极端冷月平均气温: ' + stat_obj['YM']['min_climate'].toString() + ' ( ' + getYMAT(stat_obj['YM']['min_climate_YM']) + ' )\n\n极端热月平均气温: '
+        + stat_obj['YM']['max_climate'].toString() + ' ( ' + getYMAT(stat_obj['YM']['max_climate_YM']) + ' )\n\n极端冷年平均: '
+        + stat_obj[columns[columns.length - 1]]['min_climate'].toString() + ' ( ' + getArrText(stat_obj[columns[columns.length - 1]]['min_climate_years'])
+        + ' )\n\n极端热年平均: ' + stat_obj[columns[columns.length - 1]]['max_climate'].toString() + ' ( '
+        + getArrText(stat_obj[columns[columns.length - 1]]['max_climate_years']) + ' )\n\n';
+    displayOutput(tempR_c, 'log');
+
     // Calculate and render seasonal 3-month winter and summer average temperatures at the end of the panel
     renderSeasonalSection(data_arr, startYear, years_continue);
 
@@ -571,6 +580,24 @@ function calculateSeasonalStats(data_arr, startYear, years_continue, hemisphere 
         ? Number((climateSummers.reduce((acc, r) => acc + r.summerAvgRaw, 0) / climateSummers.length).toFixed(2))
         : null;
 
+    let minClimateWinter = null;
+    let maxClimateWinter = null;
+    if (climateWinters.length > 0) {
+        const minCWVal = Math.min(...climateWinters.map(r => r.winterAvg));
+        const maxCWVal = Math.max(...climateWinters.map(r => r.winterAvg));
+        minClimateWinter = { value: minCWVal, records: climateWinters.filter(r => r.winterAvg === minCWVal) };
+        maxClimateWinter = { value: maxCWVal, records: climateWinters.filter(r => r.winterAvg === maxCWVal) };
+    }
+
+    let minClimateSummer = null;
+    let maxClimateSummer = null;
+    if (climateSummers.length > 0) {
+        const minCSVal = Math.min(...climateSummers.map(r => r.summerAvg));
+        const maxCSVal = Math.max(...climateSummers.map(r => r.summerAvg));
+        minClimateSummer = { value: minCSVal, records: climateSummers.filter(r => r.summerAvg === minCSVal) };
+        maxClimateSummer = { value: maxCSVal, records: climateSummers.filter(r => r.summerAvg === maxCSVal) };
+    }
+
     return {
         hemisphere,
         results,
@@ -588,7 +615,11 @@ function calculateSeasonalStats(data_arr, startYear, years_continue, hemisphere 
                 winterCount: climateWinters.length,
                 summerCount: climateSummers.length,
                 winterAvg: climateWinterAvg,
-                summerAvg: climateSummerAvg
+                summerAvg: climateSummerAvg,
+                minWinter: minClimateWinter,
+                maxWinter: maxClimateWinter,
+                minSummer: minClimateSummer,
+                maxSummer: maxClimateSummer
             }
         }
     };
@@ -702,6 +733,44 @@ function renderSeasonalSection(data_arr, startYear, years_continue) {
                     <div class="seasonal-stat-row">
                         <span class="stat-label">历史最凉夏季:</span>
                         <span class="stat-value summer-text">${minSummerHtml}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="seasonal-summary-grid seasonal-summary-grid--climate">
+            <div class="seasonal-card seasonal-card-winter">
+                <div class="seasonal-card-header">
+                    <span class="seasonal-card-icon">❄️</span>
+                    <span class="seasonal-card-title">周期内冬季概况 (${isNorth ? '跨年 12-2月' : '6-8月'})</span>
+                    <span class="seasonal-card-count">${stats.baseline.winterCount} / ${years_continue} 年有效样本</span>
+                </div>
+                <div class="seasonal-card-body">
+                    <div class="seasonal-stat-row">
+                        <span class="stat-label">周期内最冷冬季:</span>
+                        <span class="stat-value winter-text">${formatExtremeHtml(stats.baseline.minWinter, 'winterPeriod')}</span>
+                    </div>
+                    <div class="seasonal-stat-row">
+                        <span class="stat-label">周期内最暖冬季:</span>
+                        <span class="stat-value winter-text">${formatExtremeHtml(stats.baseline.maxWinter, 'winterPeriod')}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="seasonal-card seasonal-card-summer">
+                <div class="seasonal-card-header">
+                    <span class="seasonal-card-icon">☀️</span>
+                    <span class="seasonal-card-title">周期内夏季概况 (${isNorth ? '6-8月' : '跨年 12-2月'})</span>
+                    <span class="seasonal-card-count">${stats.baseline.summerCount} / ${years_continue} 年有效样本</span>
+                </div>
+                <div class="seasonal-card-body">
+                    <div class="seasonal-stat-row">
+                        <span class="stat-label">周期内最热夏季:</span>
+                        <span class="stat-value summer-text">${formatExtremeHtml(stats.baseline.maxSummer, 'summerPeriod')}</span>
+                    </div>
+                    <div class="seasonal-stat-row">
+                        <span class="stat-label">周期内最凉夏季:</span>
+                        <span class="stat-value summer-text">${formatExtremeHtml(stats.baseline.minSummer, 'summerPeriod')}</span>
                     </div>
                 </div>
             </div>
