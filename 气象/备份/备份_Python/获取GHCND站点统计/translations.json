@@ -283,6 +283,12 @@
     "modal": {
       "select_period": "Select Period Range",
       "close": "Close"
+    },
+    "period_stats": {
+      "min_days_label": "Min valid days in 3-month core:",
+      "min_days_submit": "Update",
+      "valid_tmin": "TMIN ✓",
+      "valid_tmax": "TMAX ✓"
     }
   },
   "zh": {
@@ -567,6 +573,12 @@
     "modal": {
       "select_period": "选择冬/夏",
       "close": "关闭"
+    },
+    "period_stats": {
+      "min_days_label": "核心3个月最少有效天数:",
+      "min_days_submit": "更新",
+      "valid_tmin": "夜温 ✓",
+      "valid_tmax": "昼温 ✓"
     }
   }
 }

@@ -1511,6 +1511,10 @@ def period_stats():
         day_filter = request.args.get('day_filter', '0')
         period_mode = request.args.get('period', 'p1')
         hemisphere = request.args.get('hemisphere', 'north')
+        try:
+            min_days = int(request.args.get('min_days', 60))
+        except (ValueError, TypeError):
+            min_days = 60
         
         thresh_params = {
             'TMIN': {'val': request.args.get('tmin_val'), 'dir': request.args.get('tmin_dir')},
@@ -1592,27 +1596,39 @@ def period_stats():
             
             valid_min_tmin = True
             if season_cdt2: valid_min_tmin = False
-            if hemisphere == 'north' and period_mode == 'p1' and count_djf_tmin < 60: valid_min_tmin = False
-            elif hemisphere == 'south' and period_mode == 'p2' and count_jja_tmin < 60: valid_min_tmin = False
+            if hemisphere == 'north' and period_mode == 'p1' and count_djf_tmin < min_days: valid_min_tmin = False
+            elif hemisphere == 'south' and period_mode == 'p2' and count_jja_tmin < min_days: valid_min_tmin = False
             if valid_min_tmin and min_tmin_obj['val'] != '-': list_min_tmin.append(min_tmin_obj['val']); count_used_min_tmin += 1
             
             valid_min_tmax = True
             if season_cdt2: valid_min_tmax = False
-            if hemisphere == 'north' and period_mode == 'p1' and count_djf_tmax < 60: valid_min_tmax = False
-            elif hemisphere == 'south' and period_mode == 'p2' and count_jja_tmax < 60: valid_min_tmax = False
+            if hemisphere == 'north' and period_mode == 'p1' and count_djf_tmax < min_days: valid_min_tmax = False
+            elif hemisphere == 'south' and period_mode == 'p2' and count_jja_tmax < min_days: valid_min_tmax = False
             if valid_min_tmax and min_tmax_obj['val'] != '-': list_min_tmax.append(min_tmax_obj['val']); count_used_min_tmax += 1
             
             valid_max_tmin = True
             if season_cdt1: valid_max_tmin = False
-            if hemisphere == 'north' and period_mode == 'p2' and count_jja_tmin < 60: valid_max_tmin = False
-            elif hemisphere == 'south' and period_mode == 'p1' and count_djf_tmin < 60: valid_max_tmin = False
+            if hemisphere == 'north' and period_mode == 'p2' and count_jja_tmin < min_days: valid_max_tmin = False
+            elif hemisphere == 'south' and period_mode == 'p1' and count_djf_tmin < min_days: valid_max_tmin = False
             if valid_max_tmin and max_tmin_obj['val'] != '-': list_max_tmin.append(max_tmin_obj['val']); count_used_max_tmin += 1
             
             valid_max_tmax = True
             if season_cdt1: valid_max_tmax = False
-            if hemisphere == 'north' and period_mode == 'p2' and count_jja_tmax < 60: valid_max_tmax = False
-            elif hemisphere == 'south' and period_mode == 'p1' and count_djf_tmax < 60: valid_max_tmax = False
+            if hemisphere == 'north' and period_mode == 'p2' and count_jja_tmax < min_days: valid_max_tmax = False
+            elif hemisphere == 'south' and period_mode == 'p1' and count_djf_tmax < min_days: valid_max_tmax = False
             if valid_max_tmax and max_tmax_obj['val'] != '-': list_max_tmax.append(max_tmax_obj['val']); count_used_max_tmax += 1
+
+            # Per-period display validity: independently check whether TMIN and TMAX
+            # have enough records in the core 3 months for this page's season.
+            # season_cdt1 (winter page): north -> DJF core, south -> JJA core
+            # season_cdt2 (summer page): north -> JJA core, south -> DJF core
+            use_djf = (hemisphere == 'north' and season_cdt1) or (hemisphere == 'south' and season_cdt2)
+            if use_djf:
+                valid_tmin_period = count_djf_tmin >= min_days
+                valid_tmax_period = count_djf_tmax >= min_days
+            else:
+                valid_tmin_period = count_jja_tmin >= min_days
+                valid_tmax_period = count_jja_tmax >= min_days
             
             count_actual = season_df['DATE'].nunique()
             count_expected = 0
@@ -1627,7 +1643,8 @@ def period_stats():
                 'count_actual': count_actual,
                 'count_expected': count_expected,
                 'min_tmin': min_tmin_obj, 'max_tmin': max_tmin_obj, 'min_tmax': min_tmax_obj, 'max_tmax': max_tmax_obj,
-                'cnt_tmin': get_thresh_count('TMIN'), 'cnt_tavg': get_thresh_count('TAVG'), 'cnt_tmax': get_thresh_count('TMAX')
+                'cnt_tmin': get_thresh_count('TMIN'), 'cnt_tavg': get_thresh_count('TAVG'), 'cnt_tmax': get_thresh_count('TMAX'),
+                'valid_tmin_period': valid_tmin_period, 'valid_tmax_period': valid_tmax_period
             })
 
         def get_avg_data(lst, used_count):
@@ -1643,7 +1660,7 @@ def period_stats():
 
         return render_template('period_stats.html', station_name=station_name, station_info=station_info, 
                                period_summary=period_summary, period_stats=period_stats_list, source=source, station_id=station_id,
-                               period_mode=period_mode)
+                               period_mode=period_mode, min_days=min_days)
     except Exception as e:
         import traceback; traceback.print_exc()
         return str(e), 500
