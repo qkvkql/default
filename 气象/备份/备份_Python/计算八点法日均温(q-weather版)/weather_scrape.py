@@ -22,11 +22,15 @@ ObsMap = dict[tuple[str, int], float]
 _ROW_TIME_RE = re.compile(
     r"^(\d{4}-\d{2}-\d{2})\s+(\d{2}):\d{2}\s+([+-]\d{4})$"
 )
-_STATION_NAME_RE = re.compile(r"查询\s*\d+\s*\(([^)]+)\)\s*的历史天气")
+_STATION_NAME_RE = re.compile(r"(?:查询\s*)?\d+\s*\(([^)]+)\)")
 
 
 def _history_url(station: str, d: date) -> str:
     return f"{BASE}/weather/{station}/history/?date={d.isoformat()}"
+
+
+def _today_url(station: str) -> str:
+    return f"{BASE}/weather/{station}/today/"
 
 
 def fetch_observations(station: str, d: date, timeout: float = 30.0) -> ObsMap:
@@ -40,6 +44,24 @@ def fetch_observations(station: str, d: date, timeout: float = 30.0) -> ObsMap:
     r.raise_for_status()
     r.encoding = r.apparent_encoding or "utf-8"
     return parse_history_html(r.text)
+
+
+def fetch_today_observations(
+    station: str, timeout: float = 30.0
+) -> tuple[ObsMap, str | None]:
+    """Parse real-time /today/ page: map (YYYY-MM-DD, hour) -> instantaneous temperature, and station name."""
+    url = _today_url(station)
+    try:
+        r = requests.get(
+            url,
+            timeout=timeout,
+            headers={"User-Agent": USER_AGENT},
+        )
+        r.raise_for_status()
+        r.encoding = r.apparent_encoding or "utf-8"
+        return parse_history_html(r.text), parse_station_name(r.text)
+    except Exception:
+        return {}, None
 
 
 def parse_station_name(html: str) -> str | None:
@@ -162,6 +184,10 @@ def _merge_observations_for_dates(
     merged: ObsMap = {}
     for d in sorted(dates):
         merged.update(fetch_observations(station, d, timeout=timeout))
+    today_date = datetime.now().date()
+    if today_date in dates or (today_date - timedelta(days=1)) in dates:
+        today_obs, _ = fetch_today_observations(station, timeout=timeout)
+        merged.update(today_obs)
     return merged
 
 
@@ -253,8 +279,25 @@ def compute_eight_point_average(
     station_name = fetch_station_name(station, target, timeout=timeout)
     merged: ObsMap = {**obs_prev, **obs_day}
 
-    eight = _evaluate_slots(merged, required_slots_eight(target))
-    four = _evaluate_slots(merged, required_slots_four(target))
+    # q-weather's /history/?date=... endpoint often lags behind real time by several hours
+    # (e.g. at 20:00 or 21:00, the history page may only have data up to 18:00, while /today/
+    # has up-to-date observations). If target is today or yesterday, or if any required slots
+    # are missing in history, merge live observations from /weather/{station}/today/.
+    today_date = datetime.now().date()
+    eight_slots = required_slots_eight(target)
+    four_slots = required_slots_four(target)
+    needed = set(eight_slots) | set(four_slots)
+    has_missing = any(s not in merged for s in needed)
+
+    if has_missing or abs((target - today_date).days) <= 1:
+        today_obs, today_name = fetch_today_observations(station, timeout=timeout)
+        if today_obs:
+            merged.update(today_obs)
+        if not station_name and today_name:
+            station_name = today_name
+
+    eight = _evaluate_slots(merged, eight_slots)
+    four = _evaluate_slots(merged, four_slots)
     return {
         "ok": eight["ok"],
         "average": eight["average"],
