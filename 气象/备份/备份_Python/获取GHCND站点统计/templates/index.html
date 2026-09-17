@@ -304,14 +304,9 @@
 
                             <div class="param-row">
                                 <label>{{ t('multi_station.max_distance_km') }}</label>
-                                <select id="maxDist">
-                                    <option value="no_limit">{{ t('multi_station.no_limit') }}</option>
-                                    <option value="50">50</option>
-                                    <option value="200">200</option>
-                                    <option value="500">500</option>
-                                    <option value="1000">1000</option>
-                                    <option value="2000">2000</option>
-                                </select>
+                                <input type="number" id="maxDist"
+                                    placeholder="{{ t('multi_station.enter_distance') }}"
+                                    min="0" step="any">
                             </div>
 
                             <div class="param-row">
@@ -369,6 +364,78 @@
             {% endif %}
 
             <button class="submit-btn" onclick="fetchData()">{{ t('params.get_data') }}</button>
+
+            <div style="text-align: center; margin-top: 15px; display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 15px 30px;">
+                <a href="#" onclick="openExtremeTemps(); return false;"
+                    style="font-size: 1.1rem; font-weight: bold; color: #007bff; text-decoration: none;">
+                    {{ t('links.view_extreme_temps') }}
+                </a>
+                <a href="#" onclick="openPeriodStats(); return false;"
+                    style="font-size: 1.1rem; font-weight: bold; color: #007bff; text-decoration: none;">
+                    {{ t('links.view_period_stats') }}
+                </a>
+                <a href="#" onclick="openYearStats(); return false;"
+                    style="font-size: 1.1rem; font-weight: bold; color: #007bff; text-decoration: none;">
+                    {{ t('links.view_year_stats') }}
+                </a>
+            </div>
+            <script>
+                function openExtremeTemps() {
+                    const sid = document.getElementById('stationId').value;
+                    const ds = document.getElementById('dataSource').value;
+                    let season = 'winter';
+                    const seasonEls = document.getElementsByName('season');
+                    for (let el of seasonEls) { if (el.checked) season = el.value; }
+
+                    const url = `/extreme_temps?station_id=${sid}&source=${ds}&season=${season}`;
+                    window.open(url, '_blank');
+                }
+                function openPeriodStats() {
+                    const sid = document.getElementById('stationId').value;
+                    const ds = document.getElementById('dataSource').value;
+                    const start = document.getElementById('startDate').value;
+                    const end = document.getElementById('endDate').value;
+                    const month = document.getElementById('monthFilter').value;
+                    const day = document.getElementById('dayFilter').value;
+                    const period = document.querySelector('input[name="season"]:checked').value === 'winter' ? 'p1' : 'p2';
+                    const hemi = document.querySelector('input[name="hemisphere"]:checked').value;
+
+                    const tmin_val = document.getElementById('tminVal').value;
+                    const tmin_dir = document.getElementById('tminDir').value;
+                    const tavg_val = document.getElementById('tavgVal').value;
+                    const tavg_dir = document.getElementById('tavgDir').value;
+                    const tmax_val = document.getElementById('tmaxVal').value;
+                    const tmax_dir = document.getElementById('tmaxDir').value;
+
+                    let url = `/period_stats?station_id=${sid}&source=${ds}&start_date=${start}&end_date=${end}&month_filter=${month}&day_filter=${day}&period=${period}&hemisphere=${hemi}`;
+                    url += `&tmin_val=${tmin_val}&tmin_dir=${tmin_dir}&tavg_val=${tavg_val}&tavg_dir=${tavg_dir}&tmax_val=${tmax_val}&tmax_dir=${tmax_dir}`;
+
+                    window.open(url, '_blank');
+                }
+                function openYearStats() {
+                    const sid = document.getElementById('stationId').value;
+                    const ds = document.getElementById('dataSource').value;
+                    const start = document.getElementById('startDate').value;
+                    const end = document.getElementById('endDate').value;
+
+                    const tmin_val = document.getElementById('tminVal').value;
+                    const tmin_dir = document.getElementById('tminDir').value;
+                    const tavg_val = document.getElementById('tavgVal').value;
+                    const tavg_dir = document.getElementById('tavgDir').value;
+                    const tmax_val = document.getElementById('tmaxVal').value;
+                    const tmax_dir = document.getElementById('tmaxDir').value;
+
+                    const custom_avg_tmin = document.getElementById('customAvgTmin').value;
+                    const custom_avg_tavg = document.getElementById('customAvgTavg').value;
+                    const custom_avg_tmax = document.getElementById('customAvgTmax').value;
+
+                    let url = `/year_stats?station_id=${sid}&source=${ds}&start_date=${start}&end_date=${end}`;
+                    url += `&tmin_val=${tmin_val}&tmin_dir=${tmin_dir}&tavg_val=${tavg_val}&tavg_dir=${tavg_dir}&tmax_val=${tmax_val}&tmax_dir=${tmax_dir}`;
+                    url += `&custom_avg_tmin=${custom_avg_tmin}&custom_avg_tavg=${custom_avg_tavg}&custom_avg_tmax=${custom_avg_tmax}`;
+
+                    window.open(url, '_blank');
+                }
+            </script>
 
             <div id="loading" class="hidden">{{ t('params.loading_data') }}</div>
             <div id="errorMsg" class="error"></div>
@@ -485,78 +552,54 @@
             </div>
         </div>
 
-        <div class="section" style="text-align: center; padding: 15px;">
-            <a href="#" onclick="openExtremeTemps(); return false;"
-                style="font-size: 1.1rem; font-weight: bold; color: #007bff; text-decoration: none;">
-                {{ t('links.view_extreme_temps') }}
-            </a>
-            <span style="padding: 0 30px"></span>
-            <a href="#" onclick="openPeriodStats(); return false;"
-                style="font-size: 1.1rem; font-weight: bold; color: #007bff; text-decoration: none;">
-                {{ t('links.view_period_stats') }}
-            </a>
-            <span style="padding: 0 30px"></span>
-            <a href="#" onclick="openYearStats(); return false;"
-                style="font-size: 1.1rem; font-weight: bold; color: #007bff; text-decoration: none;">
-                {{ t('links.view_year_stats') }}
-            </a>
-            <script>
-                function openExtremeTemps() {
-                    const sid = document.getElementById('stationId').value;
-                    const ds = document.getElementById('dataSource').value;
-                    let season = 'winter';
-                    const seasonEls = document.getElementsByName('season');
-                    for (let el of seasonEls) { if (el.checked) season = el.value; }
-
-                    const url = `/extreme_temps?station_id=${sid}&source=${ds}&season=${season}`;
-                    window.open(url, '_blank');
-                }
-                function openPeriodStats() {
-                    const sid = document.getElementById('stationId').value;
-                    const ds = document.getElementById('dataSource').value;
-                    const start = document.getElementById('startDate').value;
-                    const end = document.getElementById('endDate').value;
-                    const month = document.getElementById('monthFilter').value;
-                    const day = document.getElementById('dayFilter').value;
-                    const period = document.querySelector('input[name="season"]:checked').value === 'winter' ? 'p1' : 'p2';
-                    const hemi = document.querySelector('input[name="hemisphere"]:checked').value;
-
-                    const tmin_val = document.getElementById('tminVal').value;
-                    const tmin_dir = document.getElementById('tminDir').value;
-                    const tavg_val = document.getElementById('tavgVal').value;
-                    const tavg_dir = document.getElementById('tavgDir').value;
-                    const tmax_val = document.getElementById('tmaxVal').value;
-                    const tmax_dir = document.getElementById('tmaxDir').value;
-
-                    let url = `/period_stats?station_id=${sid}&source=${ds}&start_date=${start}&end_date=${end}&month_filter=${month}&day_filter=${day}&period=${period}&hemisphere=${hemi}`;
-                    url += `&tmin_val=${tmin_val}&tmin_dir=${tmin_dir}&tavg_val=${tavg_val}&tavg_dir=${tavg_dir}&tmax_val=${tmax_val}&tmax_dir=${tmax_dir}`;
-
-                    window.open(url, '_blank');
-                }
-                function openYearStats() {
-                    const sid = document.getElementById('stationId').value;
-                    const ds = document.getElementById('dataSource').value;
-                    const start = document.getElementById('startDate').value;
-                    const end = document.getElementById('endDate').value;
-
-                    const tmin_val = document.getElementById('tminVal').value;
-                    const tmin_dir = document.getElementById('tminDir').value;
-                    const tavg_val = document.getElementById('tavgVal').value;
-                    const tavg_dir = document.getElementById('tavgDir').value;
-                    const tmax_val = document.getElementById('tmaxVal').value;
-                    const tmax_dir = document.getElementById('tmaxDir').value;
-
-                    const custom_avg_tmin = document.getElementById('customAvgTmin').value;
-                    const custom_avg_tavg = document.getElementById('customAvgTavg').value;
-                    const custom_avg_tmax = document.getElementById('customAvgTmax').value;
-
-                    let url = `/year_stats?station_id=${sid}&source=${ds}&start_date=${start}&end_date=${end}`;
-                    url += `&tmin_val=${tmin_val}&tmin_dir=${tmin_dir}&tavg_val=${tavg_val}&tavg_dir=${tavg_dir}&tmax_val=${tmax_val}&tmax_dir=${tmax_dir}`;
-                    url += `&custom_avg_tmin=${custom_avg_tmin}&custom_avg_tavg=${custom_avg_tavg}&custom_avg_tmax=${custom_avg_tmax}`;
-
-                    window.open(url, '_blank');
-                }
-            </script>
+        <!-- SINGLE MONTH LIST -->
+        <div class="section">
+            <div class="collapsible-wrapper" id="singleMonthListSection">
+                <div class="collapsible-header" onclick="toggleSection('singleMonthListSection')">
+                    <h2>{{ t('sections.single_month_list') }}</h2>
+                    <span class="collapsible-icon">▼</span>
+                </div>
+                <div class="collapsible-content">
+                    <div class="collapsible-inner">
+                        <div class="record-controls">
+                            <div class="control-group">
+                                <span style="font-weight:bold;">{{ t('tables.max_records') }}</span>
+                                <select id="monthlyLimitSelect" style="width:auto; padding:5px;">
+                                    <option value="12">12</option>
+                                    <option value="24" selected>24</option>
+                                    <option value="60">60</option>
+                                    <option value="120">120</option>
+                                    <option value="99999">All</option>
+                                </select>
+                                <button class="small-btn" onclick="updateMonthlyList()">{{ t('tables.update_records') }}</button>
+                                <button class="small-btn" style="background-color: #17a2b8;" onclick="copyMonthlyListTable()">{{ t('tables.copy_table_tsv') }}</button>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="data-table" id="monthlyListTable">
+                                <thead>
+                                    <tr>
+                                        <th onclick="sortMonthlyList('ym')">{{ t('tables.yyyy_mm') }} &#8645;</th>
+                                        <th onclick="sortMonthlyList('min_tmin')">{{ t('tables.min_tmin_c') }} &#8645;</th>
+                                        <th onclick="sortMonthlyList('avg_tmin')" class="th-highlight">{{ t('tables.avg_tmin_c') }} &#8645;</th>
+                                        <th onclick="sortMonthlyList('max_tmin')">{{ t('tables.max_tmin_c') }} &#8645;</th>
+                                        <th onclick="sortMonthlyList('min_tavg')">{{ t('tables.min_tavg_c') }} &#8645;</th>
+                                        <th onclick="sortMonthlyList('avg_tavg')" class="th-highlight">{{ t('tables.avg_tavg_c') }} &#8645;</th>
+                                        <th onclick="sortMonthlyList('max_tavg')">{{ t('tables.max_tavg_c') }} &#8645;</th>
+                                        <th onclick="sortMonthlyList('min_tmax')">{{ t('tables.min_tmax_c') }} &#8645;</th>
+                                        <th onclick="sortMonthlyList('avg_tmax')" class="th-highlight">{{ t('tables.avg_tmax_c') }} &#8645;</th>
+                                        <th onclick="sortMonthlyList('max_tmax')">{{ t('tables.max_tmax_c') }} &#8645;</th>
+                                        <th onclick="sortMonthlyList('cnt_min')">{{ t('tables.days_count_min') }} &#8645;</th>
+                                        <th onclick="sortMonthlyList('cnt_avg')">{{ t('tables.days_count_avg') }} &#8645;</th>
+                                        <th onclick="sortMonthlyList('cnt_max')">{{ t('tables.days_count_max') }} &#8645;</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- PART 4 & 5 (Restricted) -->
@@ -682,6 +725,18 @@
                                     <option value="max_monthly_avg_tavg">{{ t('statistics.max_monthly_avg_tavg') }}
                                     </option>
                                     <option value="max_monthly_avg_tmax">{{ t('statistics.max_monthly_avg_tmax') }}
+                                    </option>
+                                    <option value="min_single_month_avg_tmin">{{ t('statistics.min_single_month_avg_tmin') }}
+                                    </option>
+                                    <option value="min_single_month_avg_tavg">{{ t('statistics.min_single_month_avg_tavg') }}
+                                    </option>
+                                    <option value="min_single_month_avg_tmax">{{ t('statistics.min_single_month_avg_tmax') }}
+                                    </option>
+                                    <option value="max_single_month_avg_tmin">{{ t('statistics.max_single_month_avg_tmin') }}
+                                    </option>
+                                    <option value="max_single_month_avg_tavg">{{ t('statistics.max_single_month_avg_tavg') }}
+                                    </option>
+                                    <option value="max_single_month_avg_tmax">{{ t('statistics.max_single_month_avg_tmax') }}
                                     </option>
                                 </select>
                             </div>

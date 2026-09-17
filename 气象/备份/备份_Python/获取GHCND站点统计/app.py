@@ -16,6 +16,7 @@ from dotenv import load_dotenv
 from flask_wtf.csrf import CSRFProtect, generate_csrf
 import json
 import re
+import calendar
 from shapely.geometry import Polygon, Point
 
 load_dotenv()
@@ -820,9 +821,13 @@ def get_data():
                         temp_st_df = temp_st_df[temp_st_df.apply(in_kml, axis=1)]
 
                 temp_st_df['DIST'] = haversine_vectorized(center_lat, center_lon, temp_st_df['LAT'], temp_st_df['LON'])
-                if max_dist != 'no_limit':
-                    limit_km = float(max_dist)
-                    temp_st_df = temp_st_df[temp_st_df['DIST'] <= limit_km]
+                if max_dist not in ['no_limit', '', None]:
+                    try:
+                        limit_km = float(max_dist)
+                        if limit_km >= 0:
+                            temp_st_df = temp_st_df[temp_st_df['DIST'] <= limit_km]
+                    except (ValueError, TypeError):
+                        pass
                 
                 ms_sort_asc = (multi_sort_dir == 'asc')
                 
@@ -864,12 +869,41 @@ def get_data():
                         'dist': dist_val, 'country': str(c_name) if pd.notna(c_name) else ''
                     })
 
+        # --- SINGLE MONTH LIST ---
+        monthly_dict = {}
+        for elem_name in ['TMIN', 'TAVG', 'TMAX']:
+            sub = df[df['ELEMENT'] == elem_name]
+            if not sub.empty:
+                sub = sub.copy()
+                sub['YYYYMM'] = sub['DATE'].dt.to_period('M').astype(str)
+                grouped = sub.groupby('YYYYMM')['DATA_VALUE']
+                for ym, grp in grouped:
+                    if ym not in monthly_dict:
+                        monthly_dict[ym] = {
+                            'ym': ym,
+                            'min_tmin': '-', 'avg_tmin': '-', 'max_tmin': '-',
+                            'min_tavg': '-', 'avg_tavg': '-', 'max_tavg': '-',
+                            'min_tmax': '-', 'avg_tmax': '-', 'max_tmax': '-',
+                            'cnt_min': 0, 'cnt_avg': 0, 'cnt_max': 0
+                        }
+                    entry = monthly_dict[ym]
+                    vals = grp.values
+                    elem_lower = elem_name.lower()
+                    entry[f'min_{elem_lower}'] = float(round(vals.min(), 1))
+                    entry[f'avg_{elem_lower}'] = float(round(vals.mean(), 2))
+                    entry[f'max_{elem_lower}'] = float(round(vals.max(), 1))
+                    cnt_key = 'cnt_min' if elem_name == 'TMIN' else ('cnt_avg' if elem_name == 'TAVG' else 'cnt_max')
+                    entry[cnt_key] = int(len(vals))
+
+        monthly_list = sorted(monthly_dict.values(), key=lambda x: x['ym'], reverse=True)
+
         response_data = {
             'status': 'success', 
             'stats': stats, 
             'period_stats': period_stats, 
             'period_summary': period_summary, 
             'records': records_list, 
+            'monthly_list': monthly_list,
             'multi_stations': multi_stations
         }
         # Clean NaN values before JSON serialization
@@ -975,6 +1009,30 @@ def get_multi_stats():
                             7: 'Jul', 8: 'Aug', 9: 'Sep', 10: 'Oct', 11: 'Nov', 12: 'Dec'
                         }
                         dates_info = [month_map[m] for m in matching_months]
+                    else:
+                        val = '-'
+                else:
+                    val = '-'
+
+            # 1b. Single Month Average Extremes (group by YYYY-MM)
+            elif metric.startswith('min_single_month_avg_') or metric.startswith('max_single_month_avg_'):
+                is_min = metric.startswith('min_')
+                elem = metric.split('_')[4].upper()  # min_single_month_avg_tmin -> tmin
+                
+                sub = df[df['ELEMENT'] == elem]
+                
+                if not sub.empty:
+                    sub = sub.copy()
+                    sub['YYYYMM'] = sub['DATE'].dt.to_period('M').astype(str)
+                    monthly_avg = sub.groupby('YYYYMM')['DATA_VALUE'].mean()
+                    
+                    if not monthly_avg.empty:
+                        target_val = monthly_avg.min() if is_min else monthly_avg.max()
+                        val = float(round(target_val, 2))
+                        
+                        matching_mask = np.isclose(monthly_avg, target_val, atol=1e-5)
+                        matching_months = sorted(monthly_avg[matching_mask].index.tolist())
+                        dates_info = matching_months  # e.g. ['1969-01', '1985-02']
                     else:
                         val = '-'
                 else:
@@ -1385,12 +1443,27 @@ def date_details():
                 req_end = f"{year_part+1}-01-15"
         except: pass
         
+    elif query_type == 'month':
+        # value expected: "YYYY-MM" e.g. "1969-02"
+        try:
+            parts = value.split('-')
+            y = int(parts[0])
+            m = int(parts[1])
+            last_day = calendar.monthrange(y, m)[1]
+            req_start = f"{y:04d}-{m:02d}-01"
+            req_end = f"{y:04d}-{m:02d}-{last_day:02d}"
+        except: pass
+
     elif query_type == 'list':
         # value expected: "YYYY-MM-DD,YYYY-MM-DD..."
         try:
-            target_dates = value.split(',')
-            # Find min/max to optimize fetch
-            dt_objs = [datetime.strptime(d.strip(), '%Y-%m-%d') for d in target_dates if d.strip()]
+            target_dates = [d.strip() for d in value.split(',') if d.strip()]
+            dt_objs = []
+            for d in target_dates:
+                if len(d) == 7:
+                    dt_objs.append(datetime.strptime(d, '%Y-%m'))
+                else:
+                    dt_objs.append(datetime.strptime(d, '%Y-%m-%d'))
             if dt_objs:
                 req_start = min(dt_objs).strftime('%Y-%m-%d')
                 req_end = max(dt_objs).strftime('%Y-%m-%d')

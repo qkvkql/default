@@ -32,6 +32,7 @@
       "period_averages": "Period Averages (Summary)",
       "period_details": "Period Details (By Range)",
       "record_list": "Record List",
+      "single_month_list": "Single Month List",
       "multiple_stations": "Multiple Weather Stations",
       "multiple_stats": "Multiple Stations Statistics (For Stations in Part 4)",
       "averages_suffix": " Averages (Summary)"
@@ -144,6 +145,8 @@
       "decimal_deg": "Decimal Deg",
       "max_distance_km": "Max Distance (km):",
       "no_limit": "No Limit",
+      "custom": "Custom",
+      "enter_distance": "e.g. 150 (Leave blank for no limit)",
       "country_limit": "Country Limit:",
       "country_example": "e.g. RS (Russia)",
       "latitude_range": "Latitude Range",
@@ -206,7 +209,20 @@
       "relevant_dates_periods": "Relevant Dates/Periods",
       "total_valid": "Total Valid",
       "total_result_rows": "Total Result Rows:",
-      "timer": "Elapsed Time: {time}s"
+      "timer": "Elapsed Time: {time}s",
+      "yyyy_mm": "YYYY-MM",
+      "min_tmin_c": "Min TMIN(℃)",
+      "avg_tmin_c": "Avg TMIN(℃)",
+      "max_tmin_c": "Max TMIN(℃)",
+      "min_tavg_c": "Min TAVG(℃)",
+      "avg_tavg_c": "Avg TAVG(℃)",
+      "max_tavg_c": "Max TAVG(℃)",
+      "min_tmax_c": "Min TMAX(℃)",
+      "avg_tmax_c": "Avg TMAX(℃)",
+      "max_tmax_c": "Max TMAX(℃)",
+      "days_count_min": "Days(MIN)",
+      "days_count_avg": "Days(AVG)",
+      "days_count_max": "Days(MAX)"
     },
     "statistics": {
       "average_tmin": "Average TMIN",
@@ -235,7 +251,13 @@
       "min_monthly_avg_tmax": "Minimum value of monthly average TMAX",
       "max_monthly_avg_tmin": "Maximum value of monthly average TMIN",
       "max_monthly_avg_tavg": "Maximum value of monthly average TAVG",
-      "max_monthly_avg_tmax": "Maximum value of monthly average TMAX"
+      "max_monthly_avg_tmax": "Maximum value of monthly average TMAX",
+      "min_single_month_avg_tmin": "Min single month avg TMIN",
+      "min_single_month_avg_tavg": "Min single month avg TAVG",
+      "min_single_month_avg_tmax": "Min single month avg TMAX",
+      "max_single_month_avg_tmin": "Max single month avg TMIN",
+      "max_single_month_avg_tavg": "Max single month avg TAVG",
+      "max_single_month_avg_tmax": "Max single month avg TMAX"
     },
     "messages": {
       "copied_to_clipboard": "Copied to clipboard!",
@@ -324,6 +346,7 @@
       "period_averages": "冬均最低/夏均最高",
       "period_details": "冬/夏",
       "record_list": "样本",
+      "single_month_list": "单月列表",
       "multiple_stations": "多站列表",
       "multiple_stats": "多站单项对比",
       "averages_suffix_zh": "平均"
@@ -392,6 +415,8 @@
       "decimal_deg": "十进制值",
       "max_distance_km": "距离限制(km):",
       "no_limit": "无限制",
+      "custom": "自定义",
+      "enter_distance": "如: 150 (留空表示不限制)",
       "country_limit": "国家限制:",
       "country_example": "例如: RS (俄罗斯的国家代码是RS)",
       "latitude_range": "纬度限制",
@@ -452,7 +477,20 @@
       "relevant_dates_periods": "日期/(冬/夏)",
       "total_valid": "总计",
       "total_result_rows": "当前显示结果总数:",
-      "timer": "用时: {time}秒"
+      "timer": "用时: {time}秒",
+      "yyyy_mm": "年-月",
+      "min_tmin_c": "最低夜温(℃)",
+      "avg_tmin_c": "平均夜温(℃)",
+      "max_tmin_c": "最高夜温(℃)",
+      "min_tavg_c": "最低均温(℃)",
+      "avg_tavg_c": "平均均温(℃)",
+      "max_tavg_c": "最高均温(℃)",
+      "min_tmax_c": "最低昼温(℃)",
+      "avg_tmax_c": "平均昼温(℃)",
+      "max_tmax_c": "最高昼温(℃)",
+      "days_count_min": "天数(夜温)",
+      "days_count_avg": "天数(均温)",
+      "days_count_max": "天数(昼温)"
     },
     "statistics": {
       "average_tmin": "平均夜温",
@@ -481,7 +519,13 @@
       "min_monthly_avg_tmax": "月份: 最低昼温平均",
       "max_monthly_avg_tmin": "月份: 最高夜温平均",
       "max_monthly_avg_tavg": "月份: 最高月均温",
-      "max_monthly_avg_tmax": "月份: 最高昼温平均"
+      "max_monthly_avg_tmax": "月份: 最高昼温平均",
+      "min_single_month_avg_tmin": "单月: 最低夜温平均",
+      "min_single_month_avg_tavg": "单月: 最低月均温",
+      "min_single_month_avg_tmax": "单月: 最低昼温平均",
+      "max_single_month_avg_tmin": "单月: 最高夜温平均",
+      "max_single_month_avg_tavg": "单月: 最高月均温",
+      "max_single_month_avg_tmax": "单月: 最高昼温平均"
     },
     "messages": {
       "copied_to_clipboard": "已复制到剪贴板!",

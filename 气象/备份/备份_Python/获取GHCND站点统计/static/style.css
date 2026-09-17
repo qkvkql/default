@@ -402,6 +402,16 @@ th:hover {
     background-color: #e9ecef;
 }
 
+th.th-highlight {
+    color: #007bff;
+    font-weight: 700;
+}
+
+th.th-highlight:hover {
+    color: #0056b3;
+    background-color: #e9ecef;
+}
+
 tr:nth-child(even) {
     background-color: #f8f9fa;
 }
