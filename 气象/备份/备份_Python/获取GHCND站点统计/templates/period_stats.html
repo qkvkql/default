@@ -338,6 +338,37 @@
         }
 
         let sortDirs = Array(9).fill('desc');
+
+        function getCellVal(cell, colIndex) {
+            if (!cell) return null;
+            const span = cell.querySelector('.tooltip-container > span');
+            let raw = span ? span.textContent.trim() : cell.innerText.trim();
+
+            if (raw === '' || raw === '-' || raw === 'N/A' || raw === 'NA' || raw === 'null' || raw === 'undefined') {
+                return null;
+            }
+
+            if (colIndex === 0) {
+                const match = raw.match(/^\d{4}(?:-\d{4})?/);
+                return match ? match[0] : raw;
+            }
+
+            if (colIndex === 1) {
+                const part = raw.split('/')[0].trim();
+                if (part === '' || part === '-') return null;
+                const num = parseFloat(part);
+                return isNaN(num) ? null : num;
+            }
+
+            const match = raw.match(/^-?[\d\.]+/);
+            if (match) {
+                const num = parseFloat(match[0]);
+                if (!isNaN(num)) return num;
+            }
+
+            return raw;
+        }
+
         function sortTable(n) {
             const table = document.getElementById("periodStatsTable");
             const tbody = table.tBodies[0];
@@ -346,20 +377,19 @@
             sortDirs[n] = dir;
 
             rows.sort((a, b) => {
-                let x = a.cells[n].innerText.trim();
-                let y = b.cells[n].innerText.trim();
+                const xVal = getCellVal(a.cells[n], n);
+                const yVal = getCellVal(b.cells[n], n);
 
-                // Handle coverage fraction (e.g. "90 / 92")
-                if (n === 1) {
-                    x = parseFloat(x.split('/')[0]);
-                    y = parseFloat(y.split('/')[0]);
-                } else if (!isNaN(parseFloat(x)) && isFinite(x)) {
-                    x = parseFloat(x);
-                    y = parseFloat(y);
+                // Blank / empty values always stay at the bottom regardless of sort direction
+                if (xVal === null && yVal === null) return 0;
+                if (xVal === null) return 1;
+                if (yVal === null) return -1;
+
+                if (typeof xVal === 'number' && typeof yVal === 'number') {
+                    return dir === 'asc' ? xVal - yVal : yVal - xVal;
                 }
-
-                if (dir === 'asc') return x > y ? 1 : -1;
-                else return x < y ? 1 : -1;
+                const cmp = String(xVal).localeCompare(String(yVal));
+                return dir === 'asc' ? cmp : -cmp;
             });
 
             rows.forEach(row => tbody.appendChild(row));

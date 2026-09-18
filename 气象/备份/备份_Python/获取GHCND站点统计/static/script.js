@@ -1051,3 +1051,22 @@ function applyPogodaiklimatLinks() {
         }
     });
 }
+
+function toggleKmlClearBtn() {
+    const kmlInput = document.getElementById('kmlUpload');
+    const clearBtn = document.getElementById('clearKmlBtn');
+    if (clearBtn && kmlInput) {
+        clearBtn.style.display = (kmlInput.files && kmlInput.files.length > 0) ? 'inline-block' : 'none';
+    }
+}
+
+function clearKmlFile() {
+    const kmlInput = document.getElementById('kmlUpload');
+    if (kmlInput) {
+        kmlInput.value = '';
+    }
+    const clearBtn = document.getElementById('clearKmlBtn');
+    if (clearBtn) {
+        clearBtn.style.display = 'none';
+    }
+}

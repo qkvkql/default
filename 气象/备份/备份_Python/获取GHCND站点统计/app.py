@@ -17,7 +17,10 @@ from flask_wtf.csrf import CSRFProtect, generate_csrf
 import json
 import re
 import calendar
+import shapely
 from shapely.geometry import Polygon, Point
+from shapely.ops import unary_union
+from shapely.prepared import prep
 
 load_dotenv()
 
@@ -811,14 +814,45 @@ def get_data():
                                 except ValueError:
                                     pass
                         if len(points) >= 3:
-                            kml_polygons.append(Polygon(points))
+                            try:
+                                poly = Polygon(points)
+                                if not poly.is_valid:
+                                    poly = shapely.make_valid(poly)
+                                kml_polygons.append(poly)
+                            except Exception:
+                                pass
                     
                     if kml_polygons:
-                        def in_kml(row):
-                            if pd.isna(row['LON']) or pd.isna(row['LAT']): return False
-                            pt = Point(row['LON'], row['LAT'])
-                            return any(poly.contains(pt) or poly.touches(pt) for poly in kml_polygons)
-                        temp_st_df = temp_st_df[temp_st_df.apply(in_kml, axis=1)]
+                        try:
+                            merged_geom = unary_union(kml_polygons)
+                            minx, miny, maxx, maxy = merged_geom.bounds
+                        except Exception:
+                            minx = min(p.bounds[0] for p in kml_polygons)
+                            miny = min(p.bounds[1] for p in kml_polygons)
+                            maxx = max(p.bounds[2] for p in kml_polygons)
+                            maxy = max(p.bounds[3] for p in kml_polygons)
+                            merged_geom = None
+
+                        # Fast Bounding Box pre-filter (vectorized)
+                        temp_st_df = temp_st_df[
+                            temp_st_df['LON'].notna() & temp_st_df['LAT'].notna() &
+                            (temp_st_df['LON'] >= minx) & (temp_st_df['LON'] <= maxx) &
+                            (temp_st_df['LAT'] >= miny) & (temp_st_df['LAT'] <= maxy)
+                        ]
+
+                        # Exact point-in-polygon test on candidate stations
+                        if not temp_st_df.empty:
+                            if merged_geom is not None and hasattr(shapely, 'intersects_xy'):
+                                lons = temp_st_df['LON'].to_numpy()
+                                lats = temp_st_df['LAT'].to_numpy()
+                                mask = shapely.intersects_xy(merged_geom, lons, lats)
+                                temp_st_df = temp_st_df[mask]
+                            else:
+                                prep_geoms = [prep(p) for p in (kml_polygons if merged_geom is None else [merged_geom])]
+                                def in_kml(row):
+                                    pt = Point(row['LON'], row['LAT'])
+                                    return any(pg.intersects(pt) for pg in prep_geoms)
+                                temp_st_df = temp_st_df[temp_st_df.apply(in_kml, axis=1)]
 
                 temp_st_df['DIST'] = haversine_vectorized(center_lat, center_lon, temp_st_df['LAT'], temp_st_df['LON'])
                 if max_dist not in ['no_limit', '', None]:
