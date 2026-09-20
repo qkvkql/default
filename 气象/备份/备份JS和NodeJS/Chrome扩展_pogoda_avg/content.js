@@ -1015,6 +1015,11 @@ function renderSeasonalSection(data_arr, startYear, years_continue) {
 
 let monthlySortField = '年份';
 let monthlySortOrder = 'asc';
+let monthlyThresholdMonth = 'all';
+let monthlyThresholdOp = '<=';
+let monthlyThresholdVal = '';
+let monthlyThresholdActive = false;
+let monthlyThresholdResultCache = null;
 
 function renderSortableMonthlySection(data_arr) {
     const container = document.getElementById('weather-content-area');
@@ -1029,6 +1034,7 @@ function renderSortableMonthlySection(data_arr) {
     section.className = 'weather-monthly-history-section';
 
     const monthCols = ['年份', '一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月', '全年'];
+    const singleMonthCols = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'];
 
     section.innerHTML = `
         <div class="monthly-history-header">
@@ -1049,6 +1055,50 @@ function renderSortableMonthlySection(data_arr) {
                     🔄 恢复年份排序
                 </button>
             </div>
+        </div>
+
+        <div class="monthly-threshold-bar" id="monthly-threshold-bar">
+            <div class="monthly-threshold-title-row">
+                <span class="monthly-threshold-main-title">🌡️ 单月均温阈值统计筛选</span>
+                <span class="monthly-threshold-desc">统计全站历史中单月均温满足阈值的月份数（年均温不计入统计）</span>
+            </div>
+
+            <div class="monthly-threshold-controls">
+                <div class="monthly-threshold-field">
+                    <label for="monthly-threshold-month">月份范围:</label>
+                    <select id="monthly-threshold-month" class="monthly-threshold-select">
+                        <option value="all">全部 12 个月</option>
+                        ${singleMonthCols.map(m => `<option value="${m}">仅 ${m}</option>`).join('')}
+                    </select>
+                </div>
+
+                <div class="monthly-threshold-field">
+                    <label for="monthly-threshold-op">选项 1 (条件):</label>
+                    <select id="monthly-threshold-op" class="monthly-threshold-select">
+                        <option value="<=" selected>&le; (≤ 小于等于)</option>
+                        <option value=">=">&ge; (≥ 大于等于)</option>
+                    </select>
+                </div>
+
+                <div class="monthly-threshold-field">
+                    <label for="monthly-threshold-val">选项 2 (单月均温):</label>
+                    <div class="monthly-input-unit-wrap">
+                        <input type="number" id="monthly-threshold-val" step="0.1" placeholder="例如: -50.0" class="monthly-threshold-input" />
+                        <span class="monthly-unit">℃</span>
+                    </div>
+                </div>
+
+                <div class="monthly-threshold-buttons">
+                    <button class="seasonal-action-btn monthly-calc-btn" id="btn-calc-monthly-threshold" title="统计满足条件的月份数并高亮表格">
+                        🔢 统计月数
+                    </button>
+                    <button class="seasonal-action-btn monthly-clear-btn" id="btn-clear-monthly-threshold" title="清除统计条件与高亮">
+                        ✖ 清除
+                    </button>
+                </div>
+            </div>
+
+            <div id="monthly-threshold-result-container" class="monthly-threshold-result-container" style="display: none;"></div>
         </div>
 
         <div class="seasonal-table-filter">
@@ -1104,6 +1154,147 @@ function renderSortableMonthlySection(data_arr) {
         });
     }
 
+    function countMonthlyThreshold(records, scopeMonth, op, thresholdStr) {
+        if (thresholdStr === '' || thresholdStr === null || thresholdStr === undefined) {
+            return { error: '请输入有效的单月均温数值 (例如 -50.0)' };
+        }
+        const target = parseFloat(thresholdStr);
+        if (isNaN(target)) {
+            return { error: '输入的数值无效，请输入有效数字' };
+        }
+
+        const targetMonths = scopeMonth === 'all' ? singleMonthCols : [scopeMonth];
+        let count = 0;
+        let totalValid = 0;
+        const matchedRecords = [];
+
+        records.forEach(row => {
+            const year = row['年份'];
+            targetMonths.forEach(m => {
+                const val = row[m];
+                if (isSeasonValidValue(val)) {
+                    totalValid++;
+                    const num = Number(val);
+                    // Single month average comparison with floating point tolerance (annual average excluded)
+                    const isMatch = op === '<=' ? (num <= target + 1e-7) : (num >= target - 1e-7);
+                    if (isMatch) {
+                        count++;
+                        matchedRecords.push({
+                            year,
+                            month: m,
+                            val: num
+                        });
+                    }
+                }
+            });
+        });
+
+        return {
+            target,
+            op,
+            scopeMonth,
+            count,
+            totalValid,
+            matchedRecords
+        };
+    }
+
+    function renderThresholdResult(result) {
+        const resContainer = document.getElementById('monthly-threshold-result-container');
+        if (!resContainer) return;
+
+        if (!result) {
+            resContainer.innerHTML = '';
+            resContainer.style.display = 'none';
+            return;
+        }
+
+        if (result.error) {
+            resContainer.innerHTML = `<div class="monthly-threshold-error">${result.error}</div>`;
+            resContainer.style.display = 'block';
+            return;
+        }
+
+        resContainer.style.display = 'block';
+        const scopeLabel = result.scopeMonth === 'all' ? '全部 12 个月' : `仅 ${result.scopeMonth}`;
+        const percent = result.totalValid > 0 ? ((result.count / result.totalValid) * 100).toFixed(1) : '0.0';
+        const opDisplay = result.op === '<=' ? '≤' : '≥';
+
+        let html = `
+            <div class="monthly-threshold-result-card">
+                <div class="monthly-result-header-row">
+                    <div class="monthly-result-stat-info">
+                        <span class="monthly-result-title">📊 统计结果:</span>
+                        <span class="monthly-result-badge">共 <strong>${result.count}</strong> 个月份</span>
+                        <span class="monthly-result-condition">
+                            (范围: <strong class="hl-scope">${scopeLabel}</strong> | 单月均温 <strong>${opDisplay} ${result.target.toFixed(1)} ℃</strong>)
+                        </span>
+                        <span class="monthly-result-ratio">
+                            占有效月份总数(${result.totalValid})的 <strong>${percent}%</strong>
+                        </span>
+                        <span class="monthly-result-note">※ 年均温未计入</span>
+                    </div>
+                    <div class="monthly-result-btn-group">
+                        ${result.count > 0 ? `
+                            <button class="seasonal-action-btn monthly-result-btn" id="btn-copy-threshold-tsv" title="复制所有匹配月份数据 (TSV 格式)">
+                                📋 复制匹配列表
+                            </button>
+                            <button class="seasonal-action-btn monthly-result-btn" id="btn-toggle-matched-detail" title="展开/收起具体匹配月份年份明细">
+                                📑 查看明细 (${result.count})
+                            </button>
+                        ` : ''}
+                    </div>
+                </div>
+
+                ${result.count > 0 ? `
+                    <div class="monthly-matched-detail-wrap" id="monthly-matched-detail-wrap" style="display: none;">
+                        <div class="monthly-matched-detail-bar">
+                            <span>📌 符合条件的月份明细 (共 ${result.count} 条，表格内对应单元格已高亮标记):</span>
+                        </div>
+                        <div class="monthly-matched-tags-box">
+                            ${result.matchedRecords.map(r => `
+                                <span class="matched-month-tag" title="${r.year}年 ${r.month}: ${r.val} ℃">
+                                    <span class="tag-ym">${r.year}年 ${r.month}</span>
+                                    <span class="tag-val">${r.val >= 0 ? '+' + r.val.toFixed(1) : r.val.toFixed(1)}℃</span>
+                                </span>
+                            `).join('')}
+                        </div>
+                    </div>
+                ` : `
+                    <div class="monthly-no-match-box">
+                        ℹ️ 全站历史数据中未找到满足范围【${scopeLabel}】且单月均温 <strong>${opDisplay} ${result.target.toFixed(1)} ℃</strong> 的月份记录。
+                    </div>
+                `}
+            </div>
+        `;
+
+        resContainer.innerHTML = html;
+
+        const copyTsvBtn = document.getElementById('btn-copy-threshold-tsv');
+        if (copyTsvBtn) {
+            copyTsvBtn.addEventListener('click', () => {
+                const header = '年份\t月份\t单月均温(℃)';
+                const rows = result.matchedRecords.map(r => `${r.year}\t${r.month}\t${r.val}`);
+                copyText([header, ...rows].join('\n'));
+            });
+        }
+
+        const toggleBtn = document.getElementById('btn-toggle-matched-detail');
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', () => {
+                const detailWrap = document.getElementById('monthly-matched-detail-wrap');
+                if (!detailWrap) return;
+                if (detailWrap.style.display === 'none') {
+                    detailWrap.style.display = 'block';
+                    toggleBtn.innerText = `▲ 收起明细 (${result.count})`;
+                } else {
+                    detailWrap.style.display = 'none';
+                    toggleBtn.innerText = `📑 查看明细 (${result.count})`;
+                }
+            });
+        }
+    }
+
     function updateMonthlyHeaderUI() {
         const badge = document.getElementById('monthly-active-sort-badge');
         if (badge) {
@@ -1152,7 +1343,20 @@ function renderSortableMonthlySection(data_arr) {
                 } else {
                     const val = row[col];
                     if (isSeasonValidValue(val)) {
-                        trHtml += `<td class="${isSortedCol}">${formatAverageForCopying(val)}</td>`;
+                        let isMatched = false;
+                        if (monthlyThresholdActive && col !== '全年') {
+                            if (monthlyThresholdMonth === 'all' || monthlyThresholdMonth === col) {
+                                const num = Number(val);
+                                const target = parseFloat(monthlyThresholdVal);
+                                if (!isNaN(target)) {
+                                    isMatched = monthlyThresholdOp === '<=' ? (num <= target + 1e-7) : (num >= target - 1e-7);
+                                }
+                            }
+                        }
+                        const matchClass = isMatched ? 'threshold-matched-cell' : '';
+                        const cellClasses = [isSortedCol, matchClass].filter(Boolean).join(' ');
+                        const matchTitle = isMatched ? ` title="满足统计条件: ${col}均温 ${monthlyThresholdOp === '<=' ? '≤' : '≥'} ${monthlyThresholdVal}℃"` : '';
+                        trHtml += `<td class="${cellClasses}"${matchTitle}>${formatAverageForCopying(val)}</td>`;
                     } else {
                         trHtml += `<td class="${isSortedCol}"><span class="temp-missing">-</span></td>`;
                     }
@@ -1165,6 +1369,111 @@ function renderSortableMonthlySection(data_arr) {
     }
 
     renderMonthlyRows();
+
+    function executeThresholdCount() {
+        const monthSelect = document.getElementById('monthly-threshold-month');
+        const opSelect = document.getElementById('monthly-threshold-op');
+        const valInput = document.getElementById('monthly-threshold-val');
+
+        const scopeMonth = monthSelect ? monthSelect.value : 'all';
+        const op = opSelect ? opSelect.value : '<=';
+        const rawVal = valInput ? valInput.value.trim() : '';
+
+        if (!rawVal) {
+            showToast('请输入单月均温数值 (例如 -50.0)');
+            if (valInput) valInput.focus();
+            return;
+        }
+
+        const target = parseFloat(rawVal);
+        if (isNaN(target)) {
+            showToast('输入的数值无效，请输入有效数字');
+            if (valInput) valInput.focus();
+            return;
+        }
+
+        monthlyThresholdMonth = scopeMonth;
+        monthlyThresholdOp = op;
+        monthlyThresholdVal = rawVal;
+        monthlyThresholdActive = true;
+
+        const result = countMonthlyThreshold(data_arr, scopeMonth, op, rawVal);
+        monthlyThresholdResultCache = result;
+        renderThresholdResult(result);
+
+        const currentFilter = document.getElementById('monthly-year-filter') ? document.getElementById('monthly-year-filter').value : '';
+        renderMonthlyRows(currentFilter);
+    }
+
+    function clearThresholdCount() {
+        monthlyThresholdActive = false;
+        monthlyThresholdVal = '';
+        monthlyThresholdMonth = 'all';
+        monthlyThresholdOp = '<=';
+        monthlyThresholdResultCache = null;
+
+        const valInput = document.getElementById('monthly-threshold-val');
+        if (valInput) valInput.value = '';
+        const monthSelect = document.getElementById('monthly-threshold-month');
+        if (monthSelect) monthSelect.value = 'all';
+        const opSelect = document.getElementById('monthly-threshold-op');
+        if (opSelect) opSelect.value = '<=';
+
+        renderThresholdResult(null);
+
+        const currentFilter = document.getElementById('monthly-year-filter') ? document.getElementById('monthly-year-filter').value : '';
+        renderMonthlyRows(currentFilter);
+    }
+
+    // Restore previous UI values if re-rendering while active
+    if (monthlyThresholdActive) {
+        const valInput = document.getElementById('monthly-threshold-val');
+        if (valInput) valInput.value = monthlyThresholdVal;
+        const monthSelect = document.getElementById('monthly-threshold-month');
+        if (monthSelect) monthSelect.value = monthlyThresholdMonth;
+        const opSelect = document.getElementById('monthly-threshold-op');
+        if (opSelect) opSelect.value = monthlyThresholdOp;
+        if (monthlyThresholdResultCache) {
+            renderThresholdResult(monthlyThresholdResultCache);
+        }
+    }
+
+    const calcThresholdBtn = document.getElementById('btn-calc-monthly-threshold');
+    if (calcThresholdBtn) {
+        calcThresholdBtn.addEventListener('click', executeThresholdCount);
+    }
+
+    const clearThresholdBtn = document.getElementById('btn-clear-monthly-threshold');
+    if (clearThresholdBtn) {
+        clearThresholdBtn.addEventListener('click', clearThresholdCount);
+    }
+
+    const thresholdValInput = document.getElementById('monthly-threshold-val');
+    if (thresholdValInput) {
+        thresholdValInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                executeThresholdCount();
+            }
+        });
+    }
+
+    const thresholdMonthSelect = document.getElementById('monthly-threshold-month');
+    if (thresholdMonthSelect) {
+        thresholdMonthSelect.addEventListener('change', () => {
+            if (monthlyThresholdActive) {
+                executeThresholdCount();
+            }
+        });
+    }
+
+    const thresholdOpSelect = document.getElementById('monthly-threshold-op');
+    if (thresholdOpSelect) {
+        thresholdOpSelect.addEventListener('change', () => {
+            if (monthlyThresholdActive) {
+                executeThresholdCount();
+            }
+        });
+    }
 
     // Header click sorting for all monthly table columns
     section.querySelectorAll('#monthly-history-table th.sortable-th').forEach(th => {

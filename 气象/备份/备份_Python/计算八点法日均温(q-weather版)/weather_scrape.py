@@ -5,6 +5,7 @@ from __future__ import annotations
 import calendar
 import re
 from datetime import date, datetime, timedelta
+from decimal import Decimal, ROUND_HALF_UP
 from typing import Any
 
 import requests
@@ -203,7 +204,7 @@ def partial_mean_over_slots(merged: ObsMap, slots: list[tuple[str, int]]) -> dic
             missing.append(slot_label(day_s, hour))
     used = len(values)
     req = len(slots)
-    mean = round(sum(values) / used, 2) if used else None
+    mean = float(Decimal(str(sum(values) / used)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)) if used else None
     return {
         "mean": mean,
         "used_count": used,
@@ -256,7 +257,7 @@ def _evaluate_slots(merged: ObsMap, slots: list[tuple[str, int]]) -> dict[str, A
     avg = sum(temps) / len(temps)
     return {
         "ok": True,
-        "average": round(avg, 2),
+        "average": float(Decimal(str(avg)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)),
         "points": points,
         "missing": [],
     }
