@@ -312,10 +312,12 @@
       pointer-events: none;
       transition: opacity 0.2s ease, transform 0.2s ease, background 0.15s, border-color 0.15s, color 0.15s;
       z-index: 10;
+      cursor: pointer;
     }
     #toast.show {
       opacity: 1;
       transform: translateX(-50%) translateY(0);
+      pointer-events: auto;
     }
     #toast.success {
       background: #052e16;
@@ -338,6 +340,13 @@
     .btn-select.no-data {
       background: #dc2626 !important;
       color: #fff !important;
+    }
+    /* amber highlight for station mismatch warning toast */
+    #toast.warning {
+      background: #78350f;
+      border-color: #f59e0b;
+      color: #fde68a;
+      font-weight: 600;
     }
 
     /* ── Result button (replaces Select after successful retrieval) ── */
@@ -641,24 +650,40 @@
   let manualStations = [];
 
   // ── Toast helper ─────────────────────────────────────────────────────────────
-  // type: 'error' (default, red) | 'success' (green)
+  // type: 'error' (default, red) | 'success' (green) | 'warning' (amber)
   // When type === 'success' the msg may contain a <span class="toast-date"> node;
   // pass an Element or an HTML string for msg in that case.
-  function showToast(msg, type = 'error') {
+  // duration: optional duration in ms. If 0 or false, toast stays indefinitely until clicked/replaced.
+  function showToast(msg, type = 'error', duration = null) {
     if (msg instanceof Node) {
       toast.innerHTML = '';
       toast.appendChild(msg);
     } else {
       toast.innerHTML = msg;   // allow inline HTML for date span
     }
-    toast.classList.toggle('success', type === 'success');
+    toast.classList.remove('success', 'warning');
+    if (type === 'success') toast.classList.add('success');
+    if (type === 'warning') toast.classList.add('warning');
     toast.classList.add('show');
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => {
-      toast.classList.remove('show');
-      toast.classList.remove('success');
-    }, type === 'success' ? 5500 : 2500);
+
+    let dur = duration;
+    if (dur === null || dur === undefined) {
+      dur = type === 'success' ? 5500 : type === 'warning' ? 6000 : 2500;
+    }
+
+    if (dur && dur > 0 && isFinite(dur)) {
+      toastTimer = setTimeout(() => {
+        toast.classList.remove('show', 'success', 'warning');
+      }, dur);
+    }
   }
+
+  // Click on toast to dismiss manually
+  toast.addEventListener('click', () => {
+    toast.classList.remove('show', 'success', 'warning');
+    clearTimeout(toastTimer);
+  });
 
   // ── Custom data-view overlay styles (injected into shadow root once) ────────
   const dataViewStyle = document.createElement('style');
@@ -1023,7 +1048,7 @@
       chrome.runtime.sendMessage({ action: 'triggerDataViewMain' }, (resp) => {
         if (resp && resp.ok && resp.data) {
           console.log('[Tyarchive] Direct data extraction succeeded, feeding to showTextDataView');
-          showTextDataView(resp.data);
+          showTextDataView(resp.data, resp.chartTitle || '');
         } else {
           console.warn('[Tyarchive] MAIN-world extraction failed:', resp && resp.error);
           // Last resort: try canvas fallback (ZRender / MouseEvent spray)
@@ -1135,7 +1160,8 @@
               });
               const syntheticText = tsvLines.join('\n');
               console.log('[Tyarchive] Converted table to TSV, rows:', rows.length);
-              showTextDataView(syntheticText);
+              // Fetch chart title separately for native data-view path
+              fetchChartTitle().then(title => showTextDataView(syntheticText, title));
             }, 60);
 
             return; // handled
@@ -1174,7 +1200,8 @@
             }
 
             // Parse the raw text and show in our custom overlay
-            showTextDataView(text);
+            // Fetch chart title separately for native data-view path
+            fetchChartTitle().then(title => showTextDataView(text, title));
           }, 60);
 
           return; // handle only the first matching textarea per mutation batch
@@ -1187,12 +1214,28 @@
     return observer; // caller can disconnect() if needed
   }
 
+  // ── fetchChartTitle: extract ECharts chart title via background MAIN world ─────
+  // Used by native data-view paths (table/textarea) where the title isn't
+  // available from the direct extraction response.
+  function fetchChartTitle() {
+    return new Promise((resolve) => {
+      chrome.runtime.sendMessage({ action: 'getChartTitle' }, (resp) => {
+        if (chrome.runtime.lastError) {
+          console.warn('[Tyarchive] fetchChartTitle error:', chrome.runtime.lastError.message);
+          resolve('');
+          return;
+        }
+        resolve((resp && resp.chartTitle) || '');
+      });
+    });
+  }
+
   // ── showTextDataView: extract min/max temp from native ECharts textarea ────────
   // Column layout (0-indexed, tab-separated):
   //   0: date | 1: rainfall | 2: climate avg (1991-2020) | 3: (unused) |
   //   4: daily avg temp | 5: daily max temp | 6: daily min temp | (7+: rest)
   // Target: row whose date column (format: MM月DD日) matches the user-specified MM-DD target.
-  async function showTextDataView(rawText) {
+  async function showTextDataView(rawText, chartTitle = '') {
     // Helper: treat 'NaN' string as empty
     const clean = v => {
       const s = (v || '').trim();
@@ -1200,6 +1243,100 @@
       return s;
     };
     const isValid = v => clean(v) !== '';  // has a real value
+
+    // ── Capture operation identity before any async work ─────────────────────
+    // myOpId is compared at every checkpoint; if activeOpId changed, a newer
+    // Select was clicked and this result belongs to a different station → discard.
+    const myOpId = activeOpId;
+    const currentBtn = activeSelectBtn;
+
+    // Helper: close native ECharts data-view panel if present
+    const closeNativeDataView = () => {
+      const closeBtn = Array.from(document.querySelectorAll('div')).find((el) => {
+        if ((el.textContent || '').trim() !== '关闭') return false;
+        const style = el.getAttribute('style') || '';
+        return /float:\s*right/i.test(style) && /cursor:\s*pointer/i.test(style);
+      });
+      if (closeBtn) {
+        closeBtn.click();
+        console.log('[Tyarchive] Clicked native "关闭" button');
+      }
+    };
+
+    let isBasicStation = false;
+    if (currentBtn && currentBtn.isConnected) {
+      const row = currentBtn.closest('tr');
+      const checkedRadio = row?.querySelector('input[type="radio"]:checked');
+      isBasicStation = !checkedRadio || checkedRadio.value === 'basic';
+    }
+
+    // ── Station number verification ───────────────────────────────────────────
+    // Compare the station number selected in the extension panel with the one
+    // shown in the recently loaded chart title. If they don't match, warn the user,
+    // ensure the toast never auto-disappears, keep the button ready as "Select",
+    // and do NOT show the wrong values or copy wrong data.
+    if (chartTitle && currentBtn) {
+      const usaf = (currentBtn.getAttribute('data-usaf') || '').trim();
+      const domesId = (currentBtn.getAttribute('data-domesid') || '').trim();
+      const panelName = (currentBtn.getAttribute('data-name') || '').trim();
+      const panelStation = (isBasicStation ? (usaf || domesId) : (domesId || usaf)) || usaf || domesId;
+
+      // Extract station identifier from beginning of chart title (supports alphanumeric like Y5315)
+      const leadingMatch = chartTitle.trim().match(/^([A-Za-z0-9]+)/);
+      const chartStation = leadingMatch ? leadingMatch[1] : (chartTitle.match(/[A-Za-z0-9]+/)?.[0] || '');
+
+      console.log(`[Tyarchive] Station verification — panel: "${panelStation}" (${panelName}), chart title: "${chartTitle}", extracted: "${chartStation}"`);
+
+      const normPanel = panelStation.toUpperCase();
+      const normUsaf = usaf.toUpperCase();
+      const normDomes = domesId.toUpperCase();
+      const normChart = chartStation.toUpperCase();
+      const normTitle = chartTitle.toUpperCase();
+      const normName = panelName.toUpperCase();
+
+      const isNumericEqual = (a, b) => {
+        if (!a || !b) return false;
+        const na = parseInt(a.replace(/^0+/, ''), 10);
+        const nb = parseInt(b.replace(/^0+/, ''), 10);
+        return !isNaN(na) && !isNaN(nb) && na === nb;
+      };
+
+      const isMatch = (normPanel && normChart && normPanel === normChart) ||
+                      (normUsaf && normChart && normUsaf === normChart) ||
+                      (normDomes && normChart && normDomes === normChart) ||
+                      (normPanel && normTitle.includes(normPanel)) ||
+                      (normUsaf && normTitle.includes(normUsaf)) ||
+                      (normDomes && normTitle.includes(normDomes)) ||
+                      (normChart && normPanel && normPanel.includes(normChart)) ||
+                      (normName && normTitle.includes(normName)) ||
+                      isNumericEqual(normPanel, normChart) ||
+                      isNumericEqual(normUsaf, normChart) ||
+                      isNumericEqual(normDomes, normChart);
+
+      if (!isMatch) {
+        closeNativeDataView();
+
+        // Show a persistent warning toast that NEVER auto-disappears (duration = 0)
+        const warnMsg = `⚠️ 站号不匹配！面板: ${panelStation || panelName || '未知'} ≠ 图表: ${chartStation || '未知'}`;
+        showToast(warnMsg, 'warning', 0);
+        console.warn(`[Tyarchive] STATION MISMATCH! Panel station: ${panelStation}, Chart station: ${chartStation}, Chart title: "${chartTitle}"`);
+
+        // In extension panel: ensure the target station does not show the wrong value
+        // and remains ready to be clicked as "Select"
+        if (currentBtn && currentBtn.isConnected) {
+          currentBtn.classList.remove('btn-result', 'btn-copied', 'no-data');
+          currentBtn.classList.add('btn-select');
+          currentBtn.disabled = false;
+          currentBtn.textContent = 'Select';
+        }
+
+        activeSelectBtn = null;
+        if (activeOpId === myOpId) activeOpId = 0;  // release the operation lock
+        return; // Do not copy or display wrong station data
+      } else {
+        console.log(`[Tyarchive] Station verification OK — panel: ${panelStation}, chart: ${chartStation}`);
+      }
+    }
 
     // Read the user-specified target date (MM-DD) and convert to MM月DD日 for matching.
     // Data rows use the Chinese date format, e.g. "05月09日", at the START of each row.
@@ -1244,25 +1381,13 @@
 
     console.log(`[Tyarchive] Target: ${targetMMDD} (→ ${targetDateStr}) | dateFound=${dateFound} | min=${min || 'NaN'} max=${max || 'NaN'}`);
 
-    // ── Capture operation identity before any async work ─────────────────────
-    // myOpId is compared at every checkpoint; if activeOpId changed, a newer
-    // Select was clicked and this result belongs to a different station → discard.
-    const myOpId = activeOpId;
-    const currentBtn = activeSelectBtn;
-
-    let isBasicStation = false;
-    if (currentBtn && currentBtn.isConnected) {
-      const row = currentBtn.closest('tr');
-      const checkedRadio = row?.querySelector('input[type="radio"]:checked');
-      isBasicStation = !checkedRadio || checkedRadio.value === 'basic';
-    }
-
     // ── If no data, show error toast and restore button ────────────────────────
     if (noData) {
       if (activeOpId !== myOpId) {
         console.warn('[Tyarchive] showTextDataView: stale noData result discarded (op superseded)');
         return;
       }
+      closeNativeDataView();
       // Target date not in data or both min/max are empty → red toast
       const reason = !dateFound ? '数据视图中无此日期' : '该日期无气温数据';
       showToast(`✗ ${date}  ${reason}`);
@@ -1392,18 +1517,7 @@
 
     const copied = await writeClipboard(clipText);
     if (copied) {
-      // Close the native data-view panel after a successful copy.
-      const closeBtn = Array.from(document.querySelectorAll('div')).find((el) => {
-        if ((el.textContent || '').trim() !== '关闭') return false;
-        const style = el.getAttribute('style') || '';
-        return /float:\s*right/i.test(style) && /cursor:\s*pointer/i.test(style);
-      });
-      if (closeBtn) {
-        closeBtn.click();
-        console.log('[Tyarchive] Clicked native "关闭" button after copy');
-      } else {
-        console.warn('[Tyarchive] Native "关闭" button not found after copy');
-      }
+      closeNativeDataView();
     }
 
     // ── Success: show toast with enlarged date ────────────────────────────────

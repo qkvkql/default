@@ -59,6 +59,17 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           const series = opt.series || [];
           if (!dates.length) return { ok: false, error: 'No xAxis data' };
 
+          // ── Extract chart title text (contains station number) ──────────
+          let chartTitle = '';
+          try {
+            const titleArr = opt.title;
+            if (Array.isArray(titleArr) && titleArr.length > 0) {
+              chartTitle = titleArr[0].text || '';
+            } else if (titleArr && titleArr.text) {
+              chartTitle = titleArr.text;
+            }
+          } catch (_) {}
+
           // Build TSV: each row = date \t s0 \t s1 \t ...
           // This mirrors the native ECharts data-view output format.
           const lines = [];
@@ -74,7 +85,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             }
             lines.push(cols.join('\t'));
           }
-          return { ok: true, method: 'directExtract', data: lines.join('\n') };
+          return { ok: true, method: 'directExtract', data: lines.join('\n'), chartTitle };
         } catch (e) {
           return { ok: false, error: 'getOption extract failed: ' + e.message };
         }
@@ -85,6 +96,49 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }).catch((e) => {
       console.error('[Tyarchive BG] triggerDataViewMain failed:', e);
       sendResponse({ ok: false, error: e.message || String(e) });
+    });
+    return true; // keep channel open
+  }
+
+  // ── getChartTitle ─────────────────────────────────────────────────────────
+  // Extracts just the ECharts chart title text from the page's MAIN world.
+  // Used by native data-view code paths (table/textarea) that need the title
+  // for station number verification but don't have it from triggerDataViewMain.
+  if (request.action === 'getChartTitle' && sender.tab && sender.tab.id) {
+    chrome.scripting.executeScript({
+      target: { tabId: sender.tab.id },
+      world: 'MAIN',
+      func: () => {
+        let chartInst = null;
+        if (window.echarts) {
+          for (const div of document.querySelectorAll('div')) {
+            try {
+              const inst = window.echarts.getInstanceByDom(div);
+              if (inst) { chartInst = inst; break; }
+            } catch (_) {}
+          }
+        }
+        if (!chartInst) return { chartTitle: '' };
+        try {
+          const opt = chartInst.getOption();
+          const titleArr = opt.title;
+          let chartTitle = '';
+          if (Array.isArray(titleArr) && titleArr.length > 0) {
+            chartTitle = titleArr[0].text || '';
+          } else if (titleArr && titleArr.text) {
+            chartTitle = titleArr.text;
+          }
+          return { chartTitle };
+        } catch (_) {
+          return { chartTitle: '' };
+        }
+      }
+    }).then((results) => {
+      const r = results && results[0] && results[0].result;
+      sendResponse(r || { chartTitle: '' });
+    }).catch((e) => {
+      console.warn('[Tyarchive BG] getChartTitle failed:', e);
+      sendResponse({ chartTitle: '' });
     });
     return true; // keep channel open
   }
