@@ -1282,9 +1282,10 @@ def delete_user(user_id):
     flash(f'User {user.username} deleted.')
     return redirect(url_for('manage_users'))
 
+@app.route('/calendar_months_stats')
 @app.route('/year_stats')
 @auth_or_visitor_required
-def year_stats():
+def calendar_months_stats():
     station_id = request.args.get('station_id')
     source = request.args.get('source', 'GHCND')
     start_date = request.args.get('start_date')
@@ -1320,7 +1321,7 @@ def year_stats():
     df = fetch_and_clean_data(source, station_id, start_date, end_date)
     
     if df.empty:
-        return render_template('year_stats.html', tables=[], station_name=station_name, error_msg=get_translation('messages.station_data_error'))
+        return render_template('calendar_months_stats.html', tables=[], station_name=station_name, station_info=station_info, error_msg=get_translation('messages.station_data_error'))
 
     month_names = {
         0: get_translation('months.full_year'),
@@ -1338,8 +1339,8 @@ def year_stats():
         matches = sub_df[sub_df['DATA_VALUE'] == target_val]['DATE']
         return {'val': float(target_val), 'dates': matches.dt.strftime('%Y-%m-%d').tolist()}
 
-    year_order = list(range(1, 13)) + [0]
-    for m in year_order:
+    month_order = list(range(1, 13)) + [0]
+    for m in month_order:
         # Filter
         if m == 0:
             sub_df = df.copy()
@@ -1412,7 +1413,9 @@ def year_stats():
         
         results = sorted_valid_items + invalid_res + full_year_res
 
-    return render_template('year_stats.html', tables=results, station_name=station_name, station_info=station_info)
+    return render_template('calendar_months_stats.html', tables=results, station_name=station_name, station_info=station_info)
+
+year_stats = calendar_months_stats
 
 @app.route('/date_details')
 @auth_or_visitor_required
@@ -1477,6 +1480,14 @@ def date_details():
                 req_end = f"{year_part+1}-01-15"
         except: pass
         
+    elif query_type == 'year':
+        # value expected: "YYYY" e.g. "2023"
+        try:
+            y = int(value)
+            req_start = f"{y:04d}-01-01"
+            req_end = f"{y:04d}-12-31"
+        except: pass
+
     elif query_type == 'month':
         # value expected: "YYYY-MM" e.g. "1969-02"
         try:
@@ -1533,7 +1544,7 @@ def date_details():
     streaks_data = {}
     expected_total = None
 
-    if query_type == 'period' and req_start and req_end:
+    if query_type in ['period', 'year'] and req_start and req_end:
         try:
             d1 = datetime.strptime(req_start, '%Y-%m-%d')
             d2 = datetime.strptime(req_end, '%Y-%m-%d')
@@ -1688,10 +1699,12 @@ def period_stats():
                 else: return int((vals >= float(t_val)).sum())
             s_tmin_df = season_df[season_df['ELEMENT'] == 'TMIN']
             s_tmax_df = season_df[season_df['ELEMENT'] == 'TMAX']
+            s_tavg_df = season_df[season_df['ELEMENT'] == 'TAVG']
             min_tmin_obj = get_val_and_dates(s_tmin_df, 'min')
             max_tmin_obj = get_val_and_dates(s_tmin_df, 'max')
             min_tmax_obj = get_val_and_dates(s_tmax_df, 'min')
             max_tmax_obj = get_val_and_dates(s_tmax_df, 'max')
+            avg_tavg = float(round(s_tavg_df['DATA_VALUE'].mean(), 2)) if not s_tavg_df.empty else '-'
             
             count_djf_tmin = season_df[(season_df['DATE'].dt.month.isin([12, 1, 2])) & (season_df['ELEMENT'] == 'TMIN')].shape[0]
             count_djf_tmax = season_df[(season_df['DATE'].dt.month.isin([12, 1, 2])) & (season_df['ELEMENT'] == 'TMAX')].shape[0]
@@ -1750,6 +1763,7 @@ def period_stats():
                 'count_actual': count_actual,
                 'count_expected': count_expected,
                 'min_tmin': min_tmin_obj, 'max_tmin': max_tmin_obj, 'min_tmax': min_tmax_obj, 'max_tmax': max_tmax_obj,
+                'avg_tavg': avg_tavg,
                 'cnt_tmin': get_thresh_count('TMIN'), 'cnt_tavg': get_thresh_count('TAVG'), 'cnt_tmax': get_thresh_count('TMAX'),
                 'valid_tmin_period': valid_tmin_period, 'valid_tmax_period': valid_tmax_period
             })
@@ -1768,6 +1782,69 @@ def period_stats():
         return render_template('period_stats.html', station_name=station_name, station_info=station_info, 
                                period_summary=period_summary, period_stats=period_stats_list, source=source, station_id=station_id,
                                period_mode=period_mode, min_days=min_days)
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return str(e), 500
+
+@app.route('/year_by_year')
+@auth_or_visitor_required
+def year_by_year():
+    try:
+        station_id = request.args.get('station_id')
+        source = request.args.get('source', 'GHCND')
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+
+        station_name = station_id
+        station_info = {'lat': '-', 'lon': '-', 'elev': '-'}
+        st_df = GHCND_DF if source == 'GHCND' else GSOD_DF
+        if st_df is not None:
+            row = st_df[st_df['ID'] == station_id]
+            if not row.empty:
+                station_name = f"{station_id} - {row.iloc[0]['NAME']}"
+                station_info['lat'] = row.iloc[0]['LAT']
+                station_info['lon'] = row.iloc[0]['LON']
+                station_info['elev'] = row.iloc[0]['ELEV']
+
+        df = fetch_and_clean_data(source, station_id, start_date, end_date)
+        if df.empty:
+            return render_template('year_by_year.html', station_name=station_name, station_info=station_info,
+                                   year_stats=[], error_msg=get_translation('messages.station_data_error'))
+
+        def get_val_and_dates(sub_df, method='min'):
+            if sub_df.empty: return {'val': '-', 'dates': []}
+            target_val = sub_df['DATA_VALUE'].min() if method == 'min' else sub_df['DATA_VALUE'].max()
+            matches = sub_df[sub_df['DATA_VALUE'] == target_val]['DATE']
+            return {'val': float(target_val), 'dates': matches.dt.strftime('%Y-%m-%d').tolist()}
+
+        year_stats_list = []
+        df['Year'] = df['DATE'].dt.year
+        unique_years = sorted(df['Year'].unique(), reverse=True)
+
+        for year in unique_years:
+            year_df = df[df['Year'] == year]
+            if year_df.empty: continue
+            count_actual = year_df['DATE'].nunique()
+            count_expected = 366 if calendar.isleap(year) else 365
+            y_tmin_df = year_df[year_df['ELEMENT'] == 'TMIN']
+            y_tmax_df = year_df[year_df['ELEMENT'] == 'TMAX']
+            y_tavg_df = year_df[year_df['ELEMENT'] == 'TAVG']
+            min_tmin_obj = get_val_and_dates(y_tmin_df, 'min')
+            min_tmax_obj = get_val_and_dates(y_tmax_df, 'min')
+            max_tmin_obj = get_val_and_dates(y_tmin_df, 'max')
+            max_tmax_obj = get_val_and_dates(y_tmax_df, 'max')
+            avg_tavg = float(round(y_tavg_df['DATA_VALUE'].mean(), 2)) if not y_tavg_df.empty else '-'
+            year_stats_list.append({
+                'year': year,
+                'count_actual': count_actual,
+                'count_expected': count_expected,
+                'min_tmin': min_tmin_obj, 'min_tmax': min_tmax_obj,
+                'max_tmin': max_tmin_obj, 'max_tmax': max_tmax_obj,
+                'avg_tavg': avg_tavg
+            })
+
+        return render_template('year_by_year.html', station_name=station_name, station_info=station_info,
+                               year_stats=year_stats_list)
     except Exception as e:
         import traceback; traceback.print_exc()
         return str(e), 500

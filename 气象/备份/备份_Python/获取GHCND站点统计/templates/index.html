@@ -369,17 +369,21 @@
             <button class="submit-btn" onclick="fetchData()">{{ t('params.get_data') }}</button>
 
             <div style="text-align: center; margin-top: 15px; display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 15px 30px;">
+                <a href="#" onclick="openYearByYear(); return false;"
+                    style="font-size: 1.1rem; font-weight: bold; color: #007bff; text-decoration: none;">
+                    {{ t('links.view_year_by_year') }}
+                </a>
                 <a href="#" onclick="openExtremeTemps(); return false;"
                     style="font-size: 1.1rem; font-weight: bold; color: #007bff; text-decoration: none;">
                     {{ t('links.view_extreme_temps') }}
                 </a>
+                <a href="#" onclick="openCalendarMonthsStats(); return false;"
+                    style="font-size: 1.1rem; font-weight: bold; color: #007bff; text-decoration: none;">
+                    {{ t('links.view_calendar_months_stats') }}
+                </a>
                 <a href="#" onclick="openPeriodStats(); return false;"
                     style="font-size: 1.1rem; font-weight: bold; color: #007bff; text-decoration: none;">
                     {{ t('links.view_period_stats') }}
-                </a>
-                <a href="#" onclick="openYearStats(); return false;"
-                    style="font-size: 1.1rem; font-weight: bold; color: #007bff; text-decoration: none;">
-                    {{ t('links.view_year_stats') }}
                 </a>
             </div>
             <script>
@@ -415,7 +419,7 @@
 
                     window.open(url, '_blank');
                 }
-                function openYearStats() {
+                function openCalendarMonthsStats() {
                     const sid = document.getElementById('stationId').value;
                     const ds = document.getElementById('dataSource').value;
                     const start = document.getElementById('startDate').value;
@@ -432,10 +436,28 @@
                     const custom_avg_tavg = document.getElementById('customAvgTavg').value;
                     const custom_avg_tmax = document.getElementById('customAvgTmax').value;
 
-                    let url = `/year_stats?station_id=${sid}&source=${ds}&start_date=${start}&end_date=${end}`;
+                    let url = `/calendar_months_stats?station_id=${sid}&source=${ds}&start_date=${start}&end_date=${end}`;
                     url += `&tmin_val=${tmin_val}&tmin_dir=${tmin_dir}&tavg_val=${tavg_val}&tavg_dir=${tavg_dir}&tmax_val=${tmax_val}&tmax_dir=${tmax_dir}`;
                     url += `&custom_avg_tmin=${custom_avg_tmin}&custom_avg_tavg=${custom_avg_tavg}&custom_avg_tmax=${custom_avg_tmax}`;
 
+                    window.open(url, '_blank');
+                }
+                const openYearStats = openCalendarMonthsStats;
+                function openYearByYear() {
+                    const sid = document.getElementById('stationId').value;
+                    const ds = document.getElementById('dataSource').value;
+                    const start = document.getElementById('startDate').value;
+                    const end = document.getElementById('endDate').value;
+
+                    const tmin_val = document.getElementById('tminVal').value;
+                    const tmin_dir = document.getElementById('tminDir').value;
+                    const tavg_val = document.getElementById('tavgVal').value;
+                    const tavg_dir = document.getElementById('tavgDir').value;
+                    const tmax_val = document.getElementById('tmaxVal').value;
+                    const tmax_dir = document.getElementById('tmaxDir').value;
+
+                    let url = `/year_by_year?station_id=${sid}&source=${ds}&start_date=${start}&end_date=${end}`;
+                    url += `&tmin_val=${tmin_val}&tmin_dir=${tmin_dir}&tavg_val=${tavg_val}&tavg_dir=${tavg_dir}&tmax_val=${tmax_val}&tmax_dir=${tmax_dir}`;
                     window.open(url, '_blank');
                 }
             </script>

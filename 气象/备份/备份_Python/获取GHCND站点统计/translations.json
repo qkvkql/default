@@ -72,9 +72,11 @@
     "links": {
       "ghcnd_stations_list": "GHCND stations list",
       "gsod_stations_list": "GSOD stations list",
-      "view_extreme_temps": "View Daily Extreme Temperatures",
-      "view_period_stats": "View Period Stats",
-      "view_year_stats": "View Year Statistics"
+      "view_extreme_temps": "Daily Extremes",
+      "view_period_stats": "Period Stats",
+      "view_year_stats": "Calendar Months",
+      "view_year_by_year": "Year by Year",
+      "view_calendar_months_stats": "Calendar Months"
     },
     "months": {
       "full_year": "Full Year",
@@ -182,6 +184,7 @@
       "min_tmax": "Min TMAX",
       "max_tmin": "Max TMIN",
       "max_tmax": "Max TMAX",
+      "avg_tavg": "Average",
       "id": "ID",
       "date": "Date",
       "element": "Element",
@@ -222,7 +225,8 @@
       "max_tmax_c": "Max TMAX(℃)",
       "days_count_min": "Days(MIN)",
       "days_count_avg": "Days(AVG)",
-      "days_count_max": "Days(MAX)"
+      "days_count_max": "Days(MAX)",
+      "year": "Year"
     },
     "statistics": {
       "average_tmin": "Average TMIN",
@@ -388,7 +392,9 @@
       "gsod_stations_list": "GSOD站点列表",
       "view_extreme_temps": "日期极端",
       "view_period_stats": "冬/夏",
-      "view_year_stats": "月份和年"
+      "view_year_stats": "各月统计",
+      "view_year_by_year": "逐年",
+      "view_calendar_months_stats": "各月统计"
     },
     "thresholds": {
       "tmin_threshold": "夜温阈值",
@@ -451,6 +457,7 @@
       "min_tmax": "最低昼温",
       "max_tmin": "最高夜温",
       "max_tmax": "最高气温",
+      "avg_tavg": "平均气温",
       "id": "ID",
       "date": "日期",
       "element": "日温类型",
@@ -490,7 +497,8 @@
       "max_tmax_c": "最高昼温(℃)",
       "days_count_min": "天数(夜温)",
       "days_count_avg": "天数(均温)",
-      "days_count_max": "天数(昼温)"
+      "days_count_max": "天数(昼温)",
+      "year": "年份"
     },
     "statistics": {
       "average_tmin": "平均夜温",

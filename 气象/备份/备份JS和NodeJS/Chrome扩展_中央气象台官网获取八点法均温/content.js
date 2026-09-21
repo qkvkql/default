@@ -401,8 +401,16 @@
     return `${formatDate(date)} ${String(date.getHours()).padStart(2, "0")}:00`;
   }
 
+  function roundHalfUp(value, decimals) {
+    return Number(Math.round(Number(value + "e" + decimals)) + "e-" + decimals);
+  }
+
+  function formatAverage(average) {
+    return average == null ? "--" : roundHalfUp(average, 2).toFixed(2);
+  }
+
   function renderReport(report) {
-    const averageText = report.average == null ? "--" : report.average.toFixed(2);
+    const averageText = formatAverage(report.average);
     const copiedText = report.average == null ? "" : "，已复制";
     const coverage = `${report.availableCount}/8`;
     const missingCount = 8 - report.availableCount;
@@ -456,7 +464,7 @@
     }
 
     try {
-      await navigator.clipboard.writeText(report.average.toFixed(2));
+      await navigator.clipboard.writeText(formatAverage(report.average));
       if (successMessage) {
         setStatus(successMessage);
       }

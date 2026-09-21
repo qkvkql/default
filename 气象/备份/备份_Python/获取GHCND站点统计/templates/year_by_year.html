@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ station_name }} - {{ t('sections.period_details') }}</title>
+    <title>{{ station_name }} - {{ t('links.view_year_by_year') }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
         .details-container {
@@ -57,90 +57,6 @@
             color: #333;
             border-left: 4px solid #007bff;
             padding-left: 10px;
-        }
-
-        /* Period Summary Header Note */
-        .header-note {
-            display: block;
-            font-size: 0.75em;
-            font-weight: normal;
-            color: #777;
-            margin-top: 2px;
-        }
-
-        .summary-cell {
-            font-size: 1.1rem;
-            font-weight: bold;
-            color: #d32f2f;
-        }
-
-        /* Min-days control */
-        .min-days-form {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 12px;
-            background: #f0f4ff;
-            border: 1px solid #c5d3f0;
-            border-radius: 6px;
-            padding: 6px 12px;
-            font-size: 0.9rem;
-        }
-
-        .min-days-form label {
-            color: #444;
-            white-space: nowrap;
-        }
-
-        .min-days-form input[type=number] {
-            width: 70px;
-            padding: 3px 6px;
-            border: 1px solid #aaa;
-            border-radius: 4px;
-            font-size: 0.9rem;
-        }
-
-        .min-days-form button {
-            padding: 3px 10px;
-            background: #007bff;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.9rem;
-        }
-
-        .min-days-form button:hover {
-            background: #0056b3;
-        }
-
-        /* Valid period badges */
-        .valid-tmin-badge {
-            display: inline-block;
-            margin-left: 6px;
-            padding: 1px 7px;
-            background: #ffe0ef;
-            border: 1px solid #f72585;
-            border-radius: 10px;
-            font-size: 0.75em;
-            font-weight: normal;
-            color: #f72585;
-            vertical-align: middle;
-            white-space: nowrap;
-        }
-
-        .valid-tmax-badge {
-            display: inline-block;
-            margin-left: 4px;
-            padding: 1px 7px;
-            background: #dde3fb;
-            border: 1px solid #4361ee;
-            border-radius: 10px;
-            font-size: 0.75em;
-            font-weight: normal;
-            color: #4361ee;
-            vertical-align: middle;
-            white-space: nowrap;
         }
 
         .toast {
@@ -235,91 +151,36 @@
         </div>
         {% endif %}
 
-        {% if period_summary %}
-        <h2 class="section-title">
-            {% if period_mode == 'p1' %}{{ t('season.winter') }}{% else %}{{ t('season.summer') }}{% endif %}
-            {{ t('sections.averages_suffix') if lang() == 'en' else t('sections.averages_suffix_zh') }}
-        </h2>
-        <form class="min-days-form" id="minDaysForm">
-            <label for="minDaysInput">{{ t('period_stats.min_days_label') }}</label>
-            <input type="number" id="minDaysInput" name="min_days" min="1" max="366" value="{{ min_days }}">
-            <button type="submit">{{ t('period_stats.min_days_submit') }}</button>
-        </form>
-        <div class="table-responsive">
-            <table class="stats-table">
-                <thead>
-                    <tr>
-                        <th>{{ t('tables.avg_min_tmin_period') }}<br><span class="header-note">{{
-                                t('tables.val_used_total') }}</span></th>
-                        <th>{{ t('tables.avg_min_tmax_period') }}<br><span class="header-note">{{
-                                t('tables.val_used_total') }}</span></th>
-                        <th>{{ t('tables.avg_max_tmin_period') }}<br><span class="header-note">{{
-                                t('tables.val_used_total') }}</span></th>
-                        <th>{{ t('tables.avg_max_tmax_period') }}<br><span class="header-note">{{
-                                t('tables.val_used_total') }}</span></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td class="summary-cell">{{ period_summary.avg_min_tmin.val }}<br><span class="header-note">({{
-                                period_summary.avg_min_tmin.used }}/{{ period_summary.avg_min_tmin.total }})</span></td>
-                        <td class="summary-cell">{{ period_summary.avg_min_tmax.val }}<br><span class="header-note">({{
-                                period_summary.avg_min_tmax.used }}/{{ period_summary.avg_min_tmax.total }})</span></td>
-                        <td class="summary-cell">{{ period_summary.avg_max_tmin.val }}<br><span class="header-note">({{
-                                period_summary.avg_max_tmin.used }}/{{ period_summary.avg_max_tmin.total }})</span></td>
-                        <td class="summary-cell">{{ period_summary.avg_max_tmax.val }}<br><span class="header-note">({{
-                                period_summary.avg_max_tmax.used }}/{{ period_summary.avg_max_tmax.total }})</span></td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-        {% endif %}
-
-        {% if period_stats %}
-        <h2 class="section-title">
-            {% if period_mode == 'p1' %}{{ t('season.winter') }}{% else %}{{ t('season.summer') }}{% endif %}
-        </h2>
+        {% if year_stats %}
+        <h2 class="section-title">{{ t('links.view_year_by_year') }}</h2>
         <div style="text-align:right; margin-bottom:10px;">
-            <button class="small-btn" style="background-color: #17a2b8;" onclick="copyPeriodTable()">{{
+            <button class="small-btn" style="background-color: #17a2b8;" onclick="copyYearTable()">{{
                 t('tables.copy_table_tsv') }}</button>
         </div>
         <div class="table-responsive" style="max-height: none;">
-            <table class="stats-table" id="periodStatsTable">
+            <table class="stats-table" id="yearByYearTable">
                 <thead>
                     <tr>
-                        <th onclick="sortTable(0)">
-                            {% if period_mode == 'p1' %}{{ t('season.winter') }}{% else %}{{ t('season.summer') }}{%
-                            endif %}
-                            &#8645;
-                        </th>
+                        <th onclick="sortTable(0)">{{ t('tables.year') }} &#8645;</th>
                         <th onclick="sortTable(1)">{{ t('tables.data_coverage') }} &#8645;</th>
                         <th onclick="sortTable(2)">{{ t('tables.min_tmin') }} &#8645;</th>
                         <th onclick="sortTable(3)">{{ t('tables.min_tmax') }} &#8645;</th>
                         <th onclick="sortTable(4)">{{ t('tables.max_tmin') }} &#8645;</th>
                         <th onclick="sortTable(5)">{{ t('tables.max_tmax') }} &#8645;</th>
                         <th onclick="sortTable(6)">{{ t('tables.avg_tavg') }} &#8645;</th>
-                        <th onclick="sortTable(7)">{{ t('tables.days_tmin') }} &#8645;</th>
-                        <th onclick="sortTable(8)">{{ t('tables.days_tavg') }} &#8645;</th>
-                        <th onclick="sortTable(9)">{{ t('tables.days_tmax') }} &#8645;</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for row in period_stats %}
+                    {% for row in year_stats %}
                     <tr>
                         <td style="font-weight:bold; cursor:pointer; color:#007bff;"
-                            onclick="openDateDetails('{{ row.range }}')">{{ row.range }}
-                            {% if row.valid_tmin_period %}<span class="valid-tmin-badge">{{ t('period_stats.valid_tmin') }}</span>{% endif %}
-                            {% if row.valid_tmax_period %}<span class="valid-tmax-badge">{{ t('period_stats.valid_tmax') }}</span>{% endif %}
-                        </td>
+                            onclick="openDateDetails('{{ row.year }}')">{{ row.year }}</td>
                         <td>{{ row.count_actual }} / {{ row.count_expected }}</td>
                         {{ render_stat_cell(row.min_tmin) }}
                         {{ render_stat_cell(row.min_tmax) }}
                         {{ render_stat_cell(row.max_tmin) }}
                         {{ render_stat_cell(row.max_tmax) }}
                         <td>{{ row.avg_tavg }}</td>
-                        <td>{{ row.cnt_tmin }}</td>
-                        <td>{{ row.cnt_tavg }}</td>
-                        <td>{{ row.cnt_tmax }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -339,7 +200,7 @@
             setTimeout(() => toast.className = '', 3000);
         }
 
-        let sortDirs = Array(10).fill('desc');
+        let sortDirs = Array(7).fill('desc');
 
         function getCellVal(cell, colIndex) {
             if (!cell) return null;
@@ -351,15 +212,15 @@
             }
 
             if (colIndex === 0) {
-                const match = raw.match(/^\d{4}(?:-\d{4})?/);
-                return match ? match[0] : raw;
+                const num = parseInt(raw);
+                return isNaN(num) ? raw : num;
             }
 
             if (colIndex === 1) {
                 const part = raw.split('/')[0].trim();
                 if (part === '' || part === '-') return null;
-                const num = parseFloat(part);
-                return isNaN(num) ? null : num;
+                const num = parseInt(part);
+                return isNaN(num) ? raw : num;
             }
 
             const match = raw.match(/^-?[\d\.]+/);
@@ -372,7 +233,7 @@
         }
 
         function sortTable(n) {
-            const table = document.getElementById("periodStatsTable");
+            const table = document.getElementById("yearByYearTable");
             const tbody = table.tBodies[0];
             const rows = Array.from(tbody.rows);
             const dir = sortDirs[n] === 'asc' ? 'desc' : 'asc';
@@ -382,7 +243,6 @@
                 const xVal = getCellVal(a.cells[n], n);
                 const yVal = getCellVal(b.cells[n], n);
 
-                // Blank / empty values always stay at the bottom regardless of sort direction
                 if (xVal === null && yVal === null) return 0;
                 if (xVal === null) return 1;
                 if (yVal === null) return -1;
@@ -397,8 +257,8 @@
             rows.forEach(row => tbody.appendChild(row));
         }
 
-        function copyPeriodTable() {
-            const table = document.getElementById('periodStatsTable');
+        function copyYearTable() {
+            const table = document.getElementById('yearByYearTable');
             let tsv = [];
             const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.innerText.replace(' ⇅', '').trim());
             tsv.push(headers.join('\t'));
@@ -412,20 +272,10 @@
             });
         }
 
-        // Min days form: carry over all existing URL params and update min_days
-        document.getElementById('minDaysForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const urlParams = new URLSearchParams(window.location.search);
-            const newVal = document.getElementById('minDaysInput').value;
-            urlParams.set('min_days', newVal);
-            window.location.href = '/period_stats?' + urlParams.toString();
-        });
-
-        function openDateDetails(range) {
+        function openDateDetails(year) {
             const urlParams = new URLSearchParams(window.location.search);
             const sid = urlParams.get('station_id');
             const ds = urlParams.get('source');
-            const pm = urlParams.get('period') || 'p1';
             const tmin_val = urlParams.get('tmin_val') || '';
             const tmin_dir = urlParams.get('tmin_dir') || 'lte';
             const tavg_val = urlParams.get('tavg_val') || '';
@@ -433,7 +283,7 @@
             const tmax_val = urlParams.get('tmax_val') || '';
             const tmax_dir = urlParams.get('tmax_dir') || 'lte';
 
-            const url = `/date_details?station_id=${sid}&source=${ds}&type=period&value=${range}&period_mode=${pm}&tmin_val=${tmin_val}&tmin_dir=${tmin_dir}&tavg_val=${tavg_val}&tavg_dir=${tavg_dir}&tmax_val=${tmax_val}&tmax_dir=${tmax_dir}`;
+            const url = `/date_details?station_id=${sid}&source=${ds}&type=year&value=${year}&tmin_val=${tmin_val}&tmin_dir=${tmin_dir}&tavg_val=${tavg_val}&tavg_dir=${tavg_dir}&tmax_val=${tmax_val}&tmax_dir=${tmax_dir}`;
             window.open(url, '_blank');
         }
 

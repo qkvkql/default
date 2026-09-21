@@ -230,6 +230,13 @@
                         {{ value }}
                     </p>
                 </div>
+                {% elif query_type == 'year' %}
+                <div style="margin-top: 5px; margin-bottom: 20px;">
+                    <p style="font-size: 1.1rem; color: #555;">
+                        <strong>{{ t('tables.year') }}:</strong>
+                        {{ value }}
+                    </p>
+                </div>
                 {% elif query_type == 'list' %}
                 <h2>{{ t('details_page.info_' + query_type, value=value) if query_type else '' }}</h2>
                 {% endif %}
@@ -295,9 +302,13 @@
 
         <div class="controls"
             style="display: flex; flex-direction: column; align-items: flex-end; gap: 10px; margin-bottom: 10px;">
-            {% if query_type == 'period' %}
+            {% if query_type in ['period', 'year'] %}
+            {% if query_type == 'year' %}
+            {% set default_date = value + '-01-01' %}
+            {% else %}
             {% set default_date = value.split('-')[0] + '-07-16' if period_mode == 'p1' else value.split('-')[0] +
             '-01-16' %}
+            {% endif %}
             <div style="display: flex; align-items: center; gap: 10px;">
                 <label for="startDateInput" style="font-weight:bold; color:#555;">{{
                     t('details_page.starting_date_label') }}:</label>
@@ -315,10 +326,12 @@
                 <select id="monthFilter" onchange="applyFilters()"
                     style="padding:6px; border-radius:4px; border:1px solid #ccc;">
                     <option value="all">{{ t('months.full_year') }}</option>
-                    {% if period_mode == 'p1' %}
-                    <option value="winter_3">{{ t('months.winter_3') }}</option>
-                    {% elif period_mode == 'p2' %}
-                    <option value="summer_3">{{ t('months.summer_3') }}</option>
+                    {% if query_type == 'period' %}
+                        {% if period_mode == 'p1' %}
+                        <option value="winter_3">{{ t('months.winter_3') }}</option>
+                        {% elif period_mode == 'p2' %}
+                        <option value="summer_3">{{ t('months.summer_3') }}</option>
+                        {% endif %}
                     {% endif %}
                     <option value="01">{{ t('months.january') }}</option>
                     <option value="02">{{ t('months.february') }}</option>
@@ -337,7 +350,7 @@
             {% endif %}
         </div>
 
-        {% if query_type == 'period' %}
+        {% if query_type in ['period', 'year'] %}
         <div id="filteredStatsContainer" style="margin-bottom: 25px;">
             <h3>{{ t('details_page.filtered_stats_title') }}</h3>
             <div class="table-responsive">
@@ -533,19 +546,26 @@
             const metrics = ['TMIN', 'TAVG', 'TMAX'];
 
             // 1. Calculate Expected Days
-            const periodValue = "{{ value }}"; // e.g. "1987-1988"
+            const qType = "{{ query_type }}";
+            const periodValue = "{{ value }}"; // e.g. "1987-1988" or "2023"
             const periodMode = "{{ period_mode }}"; // "p1" or "p2"
             let expectedCount = 0;
             try {
-                const year1 = parseInt(periodValue.split('-')[0]);
-                const year2 = parseInt(periodValue.split('-')[1]);
                 let startDt, endDt;
-                if (periodMode === 'p1') {
-                    startDt = new Date(year1, 6, 16); // Month is 0-indexed, so 6 is July
-                    endDt = new Date(year2, 6, 15);
+                if (qType === 'year') {
+                    const y = parseInt(periodValue);
+                    startDt = new Date(y, 0, 1);
+                    endDt = new Date(y, 11, 31);
                 } else {
-                    startDt = new Date(year1, 0, 16);
-                    endDt = new Date(year2, 0, 15);
+                    const year1 = parseInt(periodValue.split('-')[0]);
+                    const year2 = parseInt(periodValue.split('-')[1]);
+                    if (periodMode === 'p1') {
+                        startDt = new Date(year1, 6, 16); // Month is 0-indexed, so 6 is July
+                        endDt = new Date(year2, 6, 15);
+                    } else {
+                        startDt = new Date(year1, 0, 16);
+                        endDt = new Date(year2, 0, 15);
+                    }
                 }
 
                 for (let d = new Date(startDt); d <= endDt; d.setDate(d.getDate() + 1)) {
@@ -593,9 +613,9 @@
             });
         }
 
-        // Call applyFilters on load if period mode to show stats for "All"
+        // Call applyFilters on load if period or year mode to show stats for "All"
         window.addEventListener('DOMContentLoaded', () => {
-            if ("{{ query_type }}" === "period") {
+            if ("{{ query_type }}" === "period" || "{{ query_type }}" === "year") {
                 applyFilters();
             }
         });
