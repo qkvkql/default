@@ -38,6 +38,11 @@ const versionRadios = document.getElementsByName('table-version');
 const dateInput = document.getElementById('date-input');
 const controlsWrapper = document.getElementById('controls-wrapper');
 const controlsToggle = document.getElementById('controls-toggle');
+const btnToolImprecise = document.getElementById('btn-tool-imprecise');
+const btnToolDecimal = document.getElementById('btn-tool-decimal');
+const btnResetAdjustments = document.getElementById('btn-reset-adjustments');
+const toolStatusHint = document.getElementById('tool-status-hint');
+const collapsedToolIndicator = document.getElementById('collapsed-tool-indicator');
 
 // --- 2. INITIALIZE DROPDOWN ---
 Object.keys(array_of_stations_by_different_filters).forEach(key => {
@@ -229,7 +234,7 @@ function loadDataToTable(sourceKey) {
 
         if (isStar) {
             nameTd.style.fontSize = '72px';
-            nameTd.style.fontFamily = 'stkaiti';
+            nameTd.style.fontFamily = "'stkaiti', 'Segoe UI Emoji', 'Noto Color Emoji', 'Apple Color Emoji', sans-serif";
         }
 
         // Special column handling based on version
@@ -499,37 +504,62 @@ function setTemperatureStyle(tdElement, tempValue) {
 
 /**
  * Auto-shrinks font size to fit text within the cell width.
+ * For column "地点" (name-text), decreases font size so it fits on a single line without wrapping,
+ * properly handling emojis, icons, and non-linear font scaling.
  * Must be called AFTER the table is rendered in the DOM.
  */
 function fitTextToCell(td) {
-    const isSummary = sourceSelect.value === '汇总';
     const nameTextSpan = td.querySelector('.name-text');
 
-    // Rule 2: Fitting method - Wrap for Summary, Resize for others (including Star)
-    if (td.classList.contains('col-地点') && isSummary) {
+    if (nameTextSpan) {
+        fitNameCell(td, nameTextSpan);
         return;
     }
 
-    // Target either the span (for names) or the td (for others)
-    const targetElement = nameTextSpan || td;
-    const style = window.getComputedStyle(targetElement);
+    // Target td for other columns (numbers, coords, etc.)
+    const style = window.getComputedStyle(td);
     const currentSize = parseFloat(style.fontSize);
 
-    // scrollWidth = The total length of the text (including hidden overflow)
-    // clientWidth = The visible width of the cell
     const contentWidth = td.scrollWidth;
     const visibleWidth = td.clientWidth;
 
-    // 3. If text is wider than the cell, calculate new size
-    if (contentWidth > visibleWidth) {
-        // Calculate the ratio (e.g., if text is 200px and cell is 100px, ratio is 0.5)
+    if (visibleWidth > 0 && contentWidth > visibleWidth) {
         const ratio = visibleWidth / contentWidth;
-
-        // Multiply: Current Size * Ratio * Buffer (0.9 to leave a little breathing room)
         const newSize = currentSize * ratio * 0.90;
+        td.style.fontSize = Math.max(12, newSize) + "px";
+    }
+}
 
-        // Apply new size, but don't let it get smaller than 12px (readability)
-        targetElement.style.fontSize = Math.max(12, newSize) + "px";
+/**
+ * Decreases font size of station name text to fit td width on a single line.
+ * Accounts for emojis, attached icons, and character metric nuances.
+ */
+function fitNameCell(td, nameSpan) {
+    const minSize = 10;
+    // Reset any previously applied font size to measure at base CSS size
+    nameSpan.style.fontSize = '';
+
+    const availableWidth = nameSpan.clientWidth;
+    const contentWidth = nameSpan.scrollWidth;
+
+    if (availableWidth <= 0 || contentWidth <= availableWidth) {
+        return; // Fits naturally, no font reduction needed
+    }
+
+    const computedStyle = window.getComputedStyle(nameSpan);
+    let currentSize = parseFloat(computedStyle.fontSize) || 36;
+
+    // Calculate ratio-based target font size with safety buffer
+    let ratio = availableWidth / contentWidth;
+    let targetSize = Math.max(minSize, Math.floor(currentSize * ratio * 0.98 * 10) / 10);
+    nameSpan.style.fontSize = targetSize + 'px';
+
+    // Fine-tune if emojis or font rendering metrics still cause overflow
+    let safety = 25;
+    while (nameSpan.scrollWidth > nameSpan.clientWidth && targetSize > minSize && safety > 0) {
+        targetSize = Math.max(minSize, Math.round((targetSize - 0.5) * 10) / 10);
+        nameSpan.style.fontSize = targetSize + 'px';
+        safety--;
     }
 }
 
@@ -588,3 +618,204 @@ function wrapIcons(str) {
         .replace('🔵', '<span class="ice-cube" style="font-size: 24px">🧊</span>')
     return result;
 }
+
+// Auto-adjust name font sizes on window resize
+let resizeTimer;
+window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+        const nameTds = tableBody.querySelectorAll('td.col-地点');
+        nameTds.forEach(td => fitTextToCell(td));
+    }, 150);
+});
+
+// --- 5. QUICK ADJUSTMENT TOOLS (IMPRECISE VALUES & AVG TEMP 1-DECIMAL) ---
+let currentTool = null; // null | 'imprecise' | 'decimal'
+
+function setTool(toolName) {
+    if (currentTool === toolName) {
+        currentTool = null; // Toggle off if already active
+    } else {
+        currentTool = toolName;
+    }
+    updateToolUI();
+}
+
+function updateToolUI() {
+    if (btnToolImprecise) btnToolImprecise.classList.toggle('active', currentTool === 'imprecise');
+    if (btnToolDecimal) btnToolDecimal.classList.toggle('active', currentTool === 'decimal');
+
+    document.body.classList.toggle('tool-active-imprecise', currentTool === 'imprecise');
+    document.body.classList.toggle('tool-active-decimal', currentTool === 'decimal');
+
+    if (toolStatusHint) {
+        if (currentTool === 'imprecise') {
+            toolStatusHint.innerHTML = '🟢 <b>【粗糙值模式已开启】</b>：点击表格中任意单元格设为黑底灰字(#808080)，再次点击撤销 | 或直接 Alt+单击';
+            toolStatusHint.style.color = '#ffd166';
+            toolStatusHint.style.borderColor = 'rgba(255, 209, 102, 0.4)';
+        } else if (currentTool === 'decimal') {
+            toolStatusHint.innerHTML = '🟢 <b>【均温1位小数模式已开启】</b>：点击平均气温单元格快速转为1位小数，再次点击恢复 | 或直接 Shift+单击';
+            toolStatusHint.style.color = '#4cc9f0';
+            toolStatusHint.style.borderColor = 'rgba(76, 201, 240, 0.4)';
+        } else {
+            toolStatusHint.innerHTML = 'Alt+单击单元格切换粗糙值，Shift+单击切换1位小数（或点击上方按钮开启点击模式）';
+            toolStatusHint.style.color = '#bbb';
+            toolStatusHint.style.borderColor = 'rgba(255, 255, 255, 0.12)';
+        }
+    }
+
+    if (collapsedToolIndicator) {
+        if (currentTool === 'imprecise') {
+            collapsedToolIndicator.innerText = '● 粗糙值模式 (Alt)';
+            collapsedToolIndicator.style.display = 'inline-block';
+            collapsedToolIndicator.style.color = '#ffd166';
+        } else if (currentTool === 'decimal') {
+            collapsedToolIndicator.innerText = '● 均温1位小数 (Shift)';
+            collapsedToolIndicator.style.display = 'inline-block';
+            collapsedToolIndicator.style.color = '#4cc9f0';
+        } else {
+            collapsedToolIndicator.style.display = 'none';
+        }
+    }
+}
+
+/**
+ * Toggles imprecise style on a table cell (black background #000000, gray text #808080).
+ * Caches original colors for full, instant reversibility.
+ */
+function toggleImpreciseStyle(td) {
+    if (!td || td.tagName !== 'TD') return;
+
+    if (td.dataset.imprecise === 'true') {
+        // Toggle OFF (restore original)
+        td.classList.remove('cell-imprecise');
+        td.style.backgroundColor = td.dataset.origBg || '';
+        td.style.color = td.dataset.origColor || '';
+
+        const nameSpan = td.querySelector('.name-text');
+        if (nameSpan && td.dataset.origSpanColor !== undefined) {
+            nameSpan.style.color = td.dataset.origSpanColor;
+        }
+
+        delete td.dataset.imprecise;
+        delete td.dataset.origBg;
+        delete td.dataset.origColor;
+        delete td.dataset.origSpanColor;
+    } else {
+        // Toggle ON (set black bg, #808080 text)
+        td.dataset.origBg = td.style.backgroundColor || '';
+        td.dataset.origColor = td.style.color || '';
+
+        const nameSpan = td.querySelector('.name-text');
+        if (nameSpan) {
+            td.dataset.origSpanColor = nameSpan.style.color || '';
+            nameSpan.style.color = '#808080';
+        }
+
+        td.classList.add('cell-imprecise');
+        td.style.backgroundColor = '#000000';
+        td.style.color = '#808080';
+        td.dataset.imprecise = 'true';
+    }
+
+    flashCell(td);
+}
+
+/**
+ * Toggles a numeric cell (especially in "平均气温") to 1 digit after decimal point (toFixed(1)).
+ * Caches original value for full, instant reversibility.
+ */
+function toggleDecimalDigit(td) {
+    if (!td || td.tagName !== 'TD') return;
+
+    // Only apply to the "平均气温" column to protect other cells from accidental edits
+    if (!td.classList.contains('col-平均气温')) return;
+
+    const text = td.innerText.trim();
+    const val = parseFloat(text);
+    if (isNaN(val)) return;
+
+    if (td.dataset.oneDecimal === 'true') {
+        // Restore original decimals
+        if (td.dataset.origDecimals) {
+            td.innerText = td.dataset.origDecimals;
+        } else {
+            td.innerText = val.toFixed(2);
+        }
+        delete td.dataset.oneDecimal;
+        delete td.dataset.origDecimals;
+    } else {
+        // Format to 1 decimal place
+        td.dataset.origDecimals = text;
+        td.dataset.oneDecimal = 'true';
+        td.innerText = val.toFixed(1);
+    }
+
+    flashCell(td);
+}
+
+function flashCell(td) {
+    td.classList.remove('cell-updated');
+    void td.offsetWidth; // Reflow to restart animation
+    td.classList.add('cell-updated');
+}
+
+// Tool button listeners
+if (btnToolImprecise) {
+    btnToolImprecise.addEventListener('click', () => setTool('imprecise'));
+}
+if (btnToolDecimal) {
+    btnToolDecimal.addEventListener('click', () => setTool('decimal'));
+}
+if (btnResetAdjustments) {
+    btnResetAdjustments.addEventListener('click', () => {
+        const impreciseTds = tableBody.querySelectorAll('[data-imprecise="true"]');
+        impreciseTds.forEach(td => toggleImpreciseStyle(td));
+
+        const decimalTds = tableBody.querySelectorAll('[data-one-decimal="true"]');
+        decimalTds.forEach(td => toggleDecimalDigit(td));
+    });
+}
+
+// --- MODIFIER KEY + CLICK TO MODIFY CELLS ---
+// Alt+Click  → toggle imprecise style (black bg, #808080 text)
+// Shift+Click → toggle 1-decimal in 平均气温 column
+// Modifier key state is embedded in the mouse event itself (e.altKey / e.shiftKey),
+// so there is no key-state tracking needed — 100% timing-safe.
+
+tableBody.addEventListener('mousedown', (e) => {
+    const td = e.target.closest('td');
+    if (!td || !tableBody.contains(td)) return;
+
+    if (e.altKey) {
+        // Alt + Click: toggle imprecise style on any cell
+        e.preventDefault();
+        toggleImpreciseStyle(td);
+        return;
+    }
+
+    if (e.shiftKey) {
+        // Shift + Click: toggle 1-decimal on 平均气温 cells
+        e.preventDefault();
+        toggleDecimalDigit(td);
+        return;
+    }
+
+    // Active tool mode (toolbar button)
+    if (currentTool === 'imprecise') {
+        e.preventDefault();
+        toggleImpreciseStyle(td);
+    } else if (currentTool === 'decimal') {
+        e.preventDefault();
+        toggleDecimalDigit(td);
+    }
+});
+
+// Esc to exit active tool mode
+document.addEventListener('keydown', (e) => {
+    const tag = document.activeElement?.tagName;
+    if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+    if (e.key === 'Escape' && currentTool) setTool(null);
+});
+
+

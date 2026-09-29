@@ -28,7 +28,7 @@ if rows:
     headers = rows[0]
     content_rows = rows[1:]
     station_list = [dict(zip(headers, row)) for row in content_rows]
-    mongolia_list = [o for o in station_list if o['id'] is not None and int(o['id']) >= 1 and int(o['id']) <= 13] # 读取仅蒙古站点数据
+    mongolia_list = [o for o in station_list if o['id'] is not None and str(o['id']).isdigit() and int(o['id']) >= 1 and int(o['id']) <= 13] # 读取仅蒙古站点数据
 else:
     print("The sheet of station list is empty.")
 #把数组min, max, avg值为None的替换为单字"无"

@@ -7,15 +7,15 @@
 body {
     margin: 0;
     padding: 20px;
-    font-family: '等线';
+    font-family: '等线', 'Segoe UI Emoji', 'Noto Color Emoji', 'Apple Color Emoji', sans-serif;
     background-color: #000000;
     color: white;
 }
 
 /* CONTROLS AREA */
 #controls-wrapper {
-    max-height: 500px;
-    /* Large enough for the controls */
+    max-height: 800px;
+    /* Large enough for all controls including quick tools */
     overflow: hidden;
     transition: max-height 0.4s ease-out, opacity 0.3s ease-out, margin-bottom 0.3s ease-out;
     opacity: 1;
@@ -192,9 +192,166 @@ button {
     font-size: 14px;
 }
 
+/* QUICK TOOLS PANEL */
+.quick-tools-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px 15px;
+    background-color: #2b2b2b;
+    border: 1px solid #484848;
+    border-radius: 6px;
+    width: 100%;
+}
+
+.quick-tools-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.tools-heading {
+    font-size: 15px;
+    font-weight: bold;
+    color: #ffd166;
+}
+
+.tool-hint {
+    font-size: 13px;
+    font-weight: normal;
+    color: #bbb;
+    background: rgba(255, 255, 255, 0.06);
+    padding: 3px 10px;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    transition: all 0.2s ease;
+}
+
+.quick-tools-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.tool-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background-color: #3a3a3a;
+    color: #eee;
+    border: 2px solid #555;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: bold;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.tool-btn:hover {
+    background-color: #4a4a4a;
+    border-color: #888;
+    color: #fff;
+}
+
+.tool-btn.active {
+    background-color: #023e8a;
+    border-color: #00b4d8;
+    color: #ffffff;
+    box-shadow: 0 0 10px rgba(0, 180, 216, 0.45);
+}
+
+.tool-btn-secondary {
+    background-color: #444;
+    color: #bbb;
+    border: 1px solid #666;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: bold;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.tool-btn-secondary:hover {
+    background-color: #555;
+    color: #fff;
+    border-color: #888;
+}
+
+.tool-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    padding: 2px 6px;
+    background: #1e1e1e;
+    border-radius: 4px;
+    border: 1px solid #666;
+    color: #fff;
+}
+
+.hotkey-tip {
+    font-size: 12px;
+    color: #888;
+    margin-left: auto;
+    font-weight: normal;
+}
+
+.collapsed-tool-indicator {
+    margin-left: 15px;
+    color: #ffd166;
+    font-size: 13px;
+    font-weight: bold;
+    padding: 2px 8px;
+    background: rgba(255, 209, 102, 0.15);
+    border-radius: 4px;
+    border: 1px solid rgba(255, 209, 102, 0.3);
+}
+
+/* INTERACTIVE TABLE HOVER STATES */
+body.tool-active-imprecise #data-table tbody td,
+body.tool-active-decimal #data-table tbody td {
+    cursor: pointer !important;
+}
+
+body.tool-active-imprecise #data-table tbody td:hover {
+    outline: 2px dashed #ffb703 !important;
+    outline-offset: -2px;
+}
+
+body.tool-active-decimal #data-table tbody td:hover {
+    outline: 2px dashed #4cc9f0 !important;
+    outline-offset: -2px;
+}
+
+/* IMPRECISE TD STYLING */
+td.cell-imprecise {
+    background-color: #000000 !important;
+    color: #808080 !important;
+}
+
+td.cell-imprecise .name-text {
+    color: #808080 !important;
+}
+
+/* ANIMATION ON CELL UPDATE */
+@keyframes cell-flash {
+    0% { filter: brightness(2); }
+    100% { filter: brightness(1); }
+}
+
+.cell-updated {
+    animation: cell-flash 0.3s ease-out;
+}
+
 /* TABLE CONTAINER */
 .table-container {
     width: 80%;
+    margin: 0 auto;
     overflow-x: auto;
 
     padding: 4px;
@@ -345,9 +502,8 @@ td:nth-child(2),
 .col-地点 {
     text-align: center;
     font-size: 36px;
-    white-space: normal !important;
-    /* Allow wrapping by default */
-    overflow: visible;
+    white-space: nowrap !important;
+    overflow: hidden;
     text-overflow: clip;
     padding: 5px;
 }
@@ -357,15 +513,16 @@ td:nth-child(2),
     align-items: center;
     justify-content: space-between;
     width: 100%;
+    overflow: hidden;
 }
 
 .name-text {
     text-align: right;
     flex: 1;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-    white-space: normal !important;
-    /* Default to wrapping */
+    min-width: 0;
+    white-space: nowrap !important;
+    overflow: hidden;
+    text-overflow: clip;
 }
 
 /* Force nowrap for STAR rows to allow font resizing to work */
@@ -379,6 +536,11 @@ tr.star-row .name-text {
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+.name-icons:empty {
+    display: none;
+    margin: 0;
 }
 
 td:nth-child(3),

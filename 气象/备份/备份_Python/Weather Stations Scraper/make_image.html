@@ -29,6 +29,25 @@
                 <button id="btn-load">确定</button>
             </div>
 
+            <div class="quick-tools-panel" id="quick-tools-panel">
+                <div class="quick-tools-title">
+                    <span class="tools-heading">⚡ 表格微调工具:</span>
+                    <span id="tool-status-hint" class="tool-hint">点击工具后直接在表格中点击单元格生效（支持再次点击撤销）</span>
+                </div>
+                <div class="quick-tools-actions">
+                    <button type="button" id="btn-tool-imprecise" class="tool-btn" title="快捷键: 按住 Alt 键单击单元格，或点击此处开启点击模式">
+                        <span class="tool-badge">Alt</span> 标记粗糙值 (黑底灰字)
+                    </button>
+                    <button type="button" id="btn-tool-decimal" class="tool-btn" title="快捷键: 按住 Shift 键单击单元格，或点击此处开启点击模式">
+                        <span class="tool-badge">Shift</span> 均温改1位小数 (toFixed(1))
+                    </button>
+                    <button type="button" id="btn-reset-adjustments" class="tool-btn-secondary" title="重置本页所有已微调的粗糙值和1位小数">
+                        ↺ 重置微调
+                    </button>
+                    <span class="hotkey-tip">快捷键: Alt+单击 = 粗糙值 | Shift+单击 = 均温1位小数 | Esc = 退出</span>
+                </div>
+            </div>
+
             <div class="width-controls" id="width-controls-panel">
                 <div id="width-inputs-container" class="width-inputs">
                     <!-- Dynamic inputs will be added here -->
@@ -43,6 +62,7 @@
 
     <div id="controls-toggle" class="controls-toggle-bar">
         <span class="toggle-text">收起/展开 控制面板</span>
+        <span id="collapsed-tool-indicator" class="collapsed-tool-indicator" style="display: none;"></span>
         <span class="toggle-icon">▲</span>
     </div>
 
