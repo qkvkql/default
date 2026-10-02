@@ -26,6 +26,7 @@
   function init() {
     createPanel();
     window.addEventListener(RESPONSE_EVENT, onChartData);
+    setupMessageListener();
 
     if (!isStationForecastPage()) {
       setStatus("当前页面不是气象站专属预报页。请打开类似 /publish/forecast/AHE/saihanba.html 的页面。");
@@ -33,9 +34,16 @@
       return;
     }
 
-    setStatus("已识别气象站页面，正在打开 24 小时实况曲线。");
-    buttonEl.disabled = true;
-    autoOpenHour24Chart();
+    const autoParams = parseAutoParams();
+    if (autoParams.isAutoAvg) {
+      setStatus("收到控制台指令，正在自动获取 8 点法均温...");
+      buttonEl.disabled = true;
+      executeAutoRead(autoParams);
+    } else {
+      setStatus("已识别气象站页面，正在打开 24 小时实况曲线。");
+      buttonEl.disabled = true;
+      autoOpenHour24Chart();
+    }
   }
 
   function isStationForecastPage() {
@@ -56,6 +64,9 @@
         <div class="nmc-avg-status"></div>
         <button class="nmc-avg-button" type="button">获取并复制均温</button>
         <div class="nmc-avg-result" aria-live="polite"></div>
+        <div class="nmc-avg-footer-bar">
+          <button class="nmc-avg-console-btn" type="button" title="打开气象站八点法均温控制台">📊 气象站控制台</button>
+        </div>
       </div>
     `;
     document.documentElement.appendChild(panel);
@@ -78,6 +89,9 @@
       panel.remove();
     });
     buttonEl.addEventListener("click", handleReadClick);
+    panel.querySelector(".nmc-avg-console-btn")?.addEventListener("click", () => {
+      chrome.runtime.sendMessage({ type: "OPEN_CONSOLE" });
+    });
   }
 
   function togglePanelCollapsed() {
@@ -185,9 +199,16 @@
   }
 
   async function handleReadClick() {
+    try {
+      await performRead();
+    } catch (error) {
+      setStatus(error.message || "读取失败。");
+    }
+  }
+
+  async function performRead() {
     if (!isStationForecastPage()) {
-      setStatus("当前页面不是气象站专属预报页。");
-      return;
+      throw new Error("当前页面不是气象站专属预报页。");
     }
 
     buttonEl.disabled = true;
@@ -196,21 +217,111 @@
 
     try {
       if (autoOpenPromise) {
-        await Promise.race([autoOpenPromise, delay(1200)]);
+        await Promise.race([autoOpenPromise, delay(1500)]);
       }
       const chartReady = await ensureHour24ChartOpen();
       if (!chartReady) {
-        throw new Error("未能打开 24 小时实况曲线，请稍后重试。");
+        throw new Error("未能打开 24 小时实况曲线，请确认站点页面包含近24小时实况。");
       }
       const data = await requestChartData();
       const report = buildReport(data);
       renderReport(report);
       await copyAverage(report);
-    } catch (error) {
-      setStatus(error.message || "读取失败。");
+      return report;
     } finally {
       buttonEl.disabled = false;
     }
+  }
+
+  function parseAutoParams() {
+    const rawHash = (location.hash || "").replace(/^#/, "");
+    const hashParams = new URLSearchParams(rawHash);
+    const searchParams = new URLSearchParams(location.search || "");
+
+    const isAutoAvg = hashParams.get("nmc_auto_avg") === "1" || searchParams.get("nmc_auto_avg") === "1";
+    const reqId = hashParams.get("reqId") || searchParams.get("reqId") || "";
+    const autoClose = hashParams.get("autoClose") === "1" || searchParams.get("autoClose") === "1";
+
+    return { isAutoAvg, reqId, autoClose };
+  }
+
+  async function executeAutoRead(params) {
+    try {
+      const report = await performRead();
+      const serialized = serializeReport(report);
+
+      await chrome.runtime.sendMessage({
+        type: "NMC_AVG_RESULT",
+        reqId: params.reqId,
+        stationUrl: location.pathname,
+        success: true,
+        report: serialized
+      });
+
+      if (params.autoClose) {
+        setStatus("数据已成功回传控制台，标签页即将自动关闭...");
+        await delay(500);
+        chrome.runtime.sendMessage({ type: "NMC_CLOSE_TAB", reqId: params.reqId });
+      } else {
+        setStatus("数据已成功回传控制台。");
+      }
+    } catch (error) {
+      console.error("[NMC Extension] executeAutoRead error:", error);
+      await chrome.runtime.sendMessage({
+        type: "NMC_AVG_RESULT",
+        reqId: params.reqId,
+        stationUrl: location.pathname,
+        success: false,
+        error: error.message || "读取均温数据失败"
+      });
+
+      if (params.autoClose) {
+        await delay(1200);
+        chrome.runtime.sendMessage({ type: "NMC_CLOSE_TAB", reqId: params.reqId });
+      }
+    }
+  }
+
+  function setupMessageListener() {
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+      if (message.type === "NMC_TRIGGER_GET_AVG") {
+        performRead()
+          .then((report) => {
+            sendResponse({ success: true, report: serializeReport(report) });
+          })
+          .catch((err) => {
+            sendResponse({ success: false, error: err.message || "获取失败" });
+          });
+        return true;
+      }
+    });
+  }
+
+  function serializeReport(report) {
+    return {
+      latest: {
+        date: formatDateTime(report.latest.date),
+        hour: report.latest.hour
+      },
+      statisticalDate: formatDate(report.statisticalDate),
+      average: report.average,
+      formattedAverage: formatAverage(report.average),
+      availableCount: report.availableCount,
+      missingCount: 8 - report.availableCount,
+      readings: report.readings.map((r) => ({
+        label: r.label,
+        date: formatDateTime(r.date),
+        value: r.value
+      })),
+      minPoint: report.minPoint ? {
+        value: report.minPoint.value,
+        date: formatDateTime(report.minPoint.date)
+      } : null,
+      maxPoint: report.maxPoint ? {
+        value: report.maxPoint.value,
+        date: formatDateTime(report.maxPoint.date)
+      } : null
+    };
   }
 
   async function requestChartData() {

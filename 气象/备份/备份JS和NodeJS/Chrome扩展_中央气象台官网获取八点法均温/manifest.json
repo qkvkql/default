@@ -1,8 +1,23 @@
 {
   "manifest_version": 3,
   "name": "NMC 8-Point Average Temperature",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Get the latest statistical-date 8-point daily average temperature from NMC station pages.",
+  "permissions": [
+    "clipboardWrite",
+    "tabs",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://www.nmc.cn/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "中央气象台 8点法均温控制台"
+  },
+  "options_page": "console.html",
   "content_scripts": [
     {
       "matches": [
@@ -17,23 +32,16 @@
       "run_at": "document_idle"
     }
   ],
-  "permissions": [
-    "clipboardWrite"
-  ],
-  "host_permissions": [
-    "https://www.nmc.cn/*"
-  ],
   "web_accessible_resources": [
     {
       "resources": [
-        "page-reader.js"
+        "page-reader.js",
+        "stations.xlsx",
+        "xlsx.full.min.js"
       ],
       "matches": [
         "https://www.nmc.cn/*"
       ]
     }
-  ],
-  "action": {
-    "default_title": "NMC 8-point temperature"
-  }
+  ]
 }

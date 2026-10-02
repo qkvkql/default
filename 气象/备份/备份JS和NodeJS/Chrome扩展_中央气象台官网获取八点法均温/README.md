@@ -1,19 +1,34 @@
-# NMC 8-Point Average Temperature
+# NMC 8-Point Average Temperature (中央气象台 8 点法均温扩展)
 
-Chrome extension for `www.nmc.cn` station forecast pages.
+Chrome 扩展：用于中央气象台官网（`www.nmc.cn`）气象站专属预报页快速计算 8 点法均温，并提供气象站控制台页面批量获取与统计。
 
-## What it does
+## 功能介绍
 
-- Detects dedicated station pages such as `https://www.nmc.cn/publish/forecast/AHE/saihanba.html`.
-- Opens the `24小时实况曲线` chart when the page is recognized.
-- Reads the Highcharts temperature series for the recent 24-hour chart.
-- Calculates the latest statistical-date key-hour average from `23:00, 02:00, 05:00, 08:00, 11:00, 14:00, 17:00, 20:00`.
-- Shows all key-hour values found, marks missing values, and copies the average to the clipboard.
+### 1. 气象站控制台页面（Console Page）
+- **自动加载站点**：自动读取 `stations.xlsx` 表格（第一列为 `station name` 气象站名，第二列为 `url kw` 站点 URL 标识），并展示气象站列表。
+- **URL 自动匹配**：根据站点规则 `https://www.nmc.cn/publish/forecast/` + `url kw` + `.html` 自动生成站点目标链接（如塞罕坝对应 `https://www.nmc.cn/publish/forecast/AHE/saihanba.html`）。
+- **单站获取均温（get avg）**：点击气象站旁边的 `get avg` 按钮，自动打开对应站点页面读取 8 点法均温，并将结果实时回传展示至控制台表格。
+- **一键批量获取**：支持一键依次批量获取所有气象站均温，带实时进度条与停止队列功能。
+- **静默后台与自动关标签**：支持在后台静默打开气象站标签页，并在数据成功回传后自动关闭标签页，不打扰当前操作。
+- **明细查看与导出**：可查看各站点 8 个关键时次（23, 02, 05, 08, 11, 14, 17, 20 点）明细与极值，并支持一键导出为 Excel (`.xlsx`) 文件或复制为 TSV。
+- **纯数值复制（复制均温）**：新增专属「**复制均温**」按钮，仅按气象站顺序复制均温数值（纯数值换行分隔，无站名、表头及单位符号），方便直接整列粘贴进 Excel 对应单元格。
+- **导入自定义表格**：支持选择或拖入新的 `.xlsx` 文件进行解析。
 
-## Install locally
+### 2. 气象站专属页面悬浮面板
+- 自动识别专属站点页面并打开 `24小时实况曲线`。
+- 读取 Highcharts 温度序列，根据最新整点时间自动确定统计日，计算 8 个定时时次均温。
+- 一键复制均温，并提供快捷按钮直达「气象站控制台」。
 
-1. Open Chrome Extensions: `chrome://extensions/`.
-2. Enable Developer mode.
-3. Click Load unpacked.
-4. Select this folder.
-5. Open an NMC station page and use the floating panel.
+## 本地安装使用
+
+1. 打开 Chrome 扩展程序管理页：`chrome://extensions/`。
+2. 开启右上角 **“开发者模式” (Developer mode)**。
+3. 点击 **“加载已解压的扩展程序” (Load unpacked)**。
+4. 选择本项目所在文件夹。
+5. **打开控制台页面**：
+   - 直接点击浏览器工具栏的扩展图标；
+   - 或右键扩展图标选择“选项”；
+   - 或在任意气象站页面悬浮窗中点击“📊 气象站控制台”；
+   - 或在浏览器直接访问：`chrome-extension://<扩展ID>/console.html`。
+6. 点击各站点后的 `get avg` 按钮或点击顶部的 `一键批量获取全部` 即可开始获取。
+
