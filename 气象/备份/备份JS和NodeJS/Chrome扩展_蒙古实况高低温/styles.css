@@ -14,15 +14,52 @@
     color: white;
 }
 
+.panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.panel-body {
+    display: block;
+}
+
+#my-weather-extension-panel.collapsed {
+    padding: 8px 12px;
+}
+
+#my-weather-extension-panel.collapsed .panel-body {
+    display: none;
+}
+
 .panel-title {
     font-weight: bold;
-    margin-bottom: 12px;
+    margin-bottom: 0;
     display: block;
+    flex: 1;
     border-bottom: 1px solid #555;
     padding-bottom: 8px;
     font-size: 16px;
     text-align: center;
     color: #ddd;
+}
+
+.panel-collapse-btn {
+    flex: 0 0 auto;
+    background: #444;
+    font-size: 12px !important;
+    line-height: 1;
+    padding: 6px 9px !important;
+}
+
+#my-weather-extension-panel:not(.collapsed) .panel-header {
+    margin-bottom: 12px;
+}
+
+#my-weather-extension-panel.collapsed .panel-title {
+    border-bottom: 0;
+    padding-bottom: 0;
 }
 
 .forced-date-row {

@@ -12,10 +12,31 @@ function initExtension() {
     const panel = document.createElement('div');
     panel.id = 'my-weather-extension-panel';
     
+    const header = document.createElement('div');
+    header.className = 'panel-header';
+
     const title = document.createElement('span');
     title.className = 'panel-title';
     title.innerText = 'Weather Data Tools';
-    panel.appendChild(title);
+    header.appendChild(title);
+
+    const collapseBtn = document.createElement('button');
+    collapseBtn.className = 'panel-collapse-btn';
+    collapseBtn.type = 'button';
+    collapseBtn.title = 'Collapse panel';
+    collapseBtn.setAttribute('aria-expanded', 'true');
+    collapseBtn.innerText = '▲';
+    collapseBtn.addEventListener('click', () => {
+        const collapsed = panel.classList.toggle('collapsed');
+        collapseBtn.setAttribute('aria-expanded', String(!collapsed));
+        collapseBtn.title = collapsed ? 'Expand panel' : 'Collapse panel';
+        collapseBtn.innerText = collapsed ? '▼' : '▲';
+    });
+    header.appendChild(collapseBtn);
+    panel.appendChild(header);
+
+    const body = document.createElement('div');
+    body.className = 'panel-body';
 
     const forcedDateRow = document.createElement('div');
     forcedDateRow.className = 'forced-date-row';
@@ -30,7 +51,7 @@ function initExtension() {
         forcedLatestMonthDay = (forcedDateInput.value || '').trim();
     });
     forcedDateRow.appendChild(forcedDateInput);
-    panel.appendChild(forcedDateRow);
+    body.appendChild(forcedDateRow);
 
     // --- TOP ROW (Existing 5 Buttons) ---
     const layoutTop = document.createElement('div');
@@ -49,7 +70,7 @@ function initExtension() {
 
     layoutTop.appendChild(leftControls);
     layoutTop.appendChild(rightControls);
-    panel.appendChild(layoutTop);
+    body.appendChild(layoutTop);
 
     // --- BOTTOM ROW (New 2 Buttons) ---
     const layoutBottom = document.createElement('div');
@@ -59,12 +80,12 @@ function initExtension() {
     createButton(layoutBottom, 'Get Avg', 'btn-daily', handleGetDailyAverage);
     createButton(layoutBottom, 'Get All Avg', 'btn-test', handleTestSelectStation);
 
-    panel.appendChild(layoutBottom);
+    body.appendChild(layoutBottom);
 
     const layoutCorrected = document.createElement('div');
     layoutCorrected.className = 'control-layout-single';
     createButton(layoutCorrected, 'Get Corrected Min/Max/Avg', 'btn-corrected', handleGetCorrectedMinMaxAvg);
-    panel.appendChild(layoutCorrected);
+    body.appendChild(layoutCorrected);
 
     // --- RESULT BOX ---
     const resultBox = document.createElement('div');
@@ -77,7 +98,8 @@ function initExtension() {
         copyToClipboard(resultBox.innerText, resultBox);
     });
 
-    panel.appendChild(resultBox);
+    body.appendChild(resultBox);
+    panel.appendChild(body);
     document.body.appendChild(panel);
 }
 
