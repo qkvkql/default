@@ -25,6 +25,24 @@
                     4. Add to Mongolia
                 </button>
             </div>
+
+            <section class="single-station-tool" aria-labelledby="single-station-title">
+                <h2 id="single-station-title">Single Station Average</h2>
+                <label for="average-date">Target date</label>
+                <input id="average-date" type="date" value="{{ target_date }}">
+                <label for="average-source">Data source</label>
+                <select id="average-source">
+                    <option value="rp5" selected>rp5</option>
+                    <option value="ogimet">ogimet</option>
+                </select>
+                <label for="average-station-input">Station</label>
+                <input id="average-station-input" type="search" list="average-station-options" placeholder="Search by cn_name or USAF" autocomplete="off">
+                <datalist id="average-station-options"></datalist>
+                <div class="average-actions">
+                    <button id="btn-average" class="cmd-btn average-btn" type="button" onclick="calculateStationAverage()">Calculate Avg</button>
+                    <button id="btn-copy-average" class="copy-btn" type="button" onclick="copyStationAverage()" disabled>Copy</button>
+                </div>
+            </section>
             
             <hr>
             

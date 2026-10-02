@@ -52,6 +52,41 @@ h1 { margin-top: 0; font-size: 24px; color: white; text-align: center; }
     margin-bottom: 20px;
 }
 
+.single-station-tool {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 0 0 18px;
+}
+
+.single-station-tool h2 { margin: 0 0 4px; color: #fff; font-size: 16px; }
+.single-station-tool label { color: #bbb; font-size: 13px; }
+.single-station-tool input,
+.single-station-tool select {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 9px;
+    border: 1px solid #444;
+    border-radius: 5px;
+    background: #292929;
+    color: var(--text-color);
+    font-size: 14px;
+}
+.average-actions { display: flex; gap: 8px; margin-top: 4px; }
+.single-station-tool .average-btn { flex: 1; text-align: center; }
+.copy-btn {
+    padding: 12px 14px;
+    border: 1px solid #555;
+    border-radius: 6px;
+    background: #333;
+    color: #fff;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+}
+.copy-btn:hover:not(:disabled) { background: #444; }
+.single-station-tool button:disabled { cursor: not-allowed; opacity: 0.6; }
+
 button {
     padding: 15px;
     border: none;

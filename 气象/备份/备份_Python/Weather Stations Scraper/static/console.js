@@ -1,6 +1,94 @@
 let eventSource = null;
 const consoleDiv = document.getElementById('console-output');
 const statusDiv = document.getElementById('status-indicator');
+let latestAverageValues = null;
+let consoleStations = [];
+
+function renderConsoleStations() {
+    const stationInput = document.getElementById('average-station-input');
+    const optionsList = document.getElementById('average-station-options');
+    const searchText = stationInput.value.trim().toLowerCase();
+    const filteredStations = consoleStations.filter(station =>
+        station.name.toLowerCase().includes(searchText) || station.id.toLowerCase().includes(searchText)
+    );
+
+    optionsList.replaceChildren();
+    filteredStations.forEach(station => {
+        optionsList.appendChild(new Option(`${station.name} (${station.id})`));
+    });
+}
+
+async function loadConsoleStations() {
+    const stationInput = document.getElementById('average-station-input');
+    if (!stationInput) return;
+    try {
+        const response = await fetch('/console_stations');
+        const stations = await response.json();
+        if (!response.ok) throw new Error(stations.error || 'Could not load stations.');
+        if (!stations.length) {
+            stationInput.placeholder = 'No RP5 stations found';
+            return;
+        }
+        consoleStations = stations;
+        renderConsoleStations();
+    } catch (error) {
+        stationInput.placeholder = 'Station list unavailable';
+        log(`System: ${error.message}`, 'system');
+    }
+}
+
+async function calculateStationAverage() {
+    const button = document.getElementById('btn-average');
+    const copyButton = document.getElementById('btn-copy-average');
+    const date = document.getElementById('average-date').value;
+    const source = document.getElementById('average-source').value;
+    const stationLabel = document.getElementById('average-station-input').value.trim();
+    const selectedStation = consoleStations.find(item => `${item.name} (${item.id})` === stationLabel);
+    const station = selectedStation?.id;
+    if (!date || !station) {
+        log('System: Select a date and station first.', 'system');
+        return;
+    }
+    button.disabled = true;
+    copyButton.disabled = true;
+    latestAverageValues = null;
+    log(`System: Calculating ${source} average for station ${station} on ${date}...`, 'system');
+    setStatus('Calculating...', '#2196F3');
+    try {
+        const response = await fetch('/calculate_average', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ date, source, station })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Calculation failed.');
+        const result = data.result || {};
+        latestAverageValues = [result.min, result.max, result.avg];
+        copyButton.disabled = false;
+        log(`${data.station} | ${data.source} | ${data.date} | min: ${result.min}°C, max: ${result.max}°C, avg: ${result.avg}°C`);
+        setStatus('Finished', '#4CAF50');
+    } catch (error) {
+        log(`System: ${error.message}`, 'system');
+        setStatus('Error', '#ff4d4d');
+    } finally {
+        button.disabled = false;
+    }
+}
+
+async function copyStationAverage() {
+    if (!latestAverageValues) return;
+    const copyButton = document.getElementById('btn-copy-average');
+    try {
+        await navigator.clipboard.writeText(latestAverageValues.join('\t'));
+        log('System: min, max, and avg copied as tab-separated values.', 'system');
+    } catch (error) {
+        log(`System: Could not copy to clipboard: ${error.message}`, 'system');
+    }
+}
+
+document.getElementById('average-station-input')?.addEventListener('input', renderConsoleStations);
+
+loadConsoleStations();
 
 function log(message, type='normal') {
     const p = document.createElement('div');
