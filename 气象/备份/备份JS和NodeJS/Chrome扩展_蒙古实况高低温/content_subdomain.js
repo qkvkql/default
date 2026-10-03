@@ -117,6 +117,7 @@ function initSimplifiedExtension() {
 
     // Seed the per-station cache from the station already selected on page load.
     getStationHourlyState(getSelectedStationName());
+    initializeMapStationList();
 }
 
 // =====================================================================
@@ -407,6 +408,15 @@ function getDataZoomCoveragePercent(chart) {
     return Math.max(0, maxEnd - minStart);
 }
 
+function isDataZoomAtFullRange(chart) {
+    const dataZoom = chart?.getOption?.()?.dataZoom || [];
+    return dataZoom.every(z => {
+        const start = typeof z.start === 'number' ? z.start : 0;
+        const end = typeof z.end === 'number' ? z.end : 100;
+        return start <= 0.5 && end >= 99.5;
+    });
+}
+
 function forceDataZoomFullRange(chart) {
     const option = chart.getOption?.();
     const dataZoom = option?.dataZoom || [];
@@ -423,6 +433,45 @@ function forceDataZoomFullRange(chart) {
     for (let i = 0; i < patchedDataZoom.length; i++) {
         chart.dispatchAction({ type: 'dataZoom', dataZoomIndex: i, start: 0, end: 100 });
     }
+}
+
+async function ensureHourlyChartFullRange(chartCanvas) {
+    const host = chartCanvas?.closest('div[_echarts_instance_]') || getHourlyChartHost();
+    const chart = host ? getEchartsInstanceFromHost(host) : null;
+    // Some builds keep ECharts private. In that case, confirm both scrollbar
+    // handles are physically at their track endpoints by checking the cursor.
+    if (!chart) return await areScrollbarHandlesAtEndpoints(chartCanvas);
+
+    for (let attempt = 0; attempt < 4; attempt++) {
+        forceDataZoomFullRange(chart);
+        await wait(180);
+        if (isDataZoomAtFullRange(chart) && getDataZoomCoveragePercent(chart) >= 99.5) return true;
+    }
+    return false;
+}
+
+async function areScrollbarHandlesAtEndpoints(chartCanvas) {
+    if (!chartCanvas) return false;
+    const rect = chartCanvas.getBoundingClientRect();
+    const yOffsets = [18, 16, 20, 22, 14, 24, 26, 12, 28];
+    let leftFound = false;
+    let rightFound = false;
+
+    for (const yOffset of yOffsets) {
+        const y = rect.bottom - yOffset;
+        for (let xOffset = 48; xOffset <= 100 && !leftFound; xOffset += 2) {
+            dispatchHoverPoint(chartCanvas, rect.left + xOffset, y);
+            await wait(3);
+            leftFound = isResizeCursor(getCursorStyle(chartCanvas));
+        }
+        for (let xOffset = rect.width - 100; xOffset <= rect.width - 38 && !rightFound; xOffset += 2) {
+            dispatchHoverPoint(chartCanvas, rect.left + xOffset, y);
+            await wait(3);
+            rightFound = isResizeCursor(getCursorStyle(chartCanvas));
+        }
+        if (leftFound && rightFound) return true;
+    }
+    return false;
 }
 
 function dispatchPointerLikeMouseEvent(target, type, clientX, clientY, buttons) {
@@ -681,6 +730,23 @@ function getDayEightPointAverage(recordsMap, targetDate) {
         averageStr: (values.reduce((s, n) => s + n, 0) / values.length).toFixed(2),
         hoursSummary
     };
+}
+
+function getHourlyExtremesForTargetDate(parsedEntries, targetDate) {
+    if (!Array.isArray(parsedEntries) || !parsedEntries.length || !targetDate) return null;
+
+    const start = new Date(targetDate);
+    start.setDate(start.getDate() - 1);
+    start.setHours(20, 0, 0, 0);
+    const end = new Date(targetDate);
+    end.setHours(20, 0, 0, 0);
+
+    const temps = parsedEntries
+        .filter(entry => entry?.dt instanceof Date && entry.dt >= start && entry.dt <= end
+            && typeof entry.temp === 'number' && Number.isFinite(entry.temp))
+        .map(entry => entry.temp);
+    if (!temps.length) return null;
+    return { min: Math.min(...temps), max: Math.max(...temps) };
 }
 
 function getThreeDayAverages(recordsMap) {
@@ -1462,6 +1528,20 @@ async function handleGetDailyAverage(evt, stationNameOverride = '') {
         const rightRes = await executeRightHandleCycle(box, 'Step 3', preferredY);
         if (!rightRes) return;
 
+        const canvasForRangeCheck = findChartCanvas();
+        let fullRangeConfirmed = await ensureHourlyChartFullRange(canvasForRangeCheck);
+        for (let retry = 1; !fullRangeConfirmed && retry <= 2; retry++) {
+            box.innerText = `Scrollbar range did not settle; retrying expansion (${retry}/2)...`;
+            const retryLeft = await executeOneClickCycle(box, `Range retry ${retry}: left`);
+            if (!retryLeft) break;
+            const retryRight = await executeRightHandleCycle(box, `Range retry ${retry}: right`, retryLeft.y);
+            if (!retryRight) break;
+            fullRangeConfirmed = await ensureHourlyChartFullRange(findChartCanvas());
+        }
+        if (!fullRangeConfirmed) {
+            throw new Error('Could not confirm the hourly chart reached the full scrollbar range. Please try again.');
+        }
+
         // --- STEP 4: Simulate hover from left to right on hourly chart ---
         box.innerText = [
             'Step 1, 2, 3 SUCCESS ✓ (Scrollbar fully expanded)',
@@ -1565,6 +1645,38 @@ async function handleCopyHourlyData() {
 
 let cachedMapStationData = null; // Cache last collected map station data
 let isMapCollectionInProgress = false;
+
+async function initializeMapStationList() {
+    const mapBox = document.getElementById('my-weather-map-result-simple');
+    if (!mapBox || isMapCollectionInProgress) return;
+    isMapCollectionInProgress = true;
+    mapBox.innerText = 'Waiting for interactive map stations...';
+    try {
+        // The interactive map opens on current temperature. Read names from that
+        // layer so the user can choose stations before collecting extrema.
+        await waitForMapStationPaths();
+        const originalValue = getActiveMapTemperatureKind();
+        const currentData = await collectMapStationData(null);
+        const data = currentData.map(st => ({ ...st, min: '', max: '' }));
+        cachedMapStationData = data;
+        displayMapStationData(mapBox, data, false);
+        // Keep the page's original selection in case it was not the default.
+        if (originalValue !== 'current') await selectMapTemperatureOption(originalValue);
+    } catch (e) {
+        mapBox.innerText = `Could not load station list: ${e.message}`;
+    } finally {
+        isMapCollectionInProgress = false;
+    }
+}
+
+async function waitForMapStationPaths(timeoutMs = 30000) {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+        if (getMapStationPaths().length > 0) return;
+        await wait(500);
+    }
+    throw new Error('Leaflet map or station markers did not finish loading within 30 seconds.');
+}
 
 /**
  * Collect all station names and temperature values from the Leaflet map.
@@ -1748,16 +1860,19 @@ function displayMapStationData(box, data, isCached) {
     box.replaceChildren();
     const heading = document.createElement('div');
     heading.className = 'map-result-heading-simple';
-    heading.textContent = `Map Stations: ${data.length}${isCached ? ' (cached)' : ''} — name\tmin\tmax`;
+    heading.textContent = `Map Stations: ${data.length}${isCached ? ' (cached)' : ''}`;
     box.appendChild(heading);
 
     for (const st of data) {
         const row = document.createElement('div');
         row.className = 'map-result-row-simple';
-        const text = document.createElement('span');
-        text.className = 'map-result-values-simple';
-        text.textContent = `${st.name}\t${st.min}\t${st.max}`;
-        row.appendChild(text);
+
+        const mainRow = document.createElement('div');
+        mainRow.className = 'map-station-main-row-simple';
+        const name = document.createElement('span');
+        name.className = 'map-result-values-simple';
+        name.textContent = st.name;
+        mainRow.appendChild(name);
 
         const copyBtn = document.createElement('button');
         copyBtn.type = 'button';
@@ -1765,10 +1880,35 @@ function displayMapStationData(box, data, isCached) {
         copyBtn.title = 'Copy min and max';
         copyBtn.addEventListener('click', async event => {
             event.stopPropagation();
+            if (st.min === '' || st.max === '') {
+                if (isMapCollectionInProgress) return;
+                isMapCollectionInProgress = true;
+                copyBtn.disabled = true;
+                const originalValue = getActiveMapTemperatureKind();
+                copyBtn.textContent = '…';
+                try {
+                    st.max = await collectOneStationTemperature(st, 'maximum');
+                    st.min = await collectOneStationTemperature(st, 'minimum');
+                    if (originalValue !== getActiveMapTemperatureKind()) {
+                        await selectMapTemperatureOption(originalValue);
+                    }
+                    updateMapStationRow(row, st);
+                } catch (e) {
+                    if (originalValue !== getActiveMapTemperatureKind()) {
+                        await selectMapTemperatureOption(originalValue).catch(() => {});
+                    }
+                    copyBtn.title = `Could not retrieve min/max: ${e.message}`;
+                    return;
+                } finally {
+                    isMapCollectionInProgress = false;
+                    copyBtn.disabled = false;
+                    copyBtn.textContent = 'copy';
+                }
+            }
             try { await copyTextSilently(`${st.min}\t${st.max}`); flashMapActionButton(copyBtn, 'copied'); }
             catch (e) { copyBtn.title = `Copy failed: ${e.message}`; }
         });
-        row.appendChild(copyBtn);
+        mainRow.appendChild(copyBtn);
 
         const avgBtn = document.createElement('button');
         avgBtn.type = 'button';
@@ -1788,18 +1928,59 @@ function displayMapStationData(box, data, isCached) {
                 await wait(1800);
                 await handleGetDailyAverage(undefined, st.name);
                 const stationState = getStationHourlyState(st.name);
+                const targetDate = resolveTargetDateForRecords(stationState?.parsedEntries || []);
+                const hourlyExtremes = getHourlyExtremesForTargetDate(stationState?.parsedEntries, targetDate);
+                st.hourlyMin = hourlyExtremes?.min ?? '';
+                st.hourlyMax = hourlyExtremes?.max ?? '';
+                updateMapStationRow(row, st);
                 const validity = getSystemMinMaxValidity(stationState?.hourlyRecords || new Map());
-                row.querySelectorAll('.map-validity-simple').forEach(el => el.remove());
-                if (validity.minValid) row.appendChild(createValidityBadge('min✓'));
-                if (validity.maxValid) row.appendChild(createValidityBadge('max✓'));
+                validityMarks.replaceChildren();
+                if (validity.minValid) validityMarks.appendChild(createValidityBadge('min✓'));
+                if (validity.maxValid) validityMarks.appendChild(createValidityBadge('max✓'));
             } finally {
                 avgBtn.disabled = false;
                 avgBtn.textContent = 'avg';
             }
         });
-        row.appendChild(avgBtn);
+        mainRow.appendChild(avgBtn);
+
+        const validityMarks = document.createElement('span');
+        validityMarks.className = 'map-validity-marks-simple';
+        mainRow.appendChild(validityMarks);
+        row.appendChild(mainRow);
+
+        const detailsRow = document.createElement('div');
+        detailsRow.className = 'map-station-details-simple';
+        const hourlyValues = document.createElement('span');
+        hourlyValues.className = 'map-station-hourly-values-simple';
+        hourlyValues.textContent = `Hourly: ${st.hourlyMin === '' || st.hourlyMin == null ? '—' : st.hourlyMin} / ${st.hourlyMax === '' || st.hourlyMax == null ? '—' : st.hourlyMax}`;
+        detailsRow.appendChild(hourlyValues);
+        const systemValues = document.createElement('span');
+        systemValues.className = 'map-station-system-values-simple';
+        systemValues.textContent = `System: ${st.min || '—'} / ${st.max || '—'}`;
+        detailsRow.appendChild(systemValues);
+        row.appendChild(detailsRow);
         box.appendChild(row);
     }
+}
+
+async function collectOneStationTemperature(station, kind) {
+    await selectMapTemperatureOption(kind);
+    const paths = getMapStationPaths();
+    const path = paths.find(candidate => station.markerPathD && candidate.getAttribute('d') === station.markerPathD)
+        || paths.find(candidate => candidate.getAttribute('aria-describedby') === station.tooltipId);
+    if (!path) throw new Error(`Could not find ${station.name} on the ${kind} map layer.`);
+    const tooltipId = path.getAttribute('aria-describedby');
+    const tooltip = tooltipId ? document.getElementById(tooltipId) : null;
+    if (!tooltip) throw new Error(`Temperature value for ${station.name} is unavailable.`);
+    return tooltip.textContent.trim();
+}
+
+function updateMapStationRow(row, station) {
+    const systemValues = row.querySelector('.map-station-system-values-simple');
+    if (systemValues) systemValues.textContent = `System: ${station.min || '—'} / ${station.max || '—'}`;
+    const hourlyValues = row.querySelector('.map-station-hourly-values-simple');
+    if (hourlyValues) hourlyValues.textContent = `Hourly: ${station.hourlyMin === '' || station.hourlyMin == null ? '—' : station.hourlyMin} / ${station.hourlyMax === '' || station.hourlyMax == null ? '—' : station.hourlyMax}`;
 }
 
 function createValidityBadge(label) {

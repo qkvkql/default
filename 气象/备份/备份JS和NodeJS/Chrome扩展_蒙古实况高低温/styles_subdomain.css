@@ -6,7 +6,7 @@
     position: fixed;
     top: 0;
     right: 0;
-    width: min(520px, 92vw);
+    width: min(430px, 92vw);
     background-color: #222;
     border: 2px solid #444;
     border-top: none;
@@ -222,16 +222,12 @@
 }
 
 .map-result-row-simple {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-start;
-    align-items: center;
-    gap: 7px;
+    display: block;
     min-width: 0;
     width: 100%;
     box-sizing: border-box;
-    margin: 7px 0;
-    padding: 7px 8px;
+    margin: 6px 0;
+    padding: 6px 8px;
     border-radius: 4px;
     border-left: 3px solid #457b9d;
     background-color: #1b2838;
@@ -242,17 +238,27 @@
     background-color: #263326;
 }
 
+.map-station-main-row-simple {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+    width: 100%;
+}
+
 .map-result-values-simple {
     display: block;
     color: #fff;
-    font-size: 15px;
-    white-space: pre-wrap;
+    font-size: 16px;
+    font-weight: 600;
+    white-space: normal;
     overflow-wrap: anywhere;
     min-width: 0;
-    flex: 1 1 0;
+    flex: 1 1 140px;
 }
 
-.map-result-row-simple button {
+.map-station-main-row-simple button {
     flex: 0 0 auto;
     padding: 2px 5px;
     border: 1px solid #666;
@@ -264,13 +270,47 @@
     cursor: pointer;
 }
 
-.map-result-row-simple button:hover:not(:disabled) {
+.map-station-main-row-simple button:hover:not(:disabled) {
     background: #555;
 }
 
-.map-result-row-simple button:disabled {
+.map-station-main-row-simple button:disabled {
     opacity: 0.65;
     cursor: wait;
+}
+
+.map-station-details-simple {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: center;
+    gap: 6px;
+    margin-top: 4px;
+    color: #c8cdd3;
+    font-size: 11px;
+    line-height: 1.25;
+}
+
+.map-station-system-values-simple,
+.map-station-hourly-values-simple {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.map-station-system-values-simple {
+    text-align: right;
+}
+
+.map-station-hourly-values-simple {
+    color: #ff5c5c;
+    font-weight: 700;
+    text-align: left;
+}
+
+.map-validity-marks-simple {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    flex: 0 0 auto;
 }
 
 .map-validity-simple {

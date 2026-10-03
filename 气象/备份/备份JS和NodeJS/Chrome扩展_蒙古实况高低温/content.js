@@ -425,8 +425,9 @@ async function getAvgAndCorrectionMapForAllStations(stations, baseMinMaxMap, sta
             const selected = await selectStationByKeyword(keyword);
             if (!selected) {
                 avgMap.set(key, '');
-                correctedMinMap.set(key, baseMinMaxMap.get(key)?.min ?? '无');
-                correctedMaxMap.set(key, baseMinMaxMap.get(key)?.max ?? '无');
+                const base = baseMinMaxMap.get(key) || {};
+                correctedMinMap.set(key, originalNumberOrEmpty(base.min));
+                correctedMaxMap.set(key, originalNumberOrEmpty(base.max));
                 continue;
             }
             await wait(2000);
@@ -450,8 +451,9 @@ async function getAvgAndCorrectionMapForAllStations(stations, baseMinMaxMap, sta
         } catch (e) {
             console.error(`Correct station failed: ${keyword}`, e);
             avgMap.set(key, '');
-            correctedMinMap.set(key, baseMinMaxMap.get(key)?.min ?? '无');
-            correctedMaxMap.set(key, baseMinMaxMap.get(key)?.max ?? '无');
+            const base = baseMinMaxMap.get(key) || {};
+            correctedMinMap.set(key, originalNumberOrEmpty(base.min));
+            correctedMaxMap.set(key, originalNumberOrEmpty(base.max));
         }
     }
 
@@ -634,9 +636,15 @@ function checkTargetDateExistsInRecords(recordsMap) {
 }
 
 function parseNumberMaybe(value) {
-    if (typeof value === 'number') return Number.isNaN(value) ? null : value;
-    const m = String(value ?? '').match(/-?\d+(?:\.\d+)?/);
-    return m ? Number(m[0]) : null;
+    if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+    const normalized = String(value ?? '').trim().replace(/[−–—]/g, '-');
+    if (!/^-?\d+(?:\.\d+)?$/.test(normalized)) return null;
+    const number = Number(normalized);
+    return Number.isFinite(number) ? number : null;
+}
+
+function originalNumberOrEmpty(value) {
+    return parseNumberMaybe(value) === null ? '' : String(value).trim();
 }
 
 function formatNumberLikeOriginal(n) {
@@ -695,23 +703,12 @@ function getLatestStatisticPeriodValues(recordsMap) {
 function getCorrectedMinMax(baseMinStr, baseMaxStr, periodValues) {
     const baseMin = parseNumberMaybe(baseMinStr);
     const baseMax = parseNumberMaybe(baseMaxStr);
-    const allVals = [];
-    if (baseMin !== null) allVals.push(baseMin);
-    if (baseMax !== null) allVals.push(baseMax);
-    if (Array.isArray(periodValues)) {
-        for (const v of periodValues) {
-            if (typeof v === 'number' && !Number.isNaN(v)) allVals.push(v);
-        }
-    }
-    if (!allVals.length) {
-        return {
-            min: baseMinStr || '无',
-            max: baseMaxStr || '无'
-        };
-    }
+    const validPeriodValues = Array.isArray(periodValues)
+        ? periodValues.filter(v => typeof v === 'number' && Number.isFinite(v))
+        : [];
     return {
-        min: formatNumberLikeOriginal(Math.min(...allVals)),
-        max: formatNumberLikeOriginal(Math.max(...allVals))
+        min: baseMin === null ? '' : formatNumberLikeOriginal(Math.min(baseMin, ...validPeriodValues)),
+        max: baseMax === null ? '' : formatNumberLikeOriginal(Math.max(baseMax, ...validPeriodValues))
     };
 }
 
@@ -720,8 +717,8 @@ function buildCorrectedTsv(stations, correctedMinMap, correctedMaxMap, avgMap) {
     for (let i = 0; i < stations.length; i++) {
         const s = stations[i];
         const key = stationKey(s.aimag, s.cym);
-        const min = correctedMinMap.get(key) ?? '无';
-        const max = correctedMaxMap.get(key) ?? '无';
+        const min = correctedMinMap.get(key) ?? '';
+        const max = correctedMaxMap.get(key) ?? '';
         const avg = avgMap.get(key) ?? '';
         lines.push(`${min}\t${max}\t${avg}`);
     }
@@ -1249,7 +1246,7 @@ function yourCustomExtractionLogic() {
             if(tempContent.toString().length > 0){
                 tempObj[arrOfTitles[j]] = tempContent;
             }else{
-                tempObj[arrOfTitles[j]] = '列<' + (j+1).toString() + '>';
+                tempObj[arrOfTitles[j]] = '';
             }
         }
         arrOfDataRows.push(tempObj);
