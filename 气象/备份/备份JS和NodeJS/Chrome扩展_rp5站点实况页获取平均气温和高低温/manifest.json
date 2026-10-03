@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "RP5 Statistical Temperatures",
+  "version": "1.0.5",
+  "description": "Calculate daily minimum, maximum, and 8-point average temperatures from RP5 weather archives.",
+  "permissions": ["storage", "clipboardWrite"],
+  "host_permissions": ["https://rp5.ru/*"],
+  "content_scripts": [
+    {
+      "matches": ["https://rp5.ru/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "RP5 statistical temperatures"
+  }
+}
