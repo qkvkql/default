@@ -215,6 +215,7 @@ async function handleCopyFullTable(event) {
     } catch (error) {
         if (box) box.innerText = `Copy Full Table failed: ${error.message}`;
     } finally {
+        await returnObservationTableToFirstPage();
         if (button) button.disabled = false;
     }
 }
@@ -287,6 +288,17 @@ async function waitForPageChange(previousPage) {
         await wait(100);
     }
     return false;
+}
+
+async function returnObservationTableToFirstPage() {
+    const currentPage = getCurrentPageNumber();
+    if (currentPage <= 1) return true;
+
+    const firstPageItem = document.querySelector('.ant-pagination-item-1');
+    if (!firstPageItem) return false;
+
+    firstPageItem.click();
+    return waitForPageChange(currentPage);
 }
 
 function handlePrevPage() {
@@ -699,6 +711,8 @@ async function handleGetCorrectedMinMaxAvg() {
         box.innerText = `Get Corrected Min/Max/Avg finished.\nLines: ${targetStations.length}\nAuto-copied.`;
     } catch (e) {
         box.innerText = `Get Corrected Min/Max/Avg failed: ${e.message}`;
+    } finally {
+        await returnObservationTableToFirstPage();
     }
 }
 
