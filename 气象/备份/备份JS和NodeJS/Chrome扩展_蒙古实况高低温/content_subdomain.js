@@ -6,6 +6,8 @@
 let forcedLatestMonthDay = '';
 let lastHourlyDataLines = [];      // Cache last collected hourly data lines
 const stationHourlyCache = new Map(); // normalized station name -> its hourly chart data
+const mapStationValidityByName = new Map(); // normalized station name -> validity badges shown this page
+const mapStationSystemMinMaxByName = new Map(); // normalized station name -> copied system min/max for this page
 
 // Wait 1 second after load to inject the panel
 setTimeout(() => {
@@ -1442,7 +1444,7 @@ async function calculateAndDisplayStep5(recordsMap, parsedEntries, box, isCached
         `(Click "Copy Hourly Data" for all hourly records)`
     ];
 
-    box.innerText = panelLines.join('\n');
+    renderAverageResult(box, panelLines, { avgDisplay, targetDateStr, hasAverage: calc.hasAll });
 
     // Copy only the avg value (or empty string) to clipboard
     const clipboardValue = calc.hasAll ? calc.averageStr : '';
@@ -1451,7 +1453,12 @@ async function calculateAndDisplayStep5(recordsMap, parsedEntries, box, isCached
     } catch (e) {
         // The average is already calculated and displayed. Clipboard access is
         // optional, so keep the result visible when the site denies permission.
-        box.innerText += `\n\nClipboard copy was denied; the average is shown above. (${e.message})`;
+        const copyError = document.createElement('div');
+        copyError.className = 'result-line-simple';
+        copyError.textContent = `Clipboard copy was denied; the average is shown above. (${e.message})`;
+        box.appendChild(document.createElement('br'));
+        box.appendChild(document.createElement('br'));
+        box.appendChild(copyError);
     }
 
     // Visual flash feedback on "Get Avg" button
@@ -1465,6 +1472,32 @@ async function calculateAndDisplayStep5(recordsMap, parsedEntries, box, isCached
             avgBtn.style.backgroundColor = origBg;
             avgBtn.innerText = origText;
         }, 1200);
+    }
+}
+
+function renderAverageResult(box, panelLines, { avgDisplay, targetDateStr, hasAverage }) {
+    box.replaceChildren();
+    for (const line of panelLines) {
+        const lineElement = document.createElement('div');
+        lineElement.className = 'result-line-simple';
+
+        if (line.startsWith('8-point Average: ')) {
+            lineElement.appendChild(document.createTextNode('8-point Average: '));
+            const value = document.createElement('span');
+            value.className = `result-average-value-simple ${hasAverage ? 'is-valid' : 'is-missing'}`;
+            value.textContent = avgDisplay;
+            lineElement.appendChild(value);
+        } else if (line.startsWith('Target date: ')) {
+            lineElement.appendChild(document.createTextNode('Target date: '));
+            const value = document.createElement('span');
+            value.className = 'result-target-date-simple';
+            value.textContent = targetDateStr;
+            lineElement.appendChild(value);
+        } else {
+            lineElement.textContent = line;
+        }
+
+        box.appendChild(lineElement);
     }
 }
 
@@ -1645,6 +1678,7 @@ async function handleCopyHourlyData() {
 
 let cachedMapStationData = null; // Cache last collected map station data
 let isMapCollectionInProgress = false;
+let mapStationSortDirection = 'asc';
 
 async function initializeMapStationList() {
     const mapBox = document.getElementById('my-weather-map-result-simple');
@@ -1860,10 +1894,30 @@ function displayMapStationData(box, data, isCached) {
     box.replaceChildren();
     const heading = document.createElement('div');
     heading.className = 'map-result-heading-simple';
-    heading.textContent = `Map Stations: ${data.length}${isCached ? ' (cached)' : ''}`;
-    box.appendChild(heading);
+    const headingLabel = document.createElement('span');
+    headingLabel.textContent = `Map Stations: ${data.length}${isCached ? ' (cached)' : ''}`;
+    heading.appendChild(headingLabel);
 
-    for (const st of data) {
+    const sortButton = document.createElement('button');
+    sortButton.type = 'button';
+    sortButton.className = 'map-station-sort-simple';
+    sortButton.textContent = `System min ${mapStationSortDirection === 'asc' ? '↑' : '↓'}`;
+    const hasSystemMinValues = data.some(st => parseSystemMinimum(st.min) !== null);
+    sortButton.disabled = !hasSystemMinValues;
+    sortButton.title = hasSystemMinValues
+        ? `Sort by system minimum temperature (${mapStationSortDirection === 'asc' ? 'ascending' : 'descending'}); empty values stay at the bottom`
+        : 'Load map data to sort by system minimum temperature';
+    sortButton.setAttribute('aria-label', sortButton.title);
+    sortButton.addEventListener('click', event => {
+        event.stopPropagation();
+        mapStationSortDirection = mapStationSortDirection === 'asc' ? 'desc' : 'asc';
+        displayMapStationData(box, cachedMapStationData || data, Boolean(box.dataset.mapStationsCached));
+    });
+    box.appendChild(heading);
+    heading.appendChild(sortButton);
+
+    box.dataset.mapStationsCached = String(Boolean(isCached));
+    for (const st of sortMapStations(data)) {
         const row = document.createElement('div');
         row.className = 'map-result-row-simple';
 
@@ -1880,7 +1934,13 @@ function displayMapStationData(box, data, isCached) {
         copyBtn.title = 'Copy min and max';
         copyBtn.addEventListener('click', async event => {
             event.stopPropagation();
-            if (st.min === '' || st.max === '') {
+            const stationKey = normalizeStationName(st.name);
+            const cachedMinMax = mapStationSystemMinMaxByName.get(stationKey);
+            if (cachedMinMax) {
+                st.min = cachedMinMax.min;
+                st.max = cachedMinMax.max;
+                updateMapStationRow(row, st);
+            } else if (st.min === '' || st.max === '') {
                 if (isMapCollectionInProgress) return;
                 isMapCollectionInProgress = true;
                 copyBtn.disabled = true;
@@ -1892,7 +1952,9 @@ function displayMapStationData(box, data, isCached) {
                     if (originalValue !== getActiveMapTemperatureKind()) {
                         await selectMapTemperatureOption(originalValue);
                     }
+                    mapStationSystemMinMaxByName.set(stationKey, { min: st.min, max: st.max });
                     updateMapStationRow(row, st);
+                    displayMapStationData(box, cachedMapStationData || [], Boolean(box.dataset.mapStationsCached));
                 } catch (e) {
                     if (originalValue !== getActiveMapTemperatureKind()) {
                         await selectMapTemperatureOption(originalValue).catch(() => {});
@@ -1904,12 +1966,12 @@ function displayMapStationData(box, data, isCached) {
                     copyBtn.disabled = false;
                     copyBtn.textContent = 'copy';
                 }
+            } else {
+                mapStationSystemMinMaxByName.set(stationKey, { min: st.min, max: st.max });
             }
             try { await copyTextSilently(`${st.min}\t${st.max}`); flashMapActionButton(copyBtn, 'copied'); }
             catch (e) { copyBtn.title = `Copy failed: ${e.message}`; }
         });
-        mainRow.appendChild(copyBtn);
-
         const avgBtn = document.createElement('button');
         avgBtn.type = 'button';
         avgBtn.textContent = 'avg';
@@ -1934,18 +1996,25 @@ function displayMapStationData(box, data, isCached) {
                 st.hourlyMax = hourlyExtremes?.max ?? '';
                 updateMapStationRow(row, st);
                 const validity = getSystemMinMaxValidity(stationState?.hourlyRecords || new Map());
-                validityMarks.replaceChildren();
-                if (validity.minValid) validityMarks.appendChild(createValidityBadge('min✓'));
-                if (validity.maxValid) validityMarks.appendChild(createValidityBadge('max✓'));
+                const validityKey = normalizeStationName(st.name);
+                const previousValidity = mapStationValidityByName.get(validityKey) || {};
+                const persistentValidity = {
+                    minValid: Boolean(previousValidity.minValid || validity.minValid),
+                    maxValid: Boolean(previousValidity.maxValid || validity.maxValid)
+                };
+                mapStationValidityByName.set(validityKey, persistentValidity);
+                renderMapStationValidity(validityMarks, persistentValidity);
             } finally {
                 avgBtn.disabled = false;
                 avgBtn.textContent = 'avg';
             }
         });
         mainRow.appendChild(avgBtn);
+        mainRow.appendChild(copyBtn);
 
         const validityMarks = document.createElement('span');
         validityMarks.className = 'map-validity-marks-simple';
+        renderMapStationValidity(validityMarks, mapStationValidityByName.get(normalizeStationName(st.name)) || {});
         mainRow.appendChild(validityMarks);
         row.appendChild(mainRow);
 
@@ -1962,6 +2031,28 @@ function displayMapStationData(box, data, isCached) {
         row.appendChild(detailsRow);
         box.appendChild(row);
     }
+}
+
+function sortMapStations(data) {
+    return data
+        .map((station, index) => ({ station, index, min: parseSystemMinimum(station.min) }))
+        .sort((a, b) => {
+            if (a.min === null && b.min !== null) return 1;
+            if (a.min !== null && b.min === null) return -1;
+            if (a.min === null && b.min === null) return a.index - b.index;
+            const difference = a.min - b.min;
+            return (mapStationSortDirection === 'asc' ? difference : -difference) || a.index - b.index;
+        })
+        .map(entry => entry.station);
+}
+
+function parseSystemMinimum(value) {
+    const cleaned = String(value ?? '').trim().replace(/[−–—]/g, '-');
+    if (!cleaned) return null;
+    const match = cleaned.match(/[-+]?(?:\d+(?:\.\d*)?|\.\d+)/);
+    if (!match) return null;
+    const number = Number(match[0]);
+    return Number.isFinite(number) ? number : null;
 }
 
 async function collectOneStationTemperature(station, kind) {
@@ -1991,6 +2082,12 @@ function createValidityBadge(label) {
         ? 'A temperature record exists at the latest 08:00.'
         : 'A temperature record exists at the latest 20:00.';
     return badge;
+}
+
+function renderMapStationValidity(container, validity) {
+    container.replaceChildren();
+    if (validity.minValid) container.appendChild(createValidityBadge('min✓'));
+    if (validity.maxValid) container.appendChild(createValidityBadge('max✓'));
 }
 
 function flashMapActionButton(button, label) {

@@ -87,6 +87,11 @@ function initExtension() {
     createButton(layoutCorrected, 'Get Corrected Min/Max/Avg', 'btn-corrected', handleGetCorrectedMinMaxAvg);
     body.appendChild(layoutCorrected);
 
+    const layoutFullTable = document.createElement('div');
+    layoutFullTable.className = 'control-layout-single';
+    createButton(layoutFullTable, 'Copy Full Table', 'btn-copy', handleCopyFullTable);
+    body.appendChild(layoutFullTable);
+
     // --- RESULT BOX ---
     const resultBox = document.createElement('div');
     resultBox.id = 'my-weather-result';
@@ -174,6 +179,112 @@ function handleNextPage() {
     if (nextItem) {
         nextItem.click();
         return true;
+    }
+    return false;
+}
+
+async function handleCopyFullTable(event) {
+    const button = event?.currentTarget;
+    const box = document.getElementById('my-weather-result');
+    if (button?.disabled) return;
+
+    if (button) button.disabled = true;
+    try {
+        if (box) box.innerText = 'Preparing full table export...';
+        await select100RowsPerPage();
+
+        const pageResults = [];
+        let pageCount = 0;
+        while (true) {
+            const currentPage = getCurrentPageNumber();
+            const pageText = extractFullTablePage();
+            if (!pageText) throw new Error(`No table data found on page ${currentPage}.`);
+            pageResults.push(pageText);
+            pageCount++;
+            if (box) box.innerText = `Captured page ${currentPage} (${pageCount} page${pageCount === 1 ? '' : 's'}).`;
+
+            if (!handleNextPage()) break;
+            const pageChanged = await waitForPageChange(currentPage);
+            if (!pageChanged) break;
+            await wait(250);
+        }
+
+        const combinedTsv = combineFullTablePages(pageResults);
+        await copyTextSilently(combinedTsv);
+        if (box) box.innerText = `Copy Full Table complete. ${pageCount} page(s), ${Math.max(0, combinedTsv.split('\n').length - 1)} data row(s) copied.`;
+    } catch (error) {
+        if (box) box.innerText = `Copy Full Table failed: ${error.message}`;
+    } finally {
+        if (button) button.disabled = false;
+    }
+}
+
+async function select100RowsPerPage() {
+    const pageSizeItem = Array.from(document.querySelectorAll('.ant-select-selection-item'))
+        .find(item => /\d+\s*\/\s*page/i.test(item.innerText.trim()));
+    if (!pageSizeItem) throw new Error('Could not find the table page-size menu.');
+
+    if (pageSizeItem.innerText.trim() !== '100 / page') {
+        pageSizeItem.click();
+        pageSizeItem.closest('.ant-select-selector')?.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+        await wait(250);
+        const option = Array.from(document.querySelectorAll('.ant-select-item-option-content'))
+            .find(item => item.innerText.trim() === '100 / page');
+        if (!option) throw new Error('Could not find the 100 / page option.');
+        option.click();
+    }
+
+    for (let attempt = 0; attempt < 40; attempt++) {
+        const selected = Array.from(document.querySelectorAll('.ant-select-selection-item'))
+            .some(item => item.innerText.trim() === '100 / page');
+        if (selected) {
+            await wait(300);
+            return;
+        }
+        await wait(100);
+    }
+    throw new Error('The table did not switch to 100 rows per page.');
+}
+
+function extractFullTablePage() {
+    const header = document.querySelector('.ant-table-thead');
+    const body = document.querySelector('.ant-table-tbody');
+    if (!header || !body) return '';
+
+    const titleCells = Array.from(header.querySelectorAll('th'));
+    const titles = titleCells.map((cell, index) => {
+        const title = cell.innerText.trim();
+        return index > 0 && titleCells[index - 1].innerText.trim() === title
+            ? `${title}_重名标题`
+            : title;
+    });
+    if (!titles.length) return '';
+
+    const rows = Array.from(body.querySelectorAll('tr')).map(row => {
+        const cells = Array.from(row.querySelectorAll('td'));
+        return titles.map((_, index) => {
+            const value = cells[index]?.innerText.trim() ?? '';
+            return value || `列<${index + 1}>`;
+        }).join('\t');
+    });
+    return [titles.join('\t'), ...rows].join('\n');
+}
+
+function combineFullTablePages(pageResults) {
+    if (!pageResults.length) return '';
+    const lines = [];
+    pageResults.forEach((pageText, index) => {
+        const pageLines = pageText.split(/\r?\n/);
+        if (index > 0 && pageLines.length) pageLines.shift();
+        lines.push(...pageLines);
+    });
+    return lines.join('\n');
+}
+
+async function waitForPageChange(previousPage) {
+    for (let attempt = 0; attempt < 100; attempt++) {
+        if (getCurrentPageNumber() !== previousPage) return true;
+        await wait(100);
     }
     return false;
 }
@@ -331,7 +442,6 @@ async function getCurrentStationLatestAvgContext() {
             return { selectedAimag: '', selectedCym: '', avgValue: '' };
         }
 
-        await zoomOutHourlyChartFully();
         const recordsMap = await collectTemperatureAcrossPannedViews(null);
         const summary = getThreeDayAverages(recordsMap);
         const latestAvg = summary.dayResults && summary.dayResults.length > 0 && summary.dayResults[0].hasAll
@@ -391,7 +501,6 @@ async function getLatestAvgMapForAllTargetStations(stations, statusBox) {
                 continue;
             }
             await wait(2000); // wait chart refresh after station switch
-            await zoomOutHourlyChartFully();
             const recordsMap = await collectTemperatureAcrossPannedViews(statusBox);
             const latest = getLatestDayAverageOnly(recordsMap);
             const avg = latest.hasAll ? latest.averageStr : '';
@@ -431,7 +540,6 @@ async function getAvgAndCorrectionMapForAllStations(stations, baseMinMaxMap, sta
                 continue;
             }
             await wait(2000);
-            await zoomOutHourlyChartFully();
             const recordsMap = await collectTemperatureAcrossPannedViews(statusBox);
             const latest = getLatestDayAverageOnly(recordsMap);
             avgMap.set(key, latest.hasAll ? latest.averageStr : '');
@@ -510,8 +618,7 @@ function parseSelectedStationText(stationText) {
 async function handleGetDailyAverage() {
     const box = document.getElementById('my-weather-result');
     try {
-        box.innerText = 'Zooming chart / preparing pan...';
-        await zoomOutHourlyChartFully();
+        box.innerText = 'Preparing hourly chart range...';
         const recordsMap = await collectTemperatureAcrossPannedViews(box);
         const summary = getThreeDayAverages(recordsMap);
 
@@ -825,34 +932,7 @@ async function collectTemperatureFromHourlyChart() {
         throw new Error('Hourly chart canvas not found.');
     }
 
-    const rect = chartCanvas.getBoundingClientRect();
-    const centerY = rect.top + rect.height / 2;
-    const hostContainer = chartCanvas.closest('.echarts-container') || document;
-    const recordsMap = new Map();
-
-    const sweepStep = Math.max(1, Math.floor(rect.width / 450)); // cap events for performance
-    for (let x = 0; x <= Math.floor(rect.width); x += sweepStep) {
-        const clientX = rect.left + x;
-        chartCanvas.dispatchEvent(new MouseEvent('mousemove', {
-            bubbles: true,
-            cancelable: true,
-            clientX,
-            clientY: centerY
-        }));
-
-        const tooltipNodes = hostContainer.querySelectorAll('div[style*="z-index: 9999999"]');
-        tooltipNodes.forEach(node => {
-            const style = window.getComputedStyle(node);
-            if (style.visibility === 'hidden' || style.opacity === '0') return;
-            const pairs = parseTooltipText(node.innerText || '');
-            pairs.forEach(({ dateTime, temp }) => recordsMap.set(dateTime, temp));
-        });
-
-        if (x % 50 === 0) await wait(0);
-    }
-
-    chartCanvas.dispatchEvent(new MouseEvent('mouseleave', { bubbles: true }));
-    return recordsMap;
+    return sweepHourlyChartTemperature(chartCanvas);
 }
 
 async function collectTemperatureAcrossPannedViews(statusBox) {
@@ -861,28 +941,208 @@ async function collectTemperatureAcrossPannedViews(statusBox) {
     const chartCanvas = host.querySelector('canvas') || document.querySelector('.echarts-container canvas');
     if (!chartCanvas) throw new Error('Hourly chart canvas not found.');
 
-    const merged = new Map();
-    const collectOnce = async (label) => {
-        if (statusBox) statusBox.innerText = `Reading hourly chart (${label})...`;
-        const map = await collectTemperatureFromHourlyChart();
-        map.forEach((v, k) => merged.set(k, v));
+    await zoomOutHourlyChartFully();
+    if (statusBox) statusBox.innerText = 'Reading hourly chart from left to right...';
+    return sweepHourlyChartTemperature(chartCanvas, statusBox);
+}
+
+function isResizeCursor(cursor) {
+    if (!cursor) return false;
+    return ['ew-resize', 'col-resize', 'w-resize', 'e-resize'].includes(cursor.toLowerCase().trim());
+}
+
+function getCursorStyle(chartCanvas) {
+    return (chartCanvas.parentElement?.style?.cursor || chartCanvas.style?.cursor ||
+        chartCanvas.closest('div[_echarts_instance_]')?.style?.cursor || '').trim().toLowerCase();
+}
+
+function dispatchChartPoint(chartCanvas, type, clientX, clientY, buttons = 0) {
+    const common = {
+        bubbles: true, cancelable: true, composed: true, view: window,
+        clientX, clientY, screenX: clientX, screenY: clientY,
+        pageX: clientX + window.scrollX, pageY: clientY + window.scrollY,
+        button: 0, buttons
     };
-
-    await collectOnce('current');
-
-    for (let i = 0; i < 3; i++) {
-        await panZoomBar(chartCanvas, 'right');
-        await wait(120);
-        await collectOnce(`right ${i + 1}`);
+    if (window.PointerEvent) {
+        const pointerType = { mousemove: 'pointermove', mousedown: 'pointerdown', mouseup: 'pointerup' }[type];
+        if (pointerType) {
+            try {
+                const event = new PointerEvent(pointerType, {
+                    ...common, pointerId: 1, pointerType: 'mouse', isPrimary: true,
+                    width: 1, height: 1, pressure: buttons ? 0.5 : 0
+                });
+                chartCanvas.dispatchEvent(event);
+                chartCanvas.parentElement?.dispatchEvent(event);
+            } catch (_) {}
+        }
     }
+    chartCanvas.dispatchEvent(new MouseEvent(type, common));
+    chartCanvas.parentElement?.dispatchEvent(new MouseEvent(type, common));
+    const host = chartCanvas.closest('div[_echarts_instance_]');
+    if (host && host !== chartCanvas.parentElement) host.dispatchEvent(new MouseEvent(type, common));
+}
 
-    for (let i = 0; i < 6; i++) {
-        await panZoomBar(chartCanvas, 'left');
-        await wait(120);
-        await collectOnce(`left ${i + 1}`);
+function dispatchDragPoint(target, type, clientX, clientY, buttons) {
+    const common = {
+        bubbles: true, cancelable: true, composed: true, view: window,
+        clientX, clientY, screenX: clientX, screenY: clientY,
+        pageX: clientX + window.scrollX, pageY: clientY + window.scrollY,
+        button: 0, buttons, which: buttons ? 1 : (type === 'mouseup' ? 1 : 0)
+    };
+    if (window.PointerEvent) {
+        const pointerType = { mousedown: 'pointerdown', mousemove: 'pointermove', mouseup: 'pointerup' }[type];
+        try {
+            target.dispatchEvent(new PointerEvent(pointerType, {
+                ...common, pointerId: 1, pointerType: 'mouse', isPrimary: true,
+                width: 1, height: 1, pressure: buttons ? 0.5 : 0
+            }));
+        } catch (_) {}
     }
+    target.dispatchEvent(new MouseEvent(type, common));
+}
 
-    return merged;
+function hoverChartPoint(chartCanvas, x, y) {
+    dispatchChartPoint(chartCanvas, 'mousemove', x, y, 0);
+    if (chartCanvas.parentElement) {
+        chartCanvas.parentElement.dispatchEvent(new MouseEvent('mousemove', {
+            bubbles: true, cancelable: true, clientX: x, clientY: y, buttons: 0
+        }));
+    }
+}
+
+async function findDataZoomHandle(chartCanvas, side, preferredY) {
+    const rect = chartCanvas.getBoundingClientRect();
+    // Initialize ZRender's pointer state before probing the dataZoom track.
+    if (window.PointerEvent) {
+        const init = { bubbles: true, cancelable: true, composed: true, view: window,
+            clientX: rect.left + 60, clientY: rect.bottom - 18,
+            pointerId: 1, pointerType: 'mouse', isPrimary: true };
+        try {
+            chartCanvas.dispatchEvent(new PointerEvent('pointerenter', init));
+            chartCanvas.dispatchEvent(new PointerEvent('pointerover', init));
+        } catch (_) {}
+    }
+    chartCanvas.dispatchEvent(new MouseEvent('mouseenter', {
+        bubbles: true, cancelable: true, clientX: rect.left + 60, clientY: rect.bottom - 18
+    }));
+    chartCanvas.dispatchEvent(new MouseEvent('mouseover', {
+        bubbles: true, cancelable: true, clientX: rect.left + 60, clientY: rect.bottom - 18
+    }));
+    hoverChartPoint(chartCanvas, rect.left + 60, rect.bottom - 18);
+    await wait(20);
+    const yOffsets = [18, 16, 20, 22, 14, 24, 26, 12, 28, 10, 30, 8, 34, 38];
+    const candidateYs = preferredY == null ? [] : [preferredY];
+    yOffsets.forEach(offset => {
+        const y = rect.bottom - offset;
+        if (y > rect.top && !candidateYs.includes(y)) candidateYs.push(y);
+    });
+    for (const y of candidateYs) {
+        const start = side === 'left' ? 50 : Math.max(80, Math.round(rect.width - 35));
+        const end = side === 'left' ? Math.max(60, rect.width - 50) : 45;
+        const step = side === 'left' ? 2 : -2;
+        for (let offset = start; side === 'left' ? offset <= end : offset >= end; offset += step) {
+            const x = rect.left + offset;
+            hoverChartPoint(chartCanvas, x, y);
+            await wait(3);
+            if (!isResizeCursor(getCursorStyle(chartCanvas))) continue;
+
+            // Resolve the safe outer edge of this resize handle.
+            let edge = x;
+            const direction = side === 'left' ? -1 : 1;
+            for (let i = 1; i <= 25; i++) {
+                const probeX = x + direction * i;
+                hoverChartPoint(chartCanvas, probeX, y);
+                await wait(2);
+                if (!isResizeCursor(getCursorStyle(chartCanvas))) break;
+                edge = probeX;
+            }
+            return { x: side === 'left' ? edge + 2 : edge - 2, y };
+        }
+    }
+    return null;
+}
+
+async function dragDataZoomHandle(chartCanvas, handle, side) {
+    if (!handle) throw new Error(`Could not locate the ${side} hourly-chart scrollbar handle.`);
+    const rect = chartCanvas.getBoundingClientRect();
+    const endX = side === 'left' ? Math.max(0, Math.round(rect.left + 50)) : Math.round(rect.right - 45);
+    let startX = handle.x;
+    const y = handle.y;
+    // Anchor the pointer and verify the resize cursor before pressing. If the
+    // cursor is not a resize cursor, the chart would pan the whole selection.
+    let resizeLocked = false;
+    for (let attempt = 0; attempt < 5; attempt++) {
+        hoverChartPoint(chartCanvas, startX, y);
+        await wait(15);
+        if (isResizeCursor(getCursorStyle(chartCanvas))) {
+            resizeLocked = true;
+            break;
+        }
+    }
+    if (!resizeLocked) {
+        for (let step = 0; step < 8; step++) {
+            startX += 1;
+            hoverChartPoint(chartCanvas, startX, y);
+            await wait(15);
+            if (isResizeCursor(getCursorStyle(chartCanvas))) {
+                resizeLocked = true;
+                break;
+            }
+        }
+    }
+    if (!resizeLocked) return false;
+
+    dispatchDragPoint(chartCanvas, 'mousedown', startX, y, 1);
+    await wait(50);
+    const steps = 15;
+    for (let i = 1; i <= steps; i++) {
+        const x = startX + ((endX - startX) * i) / steps;
+        dispatchDragPoint(chartCanvas, 'mousemove', x, y, 1);
+        dispatchDragPoint(document, 'mousemove', x, y, 1);
+        dispatchDragPoint(window, 'mousemove', x, y, 1);
+        await wait(12);
+    }
+    dispatchDragPoint(chartCanvas, 'mouseup', endX, y, 0);
+    dispatchDragPoint(document, 'mouseup', endX, y, 0);
+    dispatchDragPoint(window, 'mouseup', endX, y, 0);
+    await wait(250);
+    return true;
+}
+
+async function sweepHourlyChartTemperature(chartCanvas, statusBox) {
+    chartCanvas.scrollIntoView({ behavior: 'auto', block: 'center' });
+    await wait(80);
+    const rect = chartCanvas.getBoundingClientRect();
+    const startX = Math.round(rect.left + 50);
+    const endX = Math.round(rect.right - 40);
+    const sweepY = Math.round(rect.top + rect.height * 0.25);
+    const recordsMap = new Map();
+    hoverChartPoint(chartCanvas, startX, sweepY);
+    await wait(40);
+    const totalSteps = Math.max(1, Math.floor((endX - startX) / 2));
+    for (let step = 0; step <= totalSteps; step++) {
+        const x = Math.min(endX, startX + step * 2);
+        hoverChartPoint(chartCanvas, x, sweepY);
+        const host = chartCanvas.closest('div[_echarts_instance_]') || chartCanvas.parentElement || document.body;
+        const tooltipNodes = new Set([
+            ...host.querySelectorAll('div[style*="z-index"]'),
+            ...document.body.querySelectorAll('div[style*="z-index"]')
+        ]);
+        for (const node of tooltipNodes) {
+            if (node.closest('#my-weather-extension-panel')) continue;
+            const style = window.getComputedStyle(node);
+            if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) === 0) continue;
+            for (const { dateTime, temp } of parseTooltipText(node.innerText || node.textContent || '')) {
+                recordsMap.set(dateTime, temp);
+            }
+        }
+        if (step % 12 === 0) {
+            if (statusBox) statusBox.innerText = `Reading hourly chart: ${Math.round(step / totalSteps * 100)}% (${recordsMap.size} points)`;
+        }
+        await wait(8);
+    }
+    chartCanvas.dispatchEvent(new MouseEvent('mouseleave', { bubbles: true }));
+    return recordsMap;
 }
 
 function getHourlyChartHost() {
@@ -925,23 +1185,21 @@ function getDataZoomCoveragePercent(chart) {
 }
 
 function forceDataZoomFullRange(chart) {
-    const option = chart.getOption?.();
-    const dataZoom = option?.dataZoom || [];
-    if (!dataZoom.length) return;
-
-    const patchedDataZoom = dataZoom.map(z => ({
-        ...z,
+    const dataZoom = chart.getOption?.()?.dataZoom || [];
+    if (!dataZoom.length) return false;
+    const patchedDataZoom = dataZoom.map(item => ({
+        ...item,
         start: 0,
         end: 100,
         startValue: null,
         endValue: null
     }));
-
     chart.setOption({ dataZoom: patchedDataZoom }, { replaceMerge: ['dataZoom'] });
     chart.dispatchAction({ type: 'dataZoom', start: 0, end: 100 });
-    for (let i = 0; i < patchedDataZoom.length; i++) {
-        chart.dispatchAction({ type: 'dataZoom', dataZoomIndex: i, start: 0, end: 100 });
-    }
+    patchedDataZoom.forEach((_, index) => {
+        chart.dispatchAction({ type: 'dataZoom', dataZoomIndex: index, start: 0, end: 100 });
+    });
+    return true;
 }
 
 async function zoomOutHourlyChartFully() {
@@ -955,97 +1213,44 @@ async function zoomOutHourlyChartFully() {
         throw new Error('Hourly chart canvas not found for zoom drag.');
     }
 
-    // First try API-level zoom reset.
+    // Match the subdomain flow: move the left handle to its limit, then the
+    // right handle, and verify that ECharts accepted the full range.
     const chart = getEchartsInstanceFromHost(host);
-    if (chart) {
-        for (let i = 0; i < 3; i++) {
+    let leftHandle = null;
+    for (let attempt = 0; attempt < 3 && !leftHandle; attempt++) {
+        leftHandle = await findDataZoomHandle(chartCanvas, 'left');
+        if (!leftHandle) await wait(300);
+    }
+    let leftDragOk = false;
+    if (leftHandle) leftDragOk = await dragDataZoomHandle(chartCanvas, leftHandle, 'left');
+
+    let rightHandle = null;
+    for (let attempt = 0; attempt < 3 && !rightHandle; attempt++) {
+        rightHandle = await findDataZoomHandle(chartCanvas, 'right', leftHandle?.y);
+        if (!rightHandle) await wait(300);
+    }
+    let rightDragOk = false;
+    if (rightHandle) {
+        rightDragOk = await dragDataZoomHandle(chartCanvas, rightHandle, 'right');
+    }
+
+    if (chart && (!leftDragOk || !rightDragOk || getDataZoomCoveragePercent(chart) < 99.5)) {
+        // If the first drag moved the selected window instead of resizing it,
+        // or could not lock onto a handle, recover through ECharts.
+        for (let attempt = 0; attempt < 3 && getDataZoomCoveragePercent(chart) < 99.5; attempt++) {
             forceDataZoomFullRange(chart);
-            await wait(100);
-            const coverage = getDataZoomCoveragePercent(chart);
-            if (coverage >= 99.5) break;
+            await wait(300);
         }
+        await wait(250);
     }
 
-    // Then enforce your manual method by dragging the right edge to max.
-    // We try several Y coordinates near chart bottom to hit the slider handle reliably.
-    const bottomOffsets = [12, 16, 20, 24, 28, 32, 36];
-    for (const offset of bottomOffsets) {
-        await dragZoomRightEdgeToMax(chartCanvas, offset);
-        await wait(90);
+    if (chart && getDataZoomCoveragePercent(chart) < 99.5) {
+        throw new Error('Hourly chart scrollbar did not reach its full range. Please try again.');
     }
-
-    // Final API nudge in case the page synchronizes zoom state after drag.
-    if (chart) {
-        forceDataZoomFullRange(chart);
-        await wait(120);
+    if (!chart && (!leftDragOk || !rightDragOk)) {
+        const missing = !leftDragOk ? 'left' : 'right';
+        throw new Error(`Could not safely drag the ${missing} hourly-chart scrollbar handle.`);
     }
-}
-
-async function dragZoomRightEdgeToMax(chartCanvas, bottomOffsetPx) {
-    const rect = chartCanvas.getBoundingClientRect();
-    const y = Math.max(rect.top + 1, rect.bottom - bottomOffsetPx);
-
-    // User-described default: right edge starts around 50% width.
-    const startX = rect.left + rect.width * 0.5;
-    const endX = rect.left + rect.width - 2;
-
-    dispatchPointerLikeMouseEvent(chartCanvas, 'mousemove', startX, y, 0);
-    await wait(10);
-    dispatchPointerLikeMouseEvent(chartCanvas, 'mousedown', startX, y, 1);
-    await wait(20);
-
-    // Drag in small steps so chart can track the handle movement.
-    const steps = 10;
-    for (let i = 1; i <= steps; i++) {
-        const x = startX + ((endX - startX) * i) / steps;
-        dispatchPointerLikeMouseEvent(window, 'mousemove', x, y, 1);
-        dispatchPointerLikeMouseEvent(document, 'mousemove', x, y, 1);
-        dispatchPointerLikeMouseEvent(chartCanvas, 'mousemove', x, y, 1);
-        await wait(8);
-    }
-
-    dispatchPointerLikeMouseEvent(window, 'mouseup', endX, y, 0);
-    dispatchPointerLikeMouseEvent(document, 'mouseup', endX, y, 0);
-    dispatchPointerLikeMouseEvent(chartCanvas, 'mouseup', endX, y, 0);
-}
-
-async function panZoomBar(chartCanvas, direction) {
-    const rect = chartCanvas.getBoundingClientRect();
-    const y = rect.bottom - 22;
-    const startX = rect.left + rect.width * 0.35;
-    const distance = rect.width * 0.38;
-    const endX = direction === 'right'
-        ? Math.min(rect.right - 3, startX + distance)
-        : Math.max(rect.left + 3, startX - distance);
-
-    dispatchPointerLikeMouseEvent(chartCanvas, 'mousemove', startX, y, 0);
-    await wait(10);
-    dispatchPointerLikeMouseEvent(chartCanvas, 'mousedown', startX, y, 1);
-    await wait(10);
-
-    const steps = 12;
-    for (let i = 1; i <= steps; i++) {
-        const x = startX + ((endX - startX) * i) / steps;
-        dispatchPointerLikeMouseEvent(window, 'mousemove', x, y, 1);
-        dispatchPointerLikeMouseEvent(document, 'mousemove', x, y, 1);
-        dispatchPointerLikeMouseEvent(chartCanvas, 'mousemove', x, y, 1);
-        await wait(7);
-    }
-
-    dispatchPointerLikeMouseEvent(window, 'mouseup', endX, y, 0);
-    dispatchPointerLikeMouseEvent(document, 'mouseup', endX, y, 0);
-    dispatchPointerLikeMouseEvent(chartCanvas, 'mouseup', endX, y, 0);
-}
-
-function dispatchPointerLikeMouseEvent(target, type, clientX, clientY, buttons) {
-    target.dispatchEvent(new MouseEvent(type, {
-        bubbles: true,
-        cancelable: true,
-        clientX,
-        clientY,
-        button: type === 'mousedown' ? 0 : 0,
-        buttons
-    }));
 }
 
 function getLatestDayEightPointAverage(recordsMap) {
