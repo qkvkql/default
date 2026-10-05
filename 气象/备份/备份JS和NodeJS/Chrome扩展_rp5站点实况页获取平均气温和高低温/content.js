@@ -12,17 +12,17 @@
     <style>
       *{box-sizing:border-box} .panel{width:360px;max-height:calc(100vh - 16px);overflow:auto;padding:14px;background:#fff;color:#172033;border:1px solid #1769aa;border-radius:10px;box-shadow:0 5px 24px #0003;font:14px/1.4 Arial,sans-serif}
       .head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;font-size:16px;font-weight:700;color:#07599a}.head-actions{display:flex;gap:3px;flex:none}.head button{width:28px;height:28px;border:0;border-radius:4px;background:none;font-size:20px;line-height:1;cursor:pointer;color:#667}.head button:hover{background:#edf4f9}
-      label{display:block;margin:8px 0 3px;font-weight:600}input,select{width:100%;height:34px;padding:5px 8px;border:1px solid #aab7c4;border-radius:4px;font:14px Arial,sans-serif;color:#172033;background:#fff}
+      label{display:block;margin:8px 0 3px;font-weight:600}input,select{width:100%;height:34px;padding:5px 8px;border:1px solid #aab7c4;border-radius:4px;font:14px Arial,sans-serif;color:#172033;background:#fff}#endTime{border:2px solid #c62828}
       .dates{display:flex;gap:8px}.dates>div{flex:1;min-width:0}button.run{width:100%;margin-top:12px;padding:9px;border:0;border-radius:5px;background:#0878bd;color:white;font-weight:700;font-size:14px;cursor:pointer}button:disabled{opacity:.6;cursor:wait}
-      button.copy{margin-top:8px;padding:6px 10px;border:1px solid #9ab1c5;border-radius:4px;background:#fff;color:#07599a;font-weight:600;cursor:pointer}.status{margin-top:10px;white-space:pre-line;color:#27374a}.result{margin-top:9px;padding:9px;background:#f0f7fc;border-radius:5px;font-size:15px;font-weight:600;white-space:pre-line}.result.error{background:#fff0ed;color:#9b2c1f}.points{max-height:220px;overflow:auto;margin:8px 0 0;padding:8px;background:#f7f8fa;border:1px solid #d9e0e7;border-radius:5px;font:12px/1.5 Consolas,monospace;white-space:pre;tab-size:4}.hint{margin-top:6px;color:#617286;font-size:12px}
+      button.copy{margin-top:8px;padding:6px 10px;border:1px solid #9ab1c5;border-radius:4px;background:#fff;color:#07599a;font-weight:600;cursor:pointer}.status{margin-top:10px;white-space:pre-line;color:#27374a}.result{margin-top:9px;padding:9px;background:#f0f7fc;border-radius:5px;font-size:15px;font-weight:600;white-space:pre-line}.result.error{background:#fff0ed;color:#9b2c1f}.result .avg-count.incomplete{color:#c62828}.points{max-height:220px;overflow:auto;margin:8px 0 0;padding:8px;background:#f7f8fa;border:1px solid #d9e0e7;border-radius:5px;font:12px/1.5 Consolas,monospace;white-space:pre;tab-size:4}.hint{margin-top:6px;color:#617286;font-size:12px}
       .panel.collapsed{width:max-content;max-width:calc(100vw - 16px);max-height:none;overflow:visible;padding:7px 10px}.panel.collapsed .head{margin:0}.panel.collapsed>:not(.head){display:none}
     </style>
     <section class="panel">
       <div class="head"><span>RP5 temperature stats · v1.0.5</span><span class="head-actions"><button class="collapse" title="Collapse panel" aria-label="Collapse panel" aria-expanded="true">−</button><button class="close" title="Close panel" aria-label="Close panel">×</button></span></div>
-      <label for="periodEnd">Period end date</label><input id="periodEnd" type="date">
-      <label for="endTime">Statistical end time</label><input id="endTime" type="time" value="20:00" step="3600">
+      <label for="periodEnd">Period end date</label><input id="periodEnd" type="text" inputmode="numeric" placeholder="YYYY-MM-DD" maxlength="10" pattern="\\d{4}-\\d{2}-\\d{2}" autocomplete="off">
       <label for="selection">Page selection period</label><select id="selection"><option value="7" selected>7 days</option><option value="30">30 days</option></select>
-      <div class="dates"><div><label for="startDate">Target start date</label><input id="startDate" type="date"></div><div><label for="targetEnd">Target end date</label><input id="targetEnd" type="date"></div></div>
+      <label for="endTime">Statistical end time (00–24)</label><input id="endTime" type="text" inputmode="numeric" value="20" placeholder="00–24" maxlength="2" pattern="\\d{2}" autocomplete="off">
+      <div class="dates"><div><label for="startDate">Target start date</label><input id="startDate" type="text" inputmode="numeric" placeholder="YYYY-MM-DD" maxlength="10" pattern="\\d{4}-\\d{2}-\\d{2}" autocomplete="off"></div><div><label for="targetEnd">Target end date</label><input id="targetEnd" type="text" inputmode="numeric" placeholder="YYYY-MM-DD" maxlength="10" pattern="\\d{4}-\\d{2}-\\d{2}" autocomplete="off"></div></div>
       <button class="run">Get min/max/avg</button>
       <div class="status" role="status">Open an RP5 weather archive page to calculate temperatures.</div>
       <div class="result" hidden></div><button class="copy" hidden>Copy detailed temperatures</button><pre class="points" hidden></pre><div class="hint">Date range includes both endpoints (maximum 30 days).</div>
@@ -45,6 +45,7 @@
 
   const existingJob = readJob();
   if (existingJob) {
+    if (/^\d{2}:00$/.test(existingJob.endTime)) existingJob.endTime = existingJob.endTime.slice(0, 2);
     populate(existingJob);
     if (existingJob.phase === 'waiting' && Number(existingJob.timeOrigin) !== performance.timeOrigin) {
       existingJob.phase = 'loaded';
@@ -110,8 +111,10 @@
   }
 
   function validate(job) {
-    if (!job.periodEnd || !job.startDate || !job.targetEnd) throw new Error('Fill in all three dates.');
-    if (!job.endTime || !/^\d{2}:\d{2}$/.test(job.endTime)) throw new Error('Enter a statistical end time.');
+    for (const [label, value] of [['Period end date', job.periodEnd], ['Target start date', job.startDate], ['Target end date', job.targetEnd]]) {
+      if (!isStrictDate(value)) throw new Error(`${label} must use YYYY-MM-DD and be a valid calendar date.`);
+    }
+    if (!/^\d{2}$/.test(job.endTime) || Number(job.endTime) > 24) throw new Error('Statistical end time must be two digits from 00 to 24.');
     if (job.targetEnd < job.startDate) throw new Error('Target end date must be on or after target start date.');
     const count = dayDiff(job.startDate, job.targetEnd) + 1;
     if (count > 30) throw new Error('The target range can contain at most 30 dates.');
@@ -151,7 +154,7 @@
     return [toPageDate(job.periodEnd), job.periodEnd].includes(dateInput.value.trim());
   }
 
-  function calculateWhenReady(job, freshDocument) {
+  async function calculateWhenReady(job, freshDocument) {
     const table = document.querySelector('#archiveTable');
     if (!table) {
       if (Date.now() - job.startedAt > 20000) { finishError('RP5 reloaded without an archive table. Reopen the hourly archive page and try again.'); return; }
@@ -167,13 +170,14 @@
         throw new Error('The refreshed table does not include the selected Period end date.');
       }
       const values = calculate(rows, job);
-      $('.result').textContent = `Min: ${format(values.min)} °C\nMax: ${format(values.max)} °C\nAvg: ${values.avg === null ? '—' : `${values.avg.toFixed(2)}(${values.count}/${values.required})`} °C`;
+      renderResult(values);
       $('.result').classList.remove('error');
       $('.result').hidden = false;
       $('.points').textContent = values.points.map((point) => `${point.date}\t${point.time}\t${point.temperature === null ? '—' : point.temperature}`).join('\n');
       $('.points').hidden = false;
       $('.copy').hidden = false;
-      setStatus(`Calculated ${job.startDate}${job.startDate === job.targetEnd ? '' : ` to ${job.targetEnd}`}.`);
+      const copied = await copySummary(values);
+      setStatus(`Calculated ${job.startDate}${job.startDate === job.targetEnd ? '' : ` to ${job.targetEnd}`}.${copied ? ' Min/max/avg copied to clipboard.' : ' Could not copy min/max/avg to clipboard.'}`);
       sessionStorage.removeItem(JOB_KEY);
       $('.run').disabled = false;
     } catch (error) { finishError(error.message); }
@@ -247,10 +251,10 @@
   }
 
   function calculate(rows, job) {
-    const [endHour, endMinute] = job.endTime.split(':').map(Number);
-    const start = new Date(`${job.startDate}T${String(endHour).padStart(2, '0')}:${String(endMinute).padStart(2, '0')}:00`);
+    const endHour = Number(job.endTime);
+    const start = dateAtHour(job.startDate, endHour);
     start.setDate(start.getDate() - 1);
-    const finish = new Date(`${job.targetEnd}T${String(endHour).padStart(2, '0')}:${String(endMinute).padStart(2, '0')}:00`);
+    const finish = dateAtHour(job.targetEnd, endHour);
     const hourlyRows = rows.filter((r) => r.date >= start && r.date <= finish);
     // Match the Python scraper: use hourly T for the full day, and use Tn/Tx
     // from the second half (midpoint through end). The starting 20:00 row is
@@ -266,7 +270,7 @@
     const pointDetails = [];
     const days = dayDiff(job.startDate, job.targetEnd) + 1;
     for (let day = 0; day < days; day++) {
-      const dayEnd = new Date(`${job.startDate}T${String(endHour).padStart(2, '0')}:${String(endMinute).padStart(2, '0')}:00`);
+      const dayEnd = dateAtHour(job.startDate, endHour);
       dayEnd.setDate(dayEnd.getDate() + day);
       for (let i = 7; i >= 0; i--) {
         const pointTime = new Date(dayEnd);
@@ -332,6 +336,26 @@
     }
   }
 
+  async function copySummary(values) {
+    const text = `${format(values.min)}\t${format(values.max)}\t${values.avg === null ? '—' : values.avg.toFixed(2)}`;
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+    } catch { /* Fall back to the extension's clipboardWrite permission. */ }
+    try {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.cssText = 'position:fixed;left:-9999px;top:0;';
+      shadow.appendChild(textarea);
+      textarea.select();
+      const copied = document.execCommand('copy');
+      textarea.remove();
+      return copied;
+    } catch { return false; }
+  }
+
   function parseDate(text, previousDate = null) {
     const clean = text.replace(/\u00a0/g, ' ').replace(/,/g, ' ').replace(/\s+/g, ' ').trim();
     const full = clean.match(/(\d{4})\s+([A-Za-z]+)\s+(\d{1,2})/);
@@ -358,9 +382,33 @@
     const end = new Date(`${b}T12:00:00`);
     return Math.round((end - start) / 86400000);
   }
+  function isStrictDate(value) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+    const [year, month, day] = value.split('-').map(Number);
+    const date = new Date(0);
+    date.setFullYear(year, month - 1, day);
+    date.setHours(0, 0, 0, 0);
+    return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
+  }
+  function dateAtHour(iso, hour) {
+    const [year, month, day] = iso.split('-').map(Number);
+    const date = new Date(0);
+    date.setFullYear(year, month - 1, day);
+    date.setHours(hour, 0, 0, 0);
+    return date;
+  }
   function dateKey(date) { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`; }
   function toPageDate(iso) { const [y, m, d] = iso.split('-'); return `${d}.${m}.${y}`; }
   function format(n) { return n === null ? '—' : `${n}`; }
+  function renderResult(values) {
+    const result = $('.result');
+    result.replaceChildren();
+    result.append(document.createTextNode(`Min: ${format(values.min)}\nMax: ${format(values.max)}\nAvg: ${values.avg === null ? '—' : values.avg.toFixed(2)} ( `));
+    const count = document.createElement('span');
+    count.className = `avg-count${values.count !== values.required ? ' incomplete' : ''}`;
+    count.textContent = `${values.count} / ${values.required}`;
+    result.append(count, document.createTextNode(' )'));
+  }
   function setStatus(message) { $('.status').textContent = message; }
   function saveJob(job) { sessionStorage.setItem(JOB_KEY, JSON.stringify(job)); }
   function readJob() { try { return JSON.parse(sessionStorage.getItem(JOB_KEY) || 'null'); } catch { return null; } }
