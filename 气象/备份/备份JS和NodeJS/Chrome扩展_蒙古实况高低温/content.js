@@ -1313,7 +1313,7 @@ function getLatestDayEightPointAverage(recordsMap) {
         values.push(v);
     }
 
-    const average = (values.reduce((s, n) => s + n, 0) / values.length).toFixed(2);
+    const average = formatAverageToTwoDecimals(values);
     return {
         ok: true,
         latestDateStr: `${pad2(latestDate.getMonth() + 1)}/${pad2(latestDate.getDate())}`,
@@ -1350,9 +1350,53 @@ function getDayEightPointAverage(recordsMap, targetDate) {
     }
     return {
         hasAll: true,
-        averageStr: (values.reduce((s, n) => s + n, 0) / values.length).toFixed(2),
+        averageStr: formatAverageToTwoDecimals(values),
         hoursSummary
     };
+}
+
+// Average decimal readings exactly, then round half away from zero to cents.
+// Converting each parsed number back to its shortest decimal string avoids
+// adding binary floating-point approximations such as -13.674999999999998.
+function formatAverageToTwoDecimals(values) {
+    if (!Array.isArray(values) || values.length === 0) return '';
+
+    const decimals = [];
+    let maxScale = 0;
+    for (const value of values) {
+        if (!Number.isFinite(value)) return '';
+
+        const match = String(value).toLowerCase().match(/^([+-]?)(\d+)(?:\.(\d*))?(?:e([+-]?\d+))?$/);
+        if (!match) return '';
+
+        const sign = match[1] === '-' ? -1n : 1n;
+        const fraction = match[3] || '';
+        const exponent = Number(match[4] || 0);
+        let coefficient = BigInt((match[2] + fraction).replace(/^0+(?=\d)/, '')) * sign;
+        let scale = fraction.length - exponent;
+
+        if (scale < 0) {
+            coefficient *= 10n ** BigInt(-scale);
+            scale = 0;
+        }
+        decimals.push({ coefficient, scale });
+        maxScale = Math.max(maxScale, scale);
+    }
+
+    const sum = decimals.reduce(
+        (total, decimal) => total + decimal.coefficient * (10n ** BigInt(maxScale - decimal.scale)),
+        0n
+    );
+    const denominator = BigInt(values.length) * (10n ** BigInt(maxScale));
+    const scaledNumerator = (sum < 0n ? -sum : sum) * 100n;
+    let roundedCents = scaledNumerator / denominator;
+    const remainder = scaledNumerator % denominator;
+    if (remainder * 2n >= denominator) roundedCents += 1n;
+
+    const whole = roundedCents / 100n;
+    const cents = String(roundedCents % 100n).padStart(2, '0');
+    const sign = sum < 0n && roundedCents !== 0n ? '-' : '';
+    return `${sign}${whole}.${cents}`;
 }
 
 function getThreeDayAverages(recordsMap) {
