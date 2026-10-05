@@ -111,10 +111,36 @@
       margin: 0.5rem 0 1rem;
       line-height: 1.4;
     }
-    .avg-line .e8 { color: #0f766e; }
-    .avg-line .e4 { color: #1d4ed8; }
+    .avg-line .e8, .avg-line .e4 { color: #000; }
     .avg-line .sep { color: #9ca3af; font-weight: 400; padding: 0 1rem; }
     .avg-line .na { color: #b45309; font-weight: 600; font-size: 1rem; }
+    .avg-line .copy-num { font-size: 1.35rem; }
+    .extrema-section { margin: 0.75rem 0 1rem; }
+    .extrema-section h2 { margin: 0 0 0.35rem; font-size: 1rem; }
+    .extrema-values { display: flex; flex-direction: column; gap: 0; }
+    .extrema-values .copy-num { font-size: 1.35rem; }
+    .extrema-max .copy-num { color: #6f1d1b; }
+    .extrema-min .copy-num { color: #f72585; }
+    .hourly-details { margin-top: 0.25rem; }
+    .hourly-details summary { cursor: pointer; color: #374151; }
+    .hourly-count-short { color: #b91c1c; font-weight: 700; }
+    .bulk-panel {
+      margin: 0 0 1rem;
+      padding: 0.75rem;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      background: #f9fafb;
+    }
+    .bulk-panel > summary { cursor: pointer; font-weight: 600; }
+    .bulk-panel table { margin-bottom: 0.5rem; }
+    .bulk-copy-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.5rem 0; }
+    button.btn-copy-bulk {
+      margin: 0;
+      background: #fff;
+      color: #1d4ed8;
+      border: 1px solid #2563eb;
+    }
+    button.btn-copy-bulk:hover { background: #eff6ff; }
     .copy-wrap { display: inline-flex; align-items: center; }
     .copy-num {
       user-select: all;
@@ -213,6 +239,12 @@
       Or use the <strong>Monthly averages</strong> block below with year and month only.
     </p>
     <form id="f">
+      <details id="bulkPanel" class="bulk-panel">
+        <summary>Bulk station averages</summary>
+        <p class="hint">Calculate both daily averages for the named stations in <code>bulk_stations.json</code>, using the date below.</p>
+        <button type="button" id="btnBulk">Calculate bulk averages</button>
+        <div id="bulkOut"></div>
+      </details>
       <div class="grid">
         <div class="station-wrap">
           <label for="station">Weather station number</label>
@@ -228,7 +260,16 @@
         </div>
         <div>
           <label for="date">Date</label>
-          <input id="date" name="date" type="date" required />
+          <input
+            id="date"
+            name="date"
+            type="text"
+            placeholder="YYYY-MM-DD"
+            pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}"
+            maxlength="10"
+            title="Enter a date in YYYY-MM-DD format"
+            required
+          />
         </div>
       </div>
       <div class="hint">Source page for your inputs: <code id="linkSample"></code></div>
@@ -269,6 +310,9 @@
     const btnMonthlyStandalone = $("btnMonthlyStandalone");
     const monthlyStandaloneOut = $("monthlyStandaloneOut");
     const stationDropdownEl = $("stationDropdown");
+    const btnBulk = $("btnBulk");
+    const bulkOut = $("bulkOut");
+    let bulkResultsForCopy = [];
 
     // ── Station search ──────────────────────────────────────────────────────
     let _stationsCache = null;   // null = not yet fetched
@@ -394,8 +438,81 @@
     }
 
     stationEl.addEventListener("input", sampleLink);
-    dateEl.addEventListener("change", sampleLink);
+    dateEl.addEventListener("input", sampleLink);
     sampleLink();
+
+    function bulkAverageLines(method) {
+      const okKey = method + "_ok";
+      const averageKey = method + "_average";
+      return bulkResultsForCopy.map((item) => {
+        if (item.error) return "error";
+        return item[okKey] ? String(item[averageKey]) : "unable";
+      });
+    }
+
+    bulkOut.addEventListener("click", async (event) => {
+      const button = event.target.closest(".btn-copy-bulk");
+      if (!button) return;
+      const method = button.dataset.method;
+      const previousText = button.textContent;
+      button.disabled = true;
+      try {
+        await navigator.clipboard.writeText(bulkAverageLines(method).join("\n"));
+        button.textContent = "Copied";
+      } catch (error) {
+        button.textContent = "Copy failed";
+      } finally {
+        setTimeout(() => {
+          button.textContent = previousText;
+          button.disabled = false;
+        }, 1500);
+      }
+    });
+
+    btnBulk.addEventListener("click", async () => {
+      if (!dateEl.reportValidity()) return;
+      btnBulk.disabled = true;
+      btnBulk.textContent = "Calculating…";
+      bulkResultsForCopy = [];
+      bulkOut.innerHTML = '<p class="hint">Calculating both averages for each station…</p>';
+      const qs = new URLSearchParams({ date: dateEl.value });
+      try {
+        const response = await fetch("/api/bulk-calculate?" + qs.toString());
+        const data = await response.json();
+        if (!response.ok) {
+          bulkOut.innerHTML = '<p class="err">' + esc(data.error || "Bulk calculation failed") + "</p>";
+          return;
+        }
+        bulkResultsForCopy = data.results || [];
+        let html = '<p class="hint">Date: ' + esc(data.date) + '</p>' +
+          '<div class="bulk-copy-actions"><button type="button" class="btn-copy-bulk" data-method="eight_point">Copy 8-point averages</button>' +
+          '<button type="button" class="btn-copy-bulk" data-method="four_point">Copy 4-point averages</button></div>' +
+          '<table><thead><tr><th>Station</th><th>8-point avg (°C)</th><th>4-point avg (°C)</th></tr></thead><tbody>';
+        for (const item of data.results || []) {
+          html += '<tr><td>' + esc(item.station_name || "Station") + ' (' + esc(item.station) + ')</td><td>';
+          html += item.error ? 'error' : item.eight_point_ok ? copyValueHtml(item.eight_point_average) : 'unable';
+          html += '</td><td>';
+          html += item.error ? 'error' : item.four_point_ok ? copyValueHtml(item.four_point_average) : 'unable';
+          html += '</td></tr>';
+          if (item.error) {
+            html += '<tr><td colspan="3" class="err">' + esc(item.error) + '</td></tr>';
+          }
+        }
+        html += '</tbody></table>';
+        try {
+          await navigator.clipboard.writeText(bulkAverageLines("eight_point").join("\n"));
+          html += '<p class="hint">8-point averages copied to clipboard, one per station.</p>';
+        } catch (clipboardError) {
+          html += '<p class="err">Could not copy averages to clipboard: ' + esc(String(clipboardError)) + '</p>';
+        }
+        bulkOut.innerHTML = html;
+      } catch (error) {
+        bulkOut.innerHTML = '<p class="err">' + esc(String(error)) + '</p>';
+      } finally {
+        btnBulk.disabled = false;
+        btnBulk.textContent = "Reload bulk averages";
+      }
+    });
 
     function fillMonthlyYearMonthSelects() {
       const now = new Date();
@@ -588,18 +705,32 @@
         html += data.four_point_ok
           ? copyValueHtml(data.four_point_average)
           : '<span class="na">unable</span>';
-        html += '</span></p><p class="hint">Unit: \u00b0C</p>';
+        html += '</span></p>';
+        const extremes = data.hourly_extremes || {};
+        html += '<section class="extrema-section"><h2>Hourly Extrema</h2><div class="avg-line extrema-values"><div>Max: ';
+        html += extremes.max
+          ? '<span class="extrema-max">' + copyValueHtml(extremes.max.temperature) + '</span> ( ' + esc(extremes.max.slot) + ' )'
+          : '<span class="na">unavailable</span>';
+        html += '</div><div>Min: ';
+        html += extremes.min
+          ? '<span class="extrema-min">' + copyValueHtml(extremes.min.temperature) + '</span> ( ' + esc(extremes.min.slot) + ' )'
+          : '<span class="na">unavailable</span>';
+        const hourlyPointCount = (data.hourly_points || []).length;
+        const hourlyCountClass = hourlyPointCount < 25 ? ' class="hourly-count-short"' : '';
+        html += '</div></div><details class="hourly-details"><summary>All available hourly points (<span' +
+          hourlyCountClass + '>' + hourlyPointCount +
+          '</span>)</summary>' + tableFromPoints(data.hourly_points || []) + '</details></section>';
 
-        html += '<h2 class="section-h">Daily 8-point hours</h2>';
+        html += '<h2 class="section-h">Relevant hours</h2>';
         if (data.ok) {
-          html += tableFromPoints(data.points);
+          html += tableFromPoints(data.relevant_hours || data.points);
         } else {
           html +=
             '<p class="empty">Daily 8-point cannot be computed — missing hour(s)</p><ul>';
           for (const m of data.missing) {
             html += "<li>" + esc(m) + "</li>";
           }
-          html += "</ul>" + tableFromPoints(data.points);
+          html += "</ul>" + tableFromPoints(data.relevant_hours || data.points);
         }
 
         if (!data.four_point_ok && (data.four_point_missing || []).length) {

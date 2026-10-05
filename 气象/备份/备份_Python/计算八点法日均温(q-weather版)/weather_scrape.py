@@ -263,6 +263,35 @@ def _evaluate_slots(merged: ObsMap, slots: list[tuple[str, int]]) -> dict[str, A
     }
 
 
+def _hourly_points(merged: ObsMap, target: date) -> list[dict[str, Any]]:
+    """Return available hourly records from previous-day 20:00 to target 20:00."""
+    start = datetime.combine(target - timedelta(days=1), datetime.min.time()).replace(hour=20)
+    end = datetime.combine(target, datetime.min.time()).replace(hour=20)
+    records = []
+    for (day_s, hour), temperature in merged.items():
+        observed_at = datetime.strptime(day_s, "%Y-%m-%d").replace(hour=hour)
+        if start <= observed_at <= end:
+            records.append((observed_at, temperature))
+    records.sort(key=lambda item: item[0])
+    return [
+        {
+            "slot": slot_label(observed_at.date().isoformat(), observed_at.hour),
+            "temperature": temperature,
+        }
+        for observed_at, temperature in records
+    ]
+
+
+def _hourly_extremes(points: list[dict[str, Any]]) -> dict[str, Any]:
+    """Return the minimum and maximum among available hourly point records."""
+    if not points:
+        return {"min": None, "max": None, "used_count": 0}
+
+    low = min(points, key=lambda point: point["temperature"])
+    high = max(points, key=lambda point: point["temperature"])
+    return {"min": low, "max": high, "used_count": len(points)}
+
+
 def compute_eight_point_average(
     station: str,
     target: date,
@@ -299,6 +328,9 @@ def compute_eight_point_average(
 
     eight = _evaluate_slots(merged, eight_slots)
     four = _evaluate_slots(merged, four_slots)
+    relevant_slots = [(prev.isoformat(), 20), *eight_slots]
+    relevant_hours = _evaluate_slots(merged, relevant_slots)
+    hourly_points = _hourly_points(merged, target)
     return {
         "ok": eight["ok"],
         "average": eight["average"],
@@ -308,6 +340,9 @@ def compute_eight_point_average(
         "four_point_average": four["average"],
         "four_point_points": four["points"],
         "four_point_missing": four["missing"],
+        "relevant_hours": relevant_hours["points"],
+        "hourly_extremes": _hourly_extremes(hourly_points),
+        "hourly_points": hourly_points,
         "station": station,
         "station_name": station_name,
         "date": target.isoformat(),
