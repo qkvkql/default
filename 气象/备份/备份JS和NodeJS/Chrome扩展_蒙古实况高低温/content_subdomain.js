@@ -1616,7 +1616,7 @@ async function handleGetDailyAverage(evt, stationNameOverride = '') {
             .slice()
             .sort((a, b) => a.dt - b.dt);
         lastHourlyDataLines = sortedEntries.map(e =>
-            `${pad2(e.dt.getMonth() + 1)}/${pad2(e.dt.getDate())} ${pad2(e.dt.getHours())}:00\t${e.temp} °C`
+            `${pad2(e.dt.getMonth() + 1)}/${pad2(e.dt.getDate())} ${pad2(e.dt.getHours())}:00\t${e.temp}`
         );
 
         // Cache retrieved records for instant subsequent calculations
