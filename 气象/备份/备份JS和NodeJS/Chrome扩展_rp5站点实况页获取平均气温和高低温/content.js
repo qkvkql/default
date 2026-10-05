@@ -287,7 +287,7 @@
     return {
       min: extrema.length ? Math.min(...extrema) : null,
       max: extrema.length ? Math.max(...extrema) : null,
-      avg: points.length ? points.reduce((a, b) => a + b, 0) / points.length : null,
+      avg: points.length ? formatAverage(points) : null,
       count: points.length,
       required: days * 8,
       points: pointDetails
@@ -315,6 +315,19 @@
     return null;
   }
 
+  function formatAverage(values) {
+    // RP5 temperatures are reported to tenths of a degree. Sum those tenths
+    // as integers, then round the exact rational mean to hundredths (ties away
+    // from zero) so binary floating-point cannot change the displayed result.
+    const sumTenths = values.reduce((sum, value) => sum + Math.round(value * 10), 0);
+    const numerator = Math.abs(sumTenths) * 10;
+    const count = values.length;
+    let hundredths = Math.floor(numerator / count);
+    if ((numerator % count) * 2 >= count) hundredths += 1;
+    const sign = sumTenths < 0 ? '-' : '';
+    return `${sign}${Math.floor(hundredths / 100)}.${String(hundredths % 100).padStart(2, '0')}`;
+  }
+
   async function copyPointDetails() {
     const text = $('.points').textContent;
     try {
@@ -337,7 +350,7 @@
   }
 
   async function copySummary(values) {
-    const text = `${format(values.min)}\t${format(values.max)}\t${values.avg === null ? '—' : values.avg.toFixed(2)}`;
+    const text = `${format(values.min)}\t${format(values.max)}\t${values.avg === null ? '—' : values.avg}`;
     try {
       if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(text);
@@ -403,7 +416,7 @@
   function renderResult(values) {
     const result = $('.result');
     result.replaceChildren();
-    result.append(document.createTextNode(`Min: ${format(values.min)}\nMax: ${format(values.max)}\nAvg: ${values.avg === null ? '—' : values.avg.toFixed(2)} ( `));
+    result.append(document.createTextNode(`Min: ${format(values.min)}\nMax: ${format(values.max)}\nAvg: ${values.avg === null ? '—' : values.avg} ( `));
     const count = document.createElement('span');
     count.className = `avg-count${values.count !== values.required ? ' incomplete' : ''}`;
     count.textContent = `${values.count} / ${values.required}`;
