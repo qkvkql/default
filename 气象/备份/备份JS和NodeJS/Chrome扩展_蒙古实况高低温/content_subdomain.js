@@ -273,11 +273,11 @@ function parseTooltipText(tooltipText) {
         const line = lines[i];
         const lower = line.toLowerCase();
 
-        // Must relate to air temperature, but exclude soil or felt temperature
-        if (!lower.includes('температур')) continue;
-        if (lower.includes('хөрсний') || lower.includes('мэдрэгдэх')) continue;
+        // Only accept the air-temperature series. Never infer a temperature
+        // from a nearby value belonging to wind speed, precipitation, etc.
+        const labelMatch = line.match(/температур/i);
+        if (!labelMatch || lower.includes('хөрсний') || lower.includes('мэдрэгдэх')) continue;
 
-        // Look for date in previous lines (or current / next lines)
         let dateTime = null;
         for (let j = i; j >= 0; j--) {
             const m = lines[j].match(dateRegex);
@@ -286,79 +286,30 @@ function parseTooltipText(tooltipText) {
                 break;
             }
         }
-        if (!dateTime) {
-            for (let j = i + 1; j <= Math.min(lines.length - 1, i + 3); j++) {
-                const m = lines[j].match(dateRegex);
-                if (m) {
-                    dateTime = `${pad2(m[2])}/${pad2(m[3])} ${pad2(m[4])}:${m[5]}`;
-                    break;
-                }
-            }
-        }
         if (!dateTime) continue;
 
-        let tempValue = null;
-        // 1. Check if number is on the same line after 'температур'
-        const idx = lower.indexOf('температур');
-        let after = line.slice(idx + 'температур'.length);
-        // Avoid matching '2m' / '2м' sensor height specification
-        after = after.replace(/\b2\s*[мm]\b/gi, '');
+        // ECharts may render a row as "Температур: 12", "Температур 12 °C",
+        // or as a label line followed by a separate value line. In the last
+        // form, inspect exactly the next line and require it to contain only
+        // a temperature scalar (or an empty marker such as "-").
+        let after = line.slice(labelMatch.index + labelMatch[0].length)
+            .replace(/^\s*2\s*[мm](?=\s|[:：=]|$)/i, '')
+            .trim();
+        let valueText = after;
+        if (!valueText && i + 1 < lines.length && !dateRegex.test(lines[i + 1]) && !/температур|салхины|тунадас/i.test(lines[i + 1])) {
+            valueText = lines[i + 1].trim();
+        }
+        valueText = valueText.replace(/^\s*[:：=]\s*/, '').trim();
 
-        // If colon present, check after colon first
-        const colonIdx = after.indexOf(':');
-        if (colonIdx >= 0) {
-            const mColon = after.slice(colonIdx + 1).match(/-?\d+(?:\.\d+)?/);
-            if (mColon) tempValue = Number(mColon[0]);
-        }
-        // If not found yet, check with °C
-        if (tempValue === null) {
-            const mDeg = after.match(/(-?\d+(?:\.\d+)?)\s*°?C/i);
-            if (mDeg) tempValue = Number(mDeg[1]);
-        }
-        // Fallback for same line
-        if (tempValue === null) {
-            const mSame = after.match(/-?\d+(?:\.\d+)?/);
-            if (mSame) tempValue = Number(mSame[0]);
-        }
+        // A missing-value marker is not a reading. Anchor the match so values
+        // embedded in another label or unit (for example wind speed "34")
+        // cannot be mistaken for temperature.
+        if (!valueText || /^[-–—]$/.test(valueText)) continue;
+        const valueMatch = valueText.match(/^(-?\d+(?:\.\d+)?)\s*(?:°\s*[cс])?$/i);
+        if (!valueMatch) continue;
 
-        // 2. If not on the same line, check next 1-3 lines
-        if (tempValue === null) {
-            for (let k = i + 1; k <= i + 3 && k < lines.length; k++) {
-                const kLower = lines[k].toLowerCase();
-                if (kLower.includes('салхины') || kLower.includes('тунадас') || dateRegex.test(lines[k])) {
-                    // series boundary
-                }
-                const mNext = lines[k].match(/-?\d+(?:\.\d+)?/);
-                if (mNext) {
-                    tempValue = Number(mNext[0]);
-                    break;
-                }
-            }
-        }
-
-        if (typeof tempValue === 'number' && !Number.isNaN(tempValue)) {
-            output.push({ dateTime, temp: tempValue });
-        }
-    }
-
-    // Fallback: if no line had 'температур' explicitly, look for date + °C
-    if (output.length === 0) {
-        for (let i = 0; i < lines.length; i++) {
-            const m = lines[i].match(dateRegex);
-            if (m) {
-                const dt = `${pad2(m[2])}/${pad2(m[3])} ${pad2(m[4])}:${m[5]}`;
-                for (let k = i + 1; k <= Math.min(lines.length - 1, i + 3); k++) {
-                    const mTemp = lines[k].match(/(-?\d+(?:\.\d+)?)\s*(?:°C|C)?/);
-                    if (mTemp && (lines[k].includes('°C') || !lines[k].includes('m/s'))) {
-                        const val = Number(mTemp[1]);
-                        if (!Number.isNaN(val)) {
-                            output.push({ dateTime: dt, temp: val });
-                            break;
-                        }
-                    }
-                }
-            }
-        }
+        const tempValue = Number(valueMatch[1]);
+        if (Number.isFinite(tempValue)) output.push({ dateTime, temp: tempValue });
     }
 
     return output;

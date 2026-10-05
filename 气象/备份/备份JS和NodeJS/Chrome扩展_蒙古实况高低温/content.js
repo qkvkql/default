@@ -904,7 +904,9 @@ function parseMMDDHH(dateTimeStr) {
 }
 
 function parseTooltipText(tooltipText) {
+    if (!tooltipText) return [];
     const lines = tooltipText
+        .replace(/[\u2212\u2013\u2014]/g, '-')
         .split('\n')
         .map(s => s.trim())
         .filter(Boolean);
@@ -913,7 +915,12 @@ function parseTooltipText(tooltipText) {
     const output = [];
 
     for (let i = 0; i < lines.length; i++) {
-        if (!lines[i].includes('Температур')) continue;
+        const line = lines[i];
+        const labelMatch = line.match(/температур/i);
+        const lower = line.toLowerCase();
+        // Only read the air-temperature series, excluding soil and apparent
+        // temperature labels. Nearby values may belong to wind or precipitation.
+        if (!labelMatch || lower.includes('хөрсний') || lower.includes('мэдрэгдэх')) continue;
 
         let dateTime = null;
         for (let j = i; j >= 0; j--) {
@@ -924,17 +931,22 @@ function parseTooltipText(tooltipText) {
         }
         if (!dateTime) continue;
 
-        let tempValue = null;
-        for (let k = i + 1; k <= i + 3 && k < lines.length; k++) {
-            const numeric = lines[k].match(/-?\d+(?:\.\d+)?/);
-            if (numeric) {
-                tempValue = Number(numeric[0]);
-                break;
-            }
+        // Accept a value on the temperature row, or on the immediately
+        // following standalone value line. Never scan across other series.
+        let valueText = line.slice(labelMatch.index + labelMatch[0].length)
+            .replace(/^\s*2\s*[мm](?=\s|[:：=]|$)/i, '')
+            .trim();
+        if (!valueText && i + 1 < lines.length && !dateRegex.test(lines[i + 1]) &&
+            !/температур|салхины|тунадас/i.test(lines[i + 1])) {
+            valueText = lines[i + 1].trim();
         }
-        if (typeof tempValue === 'number' && !Number.isNaN(tempValue)) {
-            output.push({ dateTime, temp: tempValue });
-        }
+        valueText = valueText.replace(/^\s*[:：=]\s*/, '').trim();
+        if (!valueText || /^[-–—]$/.test(valueText)) continue;
+
+        const valueMatch = valueText.match(/^(-?\d+(?:\.\d+)?)\s*(?:°\s*[cс])?$/i);
+        if (!valueMatch) continue;
+        const tempValue = Number(valueMatch[1]);
+        if (Number.isFinite(tempValue)) output.push({ dateTime, temp: tempValue });
     }
 
     return output;
