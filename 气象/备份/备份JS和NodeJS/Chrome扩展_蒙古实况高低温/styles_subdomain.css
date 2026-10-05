@@ -105,6 +105,16 @@
     margin-bottom: 10px;
 }
 
+.btn-row-split-simple {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-row-split-simple > button {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
 .btn-avg-simple {
     width: 100%;
     border: none;

@@ -8,6 +8,7 @@ let lastHourlyDataLines = [];      // Cache last collected hourly data lines
 const stationHourlyCache = new Map(); // normalized station name -> its hourly chart data
 const mapStationValidityByName = new Map(); // normalized station name -> validity badges shown this page
 const mapStationSystemMinMaxByName = new Map(); // normalized station name -> copied system min/max for this page
+let mapStationListInitialized = false;
 
 // Wait 1 second after load to inject the panel
 setTimeout(() => {
@@ -17,6 +18,7 @@ setTimeout(() => {
 function initSimplifiedExtension() {
     const panel = document.createElement('div');
     panel.id = 'my-weather-extension-panel-simple';
+    panel.classList.add('collapsed');
 
     // --- Header (always visible, clickable to collapse) ---
     const header = document.createElement('div');
@@ -30,14 +32,21 @@ function initSimplifiedExtension() {
     collapseBtn.className = 'panel-collapse-btn';
     collapseBtn.title = 'Collapse / Expand';
     collapseBtn.innerText = '▲';
+    collapseBtn.setAttribute('aria-expanded', 'false');
 
     header.appendChild(title);
     header.appendChild(collapseBtn);
     panel.appendChild(header);
 
-    // Toggle collapse when header or button is clicked
+    // Load map stations only the first time the panel is expanded.
     header.addEventListener('click', () => {
-        panel.classList.toggle('collapsed');
+        const collapsed = panel.classList.toggle('collapsed');
+        collapseBtn.setAttribute('aria-expanded', String(!collapsed));
+        if (!collapsed && !mapStationListInitialized) {
+            mapStationListInitialized = true;
+            getStationHourlyState(getSelectedStationName());
+            initializeMapStationList();
+        }
     });
 
     // --- Body (collapsible) ---
@@ -60,9 +69,9 @@ function initSimplifiedExtension() {
     forcedDateRow.appendChild(forcedDateInput);
     body.appendChild(forcedDateRow);
 
-    // --- Button Row (Get Avg) ---
+    // --- Button Row (Get Avg and Copy Hourly Data) ---
     const btnRow = document.createElement('div');
-    btnRow.className = 'btn-row-simple';
+    btnRow.className = 'btn-row-simple btn-row-split-simple';
 
     const avgBtn = document.createElement('button');
     avgBtn.id = 'my-btn-get-avg-simple';
@@ -70,18 +79,13 @@ function initSimplifiedExtension() {
     avgBtn.className = 'btn-avg-simple';
     avgBtn.addEventListener('click', handleGetDailyAverage);
     btnRow.appendChild(avgBtn);
-    body.appendChild(btnRow);
-
-    // --- Button Row (Copy Hourly Data) ---
-    const copyRow = document.createElement('div');
-    copyRow.className = 'btn-row-simple';
     const copyHourlyBtn = document.createElement('button');
     copyHourlyBtn.id = 'my-btn-copy-hourly-simple';
     copyHourlyBtn.innerText = 'Copy Hourly Data';
     copyHourlyBtn.className = 'btn-copy-hourly-simple';
     copyHourlyBtn.addEventListener('click', handleCopyHourlyData);
-    copyRow.appendChild(copyHourlyBtn);
-    body.appendChild(copyRow);
+    btnRow.appendChild(copyHourlyBtn);
+    body.appendChild(btnRow);
 
     // --- Result Box ---
     const resultBox = document.createElement('div');
@@ -98,7 +102,7 @@ function initSimplifiedExtension() {
     mapBtnRow.className = 'btn-row-simple';
     const mapBtn = document.createElement('button');
     mapBtn.id = 'my-btn-get-map-data-simple';
-    mapBtn.innerText = 'Get Map Data';
+    mapBtn.innerText = 'Get All System Min/Max';
     mapBtn.className = 'btn-map-data-simple';
     mapBtn.addEventListener('click', handleGetMapData);
     mapBtnRow.appendChild(mapBtn);
@@ -117,9 +121,6 @@ function initSimplifiedExtension() {
     panel.appendChild(body);
     document.body.appendChild(panel);
 
-    // Seed the per-station cache from the station already selected on page load.
-    getStationHourlyState(getSelectedStationName());
-    initializeMapStationList();
 }
 
 // =====================================================================
@@ -1817,7 +1818,7 @@ async function handleGetMapData() {
         }
 
         cachedMapStationData = data;
-        displayMapStationData(mapBox, data, false);
+        displayMapStationData(mapBox, data, false, true);
 
         // Flash button green
         if (btn) {
@@ -1890,7 +1891,7 @@ async function selectMapTemperatureOption(kind) {
     await wait(1500);
 }
 
-function displayMapStationData(box, data, isCached) {
+function displayMapStationData(box, data, isCached, sortStations = false) {
     box.replaceChildren();
     const heading = document.createElement('div');
     heading.className = 'map-result-heading-simple';
@@ -1911,13 +1912,13 @@ function displayMapStationData(box, data, isCached) {
     sortButton.addEventListener('click', event => {
         event.stopPropagation();
         mapStationSortDirection = mapStationSortDirection === 'asc' ? 'desc' : 'asc';
-        displayMapStationData(box, cachedMapStationData || data, Boolean(box.dataset.mapStationsCached));
+        displayMapStationData(box, cachedMapStationData || data, Boolean(box.dataset.mapStationsCached), true);
     });
     box.appendChild(heading);
     heading.appendChild(sortButton);
 
     box.dataset.mapStationsCached = String(Boolean(isCached));
-    for (const st of sortMapStations(data)) {
+    for (const st of (sortStations ? sortMapStations(data) : data)) {
         const row = document.createElement('div');
         row.className = 'map-result-row-simple';
 
@@ -1940,6 +1941,7 @@ function displayMapStationData(box, data, isCached) {
                 st.min = cachedMinMax.min;
                 st.max = cachedMinMax.max;
                 updateMapStationRow(row, st);
+                updateMapStationSortButton(box, cachedMapStationData || []);
             } else if (st.min === '' || st.max === '') {
                 if (isMapCollectionInProgress) return;
                 isMapCollectionInProgress = true;
@@ -1954,7 +1956,7 @@ function displayMapStationData(box, data, isCached) {
                     }
                     mapStationSystemMinMaxByName.set(stationKey, { min: st.min, max: st.max });
                     updateMapStationRow(row, st);
-                    displayMapStationData(box, cachedMapStationData || [], Boolean(box.dataset.mapStationsCached));
+                    updateMapStationSortButton(box, cachedMapStationData || []);
                 } catch (e) {
                     if (originalValue !== getActiveMapTemperatureKind()) {
                         await selectMapTemperatureOption(originalValue).catch(() => {});
@@ -2031,6 +2033,17 @@ function displayMapStationData(box, data, isCached) {
         row.appendChild(detailsRow);
         box.appendChild(row);
     }
+}
+
+function updateMapStationSortButton(box, data) {
+    const sortButton = box.querySelector('.map-station-sort-simple');
+    if (!sortButton) return;
+    const hasSystemMinValues = data.some(st => parseSystemMinimum(st.min) !== null);
+    sortButton.disabled = !hasSystemMinValues;
+    sortButton.title = hasSystemMinValues
+        ? `Sort by system minimum temperature (${mapStationSortDirection === 'asc' ? 'ascending' : 'descending'}); empty values stay at the bottom`
+        : 'Load map data to sort by system minimum temperature';
+    sortButton.setAttribute('aria-label', sortButton.title);
 }
 
 function sortMapStations(data) {
