@@ -26,7 +26,7 @@ git commit -m "some comments"
 git push origin master
 
 *
-从本地git仓库德最近一次push恢复文件(无需联网)
+从本地git仓库的最近一次push恢复文件(无需联网)
 git restore "目标文件名及后缀"
 
 *

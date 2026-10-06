@@ -1,6 +1,7 @@
 (() => {
   const ROOT_ID = 'rp5-stat-temp-extension';
   const JOB_KEY = 'rp5StatTempJob';
+  const MAX_FOR_COMPARE = 10;
   if (document.getElementById(ROOT_ID)) return;
 
   const host = document.createElement('div');
@@ -256,16 +257,49 @@
     start.setDate(start.getDate() - 1);
     const finish = dateAtHour(job.targetEnd, endHour);
     const hourlyRows = rows.filter((r) => r.date >= start && r.date <= finish);
-    // Match the Python scraper: use hourly T for the full day, and use Tn/Tx
-    // from the second half (midpoint through end). The starting 20:00 row is
-    // the previous statistical date's ending report and must not roll forward.
-    const midpoint = new Date(start);
-    midpoint.setHours(midpoint.getHours() + 12);
-    const extremaRows = rows.filter((r) => r.date >= midpoint && r.date <= finish);
-    const extrema = [
-      ...hourlyRows.map((r) => r.t),
-      ...extremaRows.flatMap((r) => [r.tn, r.tx])
-    ].filter((v) => v !== null);
+    // Match the Python scraper's plausibility check for each statistical day:
+    // compare reported Tn/Tx with hourly T extrema in the same day window.
+    // The starting end-time row belongs to the previous statistical day.
+    let min = null;
+    let max = null;
+    let minIsSuspicious = false;
+    let maxIsSuspicious = false;
+    for (let day = 0; day < dayDiff(job.startDate, job.targetEnd) + 1; day++) {
+      const dayEnd = dateAtHour(job.startDate, endHour);
+      dayEnd.setDate(dayEnd.getDate() + day);
+      const dayStart = new Date(dayEnd);
+      dayStart.setDate(dayStart.getDate() - 1);
+      const midpoint = new Date(dayStart);
+      midpoint.setHours(midpoint.getHours() + 12);
+
+      const dayHourly = rows
+        .filter((r) => r.date >= dayStart && r.date <= dayEnd)
+        .map((r) => r.t)
+        .filter((v) => v !== null);
+      const dayReported = rows.filter((r) => r.date >= midpoint && r.date <= dayEnd);
+      const reportedMins = dayReported.map((r) => r.tn).filter((v) => v !== null);
+      const reportedMaxes = dayReported.map((r) => r.tx).filter((v) => v !== null);
+      const dayValues = [...dayHourly, ...reportedMins, ...reportedMaxes];
+
+      if (dayValues.length) {
+        const reportedMin = reportedMins.length ? Math.min(...reportedMins) : null;
+        const reportedMax = reportedMaxes.length ? Math.max(...reportedMaxes) : null;
+        if (reportedMin !== null && dayHourly.length && Math.abs(reportedMin - Math.min(...dayHourly)) >= MAX_FOR_COMPARE) {
+          minIsSuspicious = true;
+        } else {
+          const dayMin = Math.min(...dayValues);
+          min = min === null ? dayMin : Math.min(min, dayMin);
+        }
+        if (reportedMax !== null && dayHourly.length && Math.abs(reportedMax - Math.max(...dayHourly)) >= MAX_FOR_COMPARE) {
+          maxIsSuspicious = true;
+        } else {
+          const dayMax = Math.max(...dayValues);
+          max = max === null ? dayMax : Math.max(max, dayMax);
+        }
+      }
+    }
+    if (minIsSuspicious) min = '';
+    if (maxIsSuspicious) max = '';
     const points = [];
     const pointDetails = [];
     const days = dayDiff(job.startDate, job.targetEnd) + 1;
@@ -285,8 +319,8 @@
       }
     }
     return {
-      min: extrema.length ? Math.min(...extrema) : null,
-      max: extrema.length ? Math.max(...extrema) : null,
+      min,
+      max,
       avg: points.length ? formatAverage(points) : null,
       count: points.length,
       required: days * 8,
