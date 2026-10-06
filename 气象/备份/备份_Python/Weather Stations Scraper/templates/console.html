@@ -29,7 +29,7 @@
             <section class="single-station-tool" aria-labelledby="single-station-title">
                 <h2 id="single-station-title">Single Station Average</h2>
                 <label for="average-date">Target date</label>
-                <input id="average-date" type="date" value="{{ target_date }}">
+                <input id="average-date" type="text" inputmode="numeric" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxlength="10" placeholder="YYYY-MM-DD" value="{{ target_date }}" title="Enter the date as YYYY-MM-DD">
                 <label for="average-source">Data source</label>
                 <select id="average-source">
                     <option value="rp5" selected>rp5</option>

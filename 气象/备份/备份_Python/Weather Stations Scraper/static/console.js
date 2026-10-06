@@ -45,8 +45,12 @@ async function calculateStationAverage() {
     const stationLabel = document.getElementById('average-station-input').value.trim();
     const selectedStation = consoleStations.find(item => `${item.name} (${item.id})` === stationLabel);
     const station = selectedStation?.id;
-    if (!date || !station) {
-        log('System: Select a date and station first.', 'system');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        log('System: Enter the target date as YYYY-MM-DD.', 'system');
+        return;
+    }
+    if (!station) {
+        log('System: Select a station first.', 'system');
         return;
     }
     button.disabled = true;

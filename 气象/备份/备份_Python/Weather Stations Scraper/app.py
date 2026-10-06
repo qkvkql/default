@@ -3,6 +3,7 @@ import subprocess
 import signal
 import sys
 import json
+import re
 from datetime import datetime, timezone
 from flask import Flask, render_template, Response, request, send_from_directory, jsonify
 
@@ -65,6 +66,8 @@ def calculate_average():
         return jsonify({'error': 'Choose rp5 or ogimet as the data source.'}), 400
     if not station_id:
         return jsonify({'error': 'Choose a station.'}), 400
+    if not re.fullmatch(r'\d{4}-\d{2}-\d{2}', target_date):
+        return jsonify({'error': 'Enter a valid date in YYYY-MM-DD format.'}), 400
     try:
         datetime.strptime(target_date, '%Y-%m-%d')
     except ValueError:
