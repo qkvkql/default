@@ -1,0 +1,9 @@
+{
+    "avgPageBaseUrl": "http://localhost:1004/",
+    "special stations": [
+        {
+            "station name": "长白山天池",
+            "station id": "54287"
+        }
+    ]
+}

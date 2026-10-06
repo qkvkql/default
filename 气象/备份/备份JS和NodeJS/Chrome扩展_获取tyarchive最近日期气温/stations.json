@@ -49,7 +49,7 @@
   },
   {
     "USAF": "50136",
-    "cn_name": "漠河",
+    "cn_name": "西林吉镇",
     "domes_id": "",
     "level1": "黑龙江"
   },
@@ -360,7 +360,7 @@
     "level1": "青海"
   },
   {
-    "USAF": "54517",
+    "USAF": "54527",
     "cn_name": "天津",
     "domes_id": "",
     "level1": "天津市"
@@ -427,7 +427,7 @@
   },
   {
     "USAF": "",
-    "cn_name": "黑石北湖北",
+    "cn_name": "黑石北湖(北)",
     "domes_id": "Y9590",
     "level1": "新疆"
   },
@@ -505,13 +505,13 @@
   },
   {
     "USAF": "",
-    "cn_name": "五台山北台",
+    "cn_name": "五台山(北台)",
     "domes_id": "B5737",
     "level1": "山西"
   },
   {
     "USAF": "53589",
-    "cn_name": "五台山中台",
+    "cn_name": "五台山(中台)",
     "domes_id": "",
     "level1": "山西"
   },
@@ -529,7 +529,7 @@
   },
   {
     "USAF": "50341",
-    "cn_name": "白山景区下",
+    "cn_name": "白山景区(下)",
     "domes_id": "",
     "level1": "黑龙江"
   },
@@ -553,7 +553,7 @@
   },
   {
     "USAF": "",
-    "cn_name": "三道海子",
+    "cn_name": "花海子",
     "domes_id": "Y6708",
     "level1": "新疆"
   },
@@ -589,7 +589,7 @@
   },
   {
     "USAF": "50344",
-    "cn_name": "白山景区上",
+    "cn_name": "白山景区(上)",
     "domes_id": "",
     "level1": "黑龙江"
   },
@@ -601,19 +601,19 @@
   },
   {
     "USAF": "",
-    "cn_name": "松岭古源",
+    "cn_name": "(松岭)古源",
     "domes_id": "H2516",
     "level1": "黑龙江"
   },
   {
     "USAF": "",
-    "cn_name": "塔河马林",
+    "cn_name": "马林",
     "domes_id": "H2597",
     "level1": "黑龙江"
   },
   {
     "USAF": "",
-    "cn_name": "新林大乌苏",
+    "cn_name": "大乌苏",
     "domes_id": "H2523",
     "level1": "黑龙江"
   },
@@ -631,7 +631,7 @@
   },
   {
     "USAF": "50962",
-    "cn_name": "哈尔滨木兰",
+    "cn_name": "木兰",
     "domes_id": "",
     "level1": "黑龙江"
   },
@@ -643,7 +643,7 @@
   },
   {
     "USAF": "",
-    "cn_name": "嫩江尖山农场",
+    "cn_name": "(嫩江)尖山农场",
     "domes_id": "",
     "level1": "黑龙江"
   },
@@ -673,7 +673,7 @@
   },
   {
     "USAF": "",
-    "cn_name": "张家界天门山",
+    "cn_name": "天门山",
     "domes_id": "P1823",
     "level1": "湖南"
   },
@@ -685,7 +685,7 @@
   },
   {
     "USAF": "",
-    "cn_name": "靖宇板石林场",
+    "cn_name": "(靖宇)板石林场",
     "domes_id": "E9490",
     "level1": "吉林省"
   },
@@ -709,7 +709,7 @@
   },
   {
     "USAF": "",
-    "cn_name": "陈旗那吉",
+    "cn_name": "那吉",
     "domes_id": "C0130",
     "level1": "内蒙古"
   },
@@ -727,37 +727,37 @@
   },
   {
     "USAF": "",
-    "cn_name": "乌玛零公里",
+    "cn_name": "乌玛(零公里)",
     "domes_id": "C0197",
     "level1": "内蒙古"
   },
   {
     "USAF": "",
-    "cn_name": "额尔古纳苏沁",
+    "cn_name": "苏沁",
     "domes_id": "C0114",
     "level1": "内蒙古"
   },
   {
     "USAF": "",
-    "cn_name": "苏沁团结队",
+    "cn_name": "(苏沁)团结队",
     "domes_id": "C0322",
     "level1": "内蒙古"
   },
   {
     "USAF": "",
-    "cn_name": "苏沁机耕队",
+    "cn_name": "(苏沁)机耕队",
     "domes_id": "C0118",
     "level1": "内蒙古"
   },
   {
     "USAF": "",
-    "cn_name": "三河回族乡",
+    "cn_name": "(三河)回族乡",
     "domes_id": "C0113",
     "level1": "内蒙古"
   },
   {
     "USAF": "",
-    "cn_name": "三河马场五队",
+    "cn_name": "(三河)马场五队",
     "domes_id": "",
     "level1": "内蒙古"
   },
@@ -769,7 +769,7 @@
   },
   {
     "USAF": "",
-    "cn_name": "苏沁建设队",
+    "cn_name": "(苏沁)建设队",
     "domes_id": "C0291",
     "level1": "内蒙古"
   },
@@ -787,7 +787,7 @@
   },
   {
     "USAF": "",
-    "cn_name": "苏沁红旗队",
+    "cn_name": "(苏沁)红旗队",
     "domes_id": "C0117",
     "level1": "内蒙古"
   },
@@ -865,7 +865,7 @@
   },
   {
     "USAF": "",
-    "cn_name": "根河敖乡",
+    "cn_name": "敖乡",
     "domes_id": "C0189",
     "level1": "内蒙古"
   },
@@ -966,6 +966,12 @@
     "level1": "内蒙古"
   },
   {
+    "USAF": "54208",
+    "cn_name": "多伦",
+    "domes_id": "",
+    "level1": "内蒙古"
+  },
+  {
     "USAF": "52633",
     "cn_name": "托勒",
     "domes_id": "",
@@ -990,10 +996,34 @@
     "level1": "青海"
   },
   {
+    "USAF": "56033",
+    "cn_name": "玛多",
+    "domes_id": "",
+    "level1": "青海"
+  },
+  {
+    "USAF": "54301",
+    "cn_name": "沽源",
+    "domes_id": "",
+    "level1": "河北"
+  },
+  {
     "USAF": "",
-    "cn_name": "右玉吴家窑",
+    "cn_name": "(右玉)吴家窑",
     "domes_id": "B5276",
     "level1": "山西"
+  },
+  {
+    "USAF": "53487",
+    "cn_name": "大同",
+    "domes_id": "",
+    "level1": "山西"
+  },
+  {
+    "USAF": "53646",
+    "cn_name": "榆林",
+    "domes_id": "",
+    "level1": "陕西"
   },
   {
     "USAF": "56038",
@@ -1009,8 +1039,26 @@
   },
   {
     "USAF": "",
-    "cn_name": "革吉亚热却藏",
+    "cn_name": "(革吉)亚热却藏",
     "domes_id": "U7073",
+    "level1": "西藏"
+  },
+  {
+    "USAF": "",
+    "cn_name": "象泉河源头",
+    "domes_id": "U7031",
+    "level1": "西藏"
+  },
+  {
+    "USAF": "",
+    "cn_name": "(普兰)马攸木",
+    "domes_id": "U7801",
+    "level1": "西藏"
+  },
+  {
+    "USAF": "",
+    "cn_name": "(普兰)马攸",
+    "domes_id": "U7014",
     "level1": "西藏"
   },
   {
@@ -1028,6 +1076,12 @@
   {
     "USAF": "55026",
     "cn_name": "松西",
+    "domes_id": "",
+    "level1": "西藏"
+  },
+  {
+    "USAF": "55664",
+    "cn_name": "定日",
     "domes_id": "",
     "level1": "西藏"
   },

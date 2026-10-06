@@ -200,6 +200,25 @@
       border-color: #34d399;
       color: #a7f3d0;
     }
+    #extrema-toggle-row { margin-top: 7px; }
+    #hourly-extrema-toggle {
+      width: 100%;
+      padding: 7px 10px;
+      border-radius: 8px;
+      border: 1px solid #475569;
+      background: rgba(51,65,85,0.4);
+      color: #94a3b8;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s, color 0.2s;
+      font-family: inherit;
+    }
+    #hourly-extrema-toggle.active {
+      background: rgba(16,185,129,0.18);
+      border-color: #10b981;
+      color: #6ee7b7;
+    }
 
     /* ── Table container ── */
     #table-wrap {
@@ -245,6 +264,15 @@
       color: #e2e8f0;
       line-height: 1.4;
     }
+    .hourly-extrema {
+      margin-top: 5px;
+      color: #fbbf24;
+      font-size: 11px;
+      line-height: 1.35;
+      font-variant-numeric: tabular-nums;
+    }
+    .hourly-extrema-line { display: block; }
+    .hourly-extrema-alert { color: #f87171; font-weight: 700; }
     .station-ids {
       display: flex;
       gap: 6px;
@@ -601,6 +629,9 @@
           <input id="target-date-input" type="text" placeholder="MM-DD" autocomplete="off" />
           <button id="fetch-avg-toggle" title="开启后额外从均温辅助页获取日均温（可能等待最长 30 秒）">获取均温<br>关</button>
         </div>
+        <div id="extrema-toggle-row">
+          <button id="hourly-extrema-toggle" class="active" aria-pressed="true">仅针对特殊站做极值检查</button>
+        </div>
       </div>
       <div id="toast"></div>
     </div>
@@ -616,6 +647,7 @@
   const toast = shadow.getElementById('toast');
   const targetDateInput = shadow.getElementById('target-date-input');
   const fetchAvgToggle = shadow.getElementById('fetch-avg-toggle');
+  const hourlyExtremaToggle = shadow.getElementById('hourly-extrema-toggle');
 
   // ── Avg-fetch toggle state (default OFF) ─────────────────────────────────
   let fetchAvgEnabled = false;
@@ -624,6 +656,21 @@
     fetchAvgToggle.classList.toggle('active', fetchAvgEnabled);
     fetchAvgToggle.innerHTML = fetchAvgEnabled ? '获取均温<br>开' : '获取均温<br>关';
   });
+
+  let specialStationsOnly = true;
+  hourlyExtremaToggle.addEventListener('click', () => {
+    specialStationsOnly = !specialStationsOnly;
+    hourlyExtremaToggle.classList.toggle('active', specialStationsOnly);
+    hourlyExtremaToggle.setAttribute('aria-pressed', String(specialStationsOnly));
+  });
+
+  let specialStations = [];
+  const specialStationsReady = fetch(chrome.runtime.getURL('settings.json'))
+    .then(response => response.ok ? response.json() : Promise.reject(new Error('settings.json unavailable')))
+    .then(settings => {
+      specialStations = Array.isArray(settings['special stations']) ? settings['special stations'] : [];
+    })
+    .catch(error => console.warn('[Tyarchive] Unable to load special station settings:', error.message));
 
   // ── Set default target date to today in MM-DD format ────────────────────────
   (() => {
@@ -1405,10 +1452,24 @@
     // ── If basic station and has data, fetch the daily mean temperature ────────
     // Only fetch avg when the toggle is explicitly enabled (default OFF).
     let avg = '';
+    let hourlyMax = '';
+    let hourlyMin = '';
+    let hourlyPointCount = '';
+    let showHourlyExtrema = false;
     if (isBasicStation && hasData && currentBtn && fetchAvgEnabled) {
+      await specialStationsReady;
       const usafRaw = currentBtn.getAttribute('data-usaf') || '';
+      const domesRaw = currentBtn.getAttribute('data-domesid') || '';
+      const stationName = currentBtn.getAttribute('data-name') || '';
       // Station number: pad to 5 digits
       const stationNum = usafRaw.padStart(5, '0');
+      const isSpecialStation = specialStations.some(item => {
+        const configuredId = String(item?.['station id'] || '').trim();
+        const configuredName = String(item?.['station name'] || '').trim();
+        return (configuredId && [usafRaw, domesRaw, stationNum].includes(configuredId)) ||
+          (configuredName && configuredName === stationName);
+      });
+      showHourlyExtrema = !specialStationsOnly || isSpecialStation;
       // Build full YYYY-MM-DD date from the MM-DD input and current year
       const now = new Date();
       const yyyy = String(now.getFullYear());
@@ -1425,7 +1486,7 @@
       try {
         const avgResp = await new Promise((resolve, reject) => {
           chrome.runtime.sendMessage(
-            { action: 'fetchAvgTemp', station: stationNum, date: fullDate },
+            { action: 'fetchAvgTemp', station: stationNum, date: fullDate, includeExtrema: showHourlyExtrema },
             (resp) => {
               if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message));
               resolve(resp);
@@ -1435,6 +1496,11 @@
 
         if (avgResp && avgResp.ok) {
           avg = avgResp.avg || '';
+          if (showHourlyExtrema) {
+            hourlyMax = avgResp.hourlyMax || '';
+            hourlyMin = avgResp.hourlyMin || '';
+            hourlyPointCount = avgResp.hourlyPointCount || '';
+          }
           console.log(`[Tyarchive] Avg temp received: "${avg}"`);
         } else {
           console.warn('[Tyarchive] fetchAvgTemp failed:', avgResp?.error);
@@ -1456,8 +1522,9 @@
     }
 
     // ── Build final clip text ────────────────────────────────────────────────
-    // Include avg (with leading tab) only when the toggle is ON.
-    clipText = fetchAvgEnabled ? `${min}\t${max}\t${avg}` : `${min}\t${max}`;
+    // Include avg only when this selection actually used the auxiliary lookup.
+    const fetchedAvg = isBasicStation && hasData && !!currentBtn && fetchAvgEnabled;
+    clipText = fetchedAvg ? `${min}\t${max}\t${avg}` : `${min}\t${max}`;
     console.log(`[Tyarchive] Copying to clipboard: "${clipText}"`);
 
     // ── Robust clipboard write ─────────────────────────────────────────────────
@@ -1523,17 +1590,36 @@
     // ── Success: show toast with enlarged date ────────────────────────────────
     const minLabel = min || '—';
     const maxLabel = max || '—';
-    const avgLabel = avg || (isBasicStation ? '—' : '');
-    const avgPart = isBasicStation ? ` / avg ${avgLabel}` : '';
-    showToast(`✓ <span class="toast-date">${date}</span>  min ${minLabel} / max ${maxLabel}${avgPart}`, 'success');
+    const avgLabel = fetchedAvg ? (avg || '—') : undefined;
+    const avgPart = fetchedAvg ? ` / avg ${avgLabel}` : '';
+    const hourlyPart = showHourlyExtrema
+      ? `<br>24小时整点最低: ${formatHourlyValue(hourlyMin, isTemperature(hourlyMin) && isTemperature(min) && Number(hourlyMin) < Number(min))}` +
+        `<br>24小时整点最高: ${formatHourlyValue(hourlyMax, isTemperature(hourlyMax) && isTemperature(max) && Number(hourlyMax) > Number(max))}` +
+        `<br>有记录整点总数：${formatHourlyValue(hourlyPointCount, hourlyPointCount !== '' && Number(hourlyPointCount) < 25)}`
+      : '';
+    showToast(`✓ <span class="toast-date">${date}</span>  min ${minLabel} / max ${maxLabel}${avgPart}${hourlyPart}`, 'success');
 
     // ── Persist result so re-renders (search bar) keep the button state ────
     if (currentBtn && currentBtn.isConnected) {
       const stationKey = `${currentBtn.getAttribute('data-usaf') ?? ''}|${currentBtn.getAttribute('data-domesid') ?? ''}`;
-      resultMap.set(stationKey, { clipText, minLabel, maxLabel, avgLabel });
+      resultMap.set(stationKey, {
+        clipText, minLabel, maxLabel, avgLabel, hourlyMin, hourlyMax, hourlyPointCount,
+        showHourlyExtrema
+      });
+
+      const btn = currentBtn;
+      const detailsCell = btn.closest('tr')?.querySelector('td:first-child');
+      if (detailsCell && showHourlyExtrema) {
+        let extrema = detailsCell.querySelector('.hourly-extrema');
+        if (!extrema) {
+          extrema = document.createElement('div');
+          extrema.className = 'hourly-extrema';
+          detailsCell.appendChild(extrema);
+        }
+        extrema.innerHTML = buildHourlyExtremaHtml(min, max, hourlyMin, hourlyMax, hourlyPointCount);
+      }
 
       // Transform the button in-place immediately
-      const btn = currentBtn;
       btn.classList.remove('btn-select', 'btn-copied', 'no-data');
       btn.classList.add('btn-result');
       btn.disabled = false;
@@ -1541,7 +1627,7 @@
       btn.removeAttribute('data-usaf');
       btn.removeAttribute('data-name');
       btn.setAttribute('data-result', clipText);
-      btn.textContent = isBasicStation
+      btn.textContent = fetchedAvg
         ? `${minLabel}\t${maxLabel}\t${avgLabel}`
         : `${minLabel}\t${maxLabel}`;
     }
@@ -1601,6 +1687,9 @@
 
 
       const tr = document.createElement('tr');
+      const hourlyExtremaHtml = savedResult?.showHourlyExtrema
+        ? `<div class="hourly-extrema">${buildHourlyExtremaHtml(savedResult.minLabel, savedResult.maxLabel, savedResult.hourlyMin, savedResult.hourlyMax, savedResult.hourlyPointCount)}</div>`
+        : '';
       tr.innerHTML = `
         <td>
           <div class="station-name">${province} &middot; ${name}${manualBadge}</div>
@@ -1618,6 +1707,7 @@
               自动站
             </label>
           </div>
+          ${hourlyExtremaHtml}
         </td>
         <td>${actionBtnHtml}</td>
       `;
@@ -1630,6 +1720,30 @@
     // (delegated listener is attached once below, outside renderTable)
 
     statusBar.textContent = `${stations.length} stations`;
+  }
+
+  function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, char => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[char]);
+  }
+
+  function isTemperature(value) {
+    return value !== '' && value !== null && value !== undefined && Number.isFinite(Number(value));
+  }
+
+  function formatHourlyValue(value, alert) {
+    const text = escapeHtml(value || '—');
+    return alert ? `<span class="hourly-extrema-alert">${text}</span>` : text;
+  }
+
+  function buildHourlyExtremaHtml(dailyMin, dailyMax, hourlyMin, hourlyMax, hourlyPointCount) {
+    const minAlert = isTemperature(hourlyMin) && isTemperature(dailyMin) && Number(hourlyMin) < Number(dailyMin);
+    const maxAlert = isTemperature(hourlyMax) && isTemperature(dailyMax) && Number(hourlyMax) > Number(dailyMax);
+    const countAlert = hourlyPointCount !== '' && Number.isFinite(Number(hourlyPointCount)) && Number(hourlyPointCount) < 25;
+    return `<span class="hourly-extrema-line">24小时整点最低: ${formatHourlyValue(hourlyMin, minAlert)}</span>` +
+      `<span class="hourly-extrema-line">24小时整点最高: ${formatHourlyValue(hourlyMax, maxAlert)}</span>` +
+      `<span class="hourly-extrema-line">有记录整点总数：${formatHourlyValue(hourlyPointCount, countAlert)}</span>`;
   }
 
   // ── Shared helper: re-render respecting current search query ────────────────

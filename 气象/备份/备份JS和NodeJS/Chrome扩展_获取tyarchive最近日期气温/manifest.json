@@ -13,7 +13,7 @@
   ],
   "host_permissions": [
     "*://119.29.229.118/*",
-    "http://localhost:1004/*"
+    "http://localhost/*"
   ],
   "content_scripts": [
     {
@@ -27,7 +27,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["popup.html", "popup.js", "styles.css", "stations.json", "xlsx.full.min.js"],
+      "resources": ["popup.html", "popup.js", "styles.css", "stations.json", "settings.json", "xlsx.full.min.js"],
       "matches": ["<all_urls>"]
     }
   ],

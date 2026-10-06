@@ -248,25 +248,33 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
 
-  // ── fetchAvgTemp: open localhost:1004, poll DOM until avg value ready ──────
-  // Opens a new tab to http://localhost:1004/?station=<5-digit>&date=<YYYY-MM-DD>,
+  // ── fetchAvgTemp: open the configured average page and poll its result ─────
+  // Opens a new tab to the URL configured in settings.json, with station/date,
   // waits for the page to load, then polls the first
   // <code class="copy-num" title="Click to copy"> element every 1.5 s until it
   // has a stable (non-transient) value, or 30 s have elapsed.
-  // Returns { ok: true, avg: <string> } or { ok: false, error }.
-  // If the page returns "unable", avg is "" (data missing for that date).
+  // Returns { ok: true, avg, hourlyMax, hourlyMin, hourlyPointCount } or { ok: false, error }.
+  // If the page returns "unable", the values are empty (data missing for that date).
   if (request.action === 'fetchAvgTemp') {
     const { station, date } = request;
+    const includeExtrema = request.includeExtrema === true;
     if (!station || !date) {
       sendResponse({ ok: false, error: 'Missing station or date' });
       return false;
     }
 
-    const url = `http://localhost:1004/?station=${station}&date=${date}`;
-
     (async () => {
       let newTab;
       try {
+        const settingsUrl = chrome.runtime.getURL('settings.json');
+        const settingsResponse = await fetch(settingsUrl);
+        if (!settingsResponse.ok) throw new Error('Unable to load settings.json');
+        const settings = await settingsResponse.json();
+        const baseUrl = new URL(settings.avgPageBaseUrl || 'http://localhost:1004/');
+        baseUrl.searchParams.set('station', station);
+        baseUrl.searchParams.set('date', date);
+        const url = baseUrl.toString();
+
         // 1. Open the helper page in a background tab (not focused)
         newTab = await chrome.tabs.create({ url, active: false });
         const tabId = newTab.id;
@@ -301,7 +309,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         const TRANSIENT = new Set(['', 'calculating', 'loading', '…', '--', '...']);
 
 
-        let rawAvg  = null;
+        let pageData = null;
+        let lastPageData = null;
         let elapsed = 0;
 
         while (elapsed < POLL_TIMEOUT_MS) {
@@ -312,18 +321,22 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           try {
             results = await chrome.scripting.executeScript({
               target: { tabId },
-              func: () => {
+              args: [includeExtrema],
+              func: (includeExtrema) => {
                 // Primary target: the copy-num code element
-                const el = document.querySelector('code.copy-num[title="Click to copy"]');
-                if (el) return el.textContent.trim();
+                const avgEl = document.querySelector('code.copy-num[title="Click to copy"]');
+                const avg = avgEl?.textContent.trim() || '';
+                const hourlyMax = includeExtrema ? (document.querySelector('.extrema-max code.copy-num')?.textContent.trim() || '') : '';
+                const hourlyMin = includeExtrema ? (document.querySelector('.extrema-min code.copy-num')?.textContent.trim() || '') : '';
+                const hourlyPointCount = includeExtrema
+                  ? (document.querySelector('summary .hourly-count-short, .hourly-count-short')?.textContent.trim() || '')
+                  : '';
                 // Fallback: if the page shows "unable" in the surrounding container
                 // before populating code.copy-num, detect it early so we don't
                 // keep polling unnecessarily for the full 30 s.
                 const container = document.querySelector('span.e8');
-                if (container && container.textContent.toLowerCase().includes('unable')) {
-                  return 'unable';
-                }
-                return null;
+                const unable = !!container && container.textContent.toLowerCase().includes('unable');
+                return { avg, hourlyMax, hourlyMin, hourlyPointCount, unable };
               }
             });
           } catch (scriptErr) {
@@ -333,24 +346,36 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           }
 
           const val = results && results[0] && results[0].result;
+          if (val) lastPageData = val;
 
-          // Accept the value only when the element exists AND has a non-transient string
-          if (val !== null && val !== undefined && !TRANSIENT.has(val.toLowerCase())) {
-            rawAvg = val;
-            console.log(`[Tyarchive BG] fetchAvgTemp: got "${rawAvg}" after ${elapsed} ms`);
+          // Wait for the average and both extrema, unless the page reports no data.
+          const isReady = value => value && !TRANSIENT.has(value.toLowerCase());
+          const extremaReady = !includeExtrema ||
+            (isReady(val?.hourlyMax) && isReady(val?.hourlyMin) && isReady(val?.hourlyPointCount));
+          if (val?.unable || (isReady(val?.avg) && extremaReady)) {
+            pageData = val;
+            console.log(`[Tyarchive BG] fetchAvgTemp: got page values after ${elapsed} ms`, pageData);
             break;
           }
 
           console.log(`[Tyarchive BG] fetchAvgTemp: polling (${elapsed} ms) — value=${JSON.stringify(val)}`);
         }
 
-        if (!rawAvg) {
-          console.warn(`[Tyarchive BG] fetchAvgTemp: timed out after ${elapsed} ms, no value found`);
+        if (!pageData) {
+          pageData = lastPageData;
+          console.warn(`[Tyarchive BG] fetchAvgTemp: timed out after ${elapsed} ms; returning available values`, pageData);
         }
 
         // "unable" → page has no mean temp for that date → return empty string
-        const avg = (!rawAvg || rawAvg.toLowerCase() === 'unable') ? '' : rawAvg;
-        sendResponse({ ok: true, avg });
+        const noData = !pageData || pageData.unable;
+        const usable = value => value && !TRANSIENT.has(value.toLowerCase()) ? value : '';
+        sendResponse({
+          ok: true,
+          avg: noData ? '' : usable(pageData.avg),
+          hourlyMax: noData ? '' : usable(pageData.hourlyMax),
+          hourlyMin: noData ? '' : usable(pageData.hourlyMin),
+          hourlyPointCount: noData ? '' : usable(pageData.hourlyPointCount)
+        });
 
       } catch (err) {
         console.error('[Tyarchive BG] fetchAvgTemp error:', err);
