@@ -24,6 +24,11 @@
   init();
 
   function init() {
+    if (isNmcHomePage()) {
+      setupHomePageTemperatureView();
+      return;
+    }
+
     createPanel();
     window.addEventListener(RESPONSE_EVENT, onChartData);
     setupMessageListener();
@@ -44,6 +49,74 @@
       buttonEl.disabled = true;
       autoOpenHour24Chart();
     }
+  }
+
+  function isNmcHomePage() {
+    return location.hostname === "www.nmc.cn" && location.pathname === "/";
+  }
+
+  function setupHomePageTemperatureView() {
+    let running = false;
+
+    const run = () => {
+      if (running) {
+        return;
+      }
+      running = true;
+      selectHomePageMinimumTemperature();
+    };
+
+    if (document.readyState === "complete") {
+      run();
+    } else {
+      window.addEventListener("load", run, { once: true });
+    }
+
+    window.addEventListener("pageshow", (event) => {
+      if (event.persisted) {
+        running = false;
+        run();
+      }
+    });
+  }
+
+  async function selectHomePageMinimumTemperature() {
+    const select = await waitForElement(() => {
+      const candidates = Array.from(document.querySelectorAll("select"));
+      return candidates.find((candidate) =>
+        Array.from(candidate.options).some((option) => option.value === "24h" || option.textContent.trim() === "24小时")
+      );
+    }, 15000);
+
+    if (!select) {
+      return;
+    }
+
+    const option = Array.from(select.options).find((candidate) =>
+      candidate.value === "24h" || candidate.textContent.trim() === "24小时"
+    );
+    if (!option) {
+      return;
+    }
+
+    select.focus();
+    select.click();
+    select.value = option.value;
+    select.dispatchEvent(new Event("input", { bubbles: true }));
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+
+    const minimumTemperature = await waitForElement(() => {
+      const item = document.querySelector('#content_type [data-id="lt_qw"]');
+      return item && item.textContent.includes("最低气温") ? item : null;
+    }, 10000);
+
+    if (!minimumTemperature) {
+      return;
+    }
+
+    minimumTemperature.dispatchEvent(new MouseEvent("mouseover", { bubbles: true, view: window }));
+    minimumTemperature.dispatchEvent(new MouseEvent("mouseenter", { bubbles: false, view: window }));
+    minimumTemperature.click();
   }
 
   function isStationForecastPage() {
