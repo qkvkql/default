@@ -2,6 +2,8 @@
   const ROOT_ID = 'rp5-stat-temp-extension';
   const JOB_KEY = 'rp5StatTempJob';
   const MAX_FOR_COMPARE = 10;
+  const MIN_VALID_TEMP = -100;
+  const MAX_VALID_TEMP = 70;
   if (document.getElementById(ROOT_ID)) return;
 
   const host = document.createElement('div');
@@ -219,7 +221,7 @@
     }
     if (!result.length) throw new Error('No hourly observations were found in #archiveTable.');
     if (!result.some((row) => row.t !== null || row.tn !== null || row.tx !== null)) {
-      throw new Error('Hourly rows were found, but no numeric T, Tn, or Tx values could be read from the archive table.');
+      throw new Error('Hourly rows were found, but no valid T, Tn, or Tx values could be read from the archive table.');
     }
     return result;
   }
@@ -253,13 +255,16 @@
 
   function calculate(rows, job) {
     const endHour = Number(job.endTime);
+    const isSingleTargetDate = job.startDate === job.targetEnd;
     const start = dateAtHour(job.startDate, endHour);
     start.setDate(start.getDate() - 1);
     const finish = dateAtHour(job.targetEnd, endHour);
     const hourlyRows = rows.filter((r) => r.date >= start && r.date <= finish);
-    // Match the Python scraper's plausibility check for each statistical day:
-    // compare reported Tn/Tx with hourly T extrema in the same day window.
-    // The starting end-time row belongs to the previous statistical day.
+    // For a single target date, compare reported Tn/Tx with hourly T extrema
+    // in the statistical day window. For multi-date ranges, reported extrema
+    // are included without this plausibility check because it can reject valid
+    // min/max values across the requested range. The starting end-time row
+    // belongs to the previous statistical day.
     let min = null;
     let max = null;
     let minIsSuspicious = false;
@@ -284,13 +289,13 @@
       if (dayValues.length) {
         const reportedMin = reportedMins.length ? Math.min(...reportedMins) : null;
         const reportedMax = reportedMaxes.length ? Math.max(...reportedMaxes) : null;
-        if (reportedMin !== null && dayHourly.length && Math.abs(reportedMin - Math.min(...dayHourly)) >= MAX_FOR_COMPARE) {
+        if (isSingleTargetDate && reportedMin !== null && dayHourly.length && Math.abs(reportedMin - Math.min(...dayHourly)) >= MAX_FOR_COMPARE) {
           minIsSuspicious = true;
         } else {
           const dayMin = Math.min(...dayValues);
           min = min === null ? dayMin : Math.min(min, dayMin);
         }
-        if (reportedMax !== null && dayHourly.length && Math.abs(reportedMax - Math.max(...dayHourly)) >= MAX_FOR_COMPARE) {
+        if (isSingleTargetDate && reportedMax !== null && dayHourly.length && Math.abs(reportedMax - Math.max(...dayHourly)) >= MAX_FOR_COMPARE) {
           maxIsSuspicious = true;
         } else {
           const dayMax = Math.max(...dayValues);
@@ -344,7 +349,9 @@
       const match = candidate.replace(/\u2212/g, '-').match(/[-+]?\d+(?:[.,]\d+)?/);
       if (!match) continue;
       const n = Number(match[0].replace(',', '.'));
-      if (Number.isFinite(n)) return n;
+      if (Number.isFinite(n)) {
+        return n > MIN_VALID_TEMP && n < MAX_VALID_TEMP ? n : null;
+      }
     }
     return null;
   }
