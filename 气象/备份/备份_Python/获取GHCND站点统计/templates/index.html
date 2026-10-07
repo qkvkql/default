@@ -98,11 +98,19 @@
 
             <div class="param-row">
                 <label>{{ t('params.data_source') }}</label>
-                <select id="dataSource" style="width: auto; max-width: 120px;">
+                <select id="dataSource" style="width: auto; max-width: 160px;">
                     <option value="GHCND" selected>GHCND</option>
                     <option value="GSOD">GSOD</option>
+                    <option value="xlsx">{{ t('params.read_xlsx') }}</option>
                 </select>
                 <!-- Note removed from here -->
+            </div>
+
+            <div class="param-row" id="xlsxUploadRow" style="display:none;">
+                <label for="xlsxFileInput">{{ t('params.xlsx_file') }}</label>
+                <input type="file" id="xlsxFileInput" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+                <button type="button" id="xlsxUploadButton" onclick="uploadXlsxFile()">{{ t('params.upload_xlsx') }}</button>
+                <span id="xlsxUploadStatus" role="status" aria-live="polite"></span>
             </div>
 
             <div class="param-row">
@@ -825,6 +833,11 @@
         // Pass translation to JavaScript
         const STATION_INFO_TITLE = "{{ t('params.current_selected_station') }}";
         const TIMER_LABEL_JS = "{{ t('tables.timer') }}";
+        const XLSX_UPLOAD_SELECT_FILE = "{{ t('params.xlsx_select_file') }}";
+        const XLSX_UPLOAD_READING = "{{ t('params.xlsx_reading') }}";
+        const XLSX_UPLOAD_FAILED = "{{ t('params.xlsx_upload_failed') }}";
+        const XLSX_STATION_COUNT = "{{ t('params.xlsx_stations') }}";
+        const XLSX_DAILY_ROWS = "{{ t('params.xlsx_daily_rows') }}";
     </script>
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>

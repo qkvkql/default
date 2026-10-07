@@ -17,6 +17,7 @@ from flask_wtf.csrf import CSRFProtect, generate_csrf
 import json
 import re
 import calendar
+import uuid
 import shapely
 from shapely.geometry import Polygon, Point
 from shapely.ops import unary_union
@@ -36,6 +37,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(instance_path,
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-change-this-key')
 app.config['WTF_CSRF_SECRET_KEY'] = os.getenv('WTF_CSRF_SECRET_KEY', app.config['SECRET_KEY'])
+app.config['MAX_CONTENT_LENGTH'] = 32 * 1024 * 1024
 
 db = SQLAlchemy(app)
 csrf = CSRFProtect(app)
@@ -177,6 +179,8 @@ GHCND_FILE = 'ghcnd-stations.txt'
 GSOD_FILE = 'isd-history.txt'
 GHCND_DF = None
 GSOD_DF = None
+XLSX_DATASETS = {}
+XLSX_STATION_INFO = {}
 
 def load_ghcnd_stations():
     global GHCND_DF
@@ -257,6 +261,16 @@ def haversine_vectorized(lat1, lon1, lat2_series, lon2_series):
 
 def fetch_and_clean_data(source, station_id, start_date, end_date):
     df = pd.DataFrame()
+    if source == 'xlsx':
+        dataset = XLSX_DATASETS.get(session.get('xlsx_dataset_id'))
+        if dataset is None:
+            return df
+        df = dataset[dataset['ID'] == str(station_id)].copy()
+        if start_date:
+            df = df[df['DATE'] >= pd.to_datetime(start_date)]
+        if end_date:
+            df = df[df['DATE'] <= pd.to_datetime(end_date)]
+        return df.reset_index(drop=True)
     if source == 'GHCND':
         url = f'https://noaa-ghcn-pds.s3.amazonaws.com/csv/by_station/{station_id}.csv'
         try:
@@ -305,6 +319,58 @@ def fetch_and_clean_data(source, station_id, start_date, end_date):
                     df = df[(df['DATA_VALUE'] >= -110) & (df['DATA_VALUE'] <= 70)]
         except Exception: pass
     return df
+
+def get_xlsx_dataset():
+    return XLSX_DATASETS.get(session.get('xlsx_dataset_id'))
+
+def get_xlsx_station_metadata(station_id):
+    name = XLSX_STATION_INFO.get(session.get('xlsx_dataset_id'), {}).get(str(station_id), '')
+    return (f"{station_id} - {name}" if name else str(station_id), {'lat': '', 'lon': '', 'elev': ''})
+
+@app.route('/upload_xlsx', methods=['POST'])
+@auth_or_visitor_required
+@csrf.exempt
+def upload_xlsx():
+    upload = request.files.get('file')
+    if not upload or not upload.filename.lower().endswith('.xlsx'):
+        return jsonify({'status': 'error', 'message': 'Please select an .xlsx file.'}), 400
+    try:
+        workbook = pd.ExcelFile(upload, engine='openpyxl')
+        if len(workbook.sheet_names) != 1:
+            return jsonify({'status': 'error', 'message': 'The workbook must contain exactly one worksheet.'}), 400
+        frame = pd.read_excel(workbook, sheet_name=0, dtype={'Station number': str})
+        required = ['Station number', 'Station name', 'Year', 'Month', 'Day', 'min', 'max', 'avg']
+        if len(frame.columns) != 8 or list(frame.columns) != required:
+            return jsonify({'status': 'error', 'message': 'The worksheet must have exactly these columns in order: ' + ', '.join(required)}), 400
+        frame = frame[required].copy()
+        frame['Station number'] = frame['Station number'].fillna('').astype(str).str.strip().str.replace(r'\.0$', '', regex=True)
+        frame['Station name'] = frame['Station name'].fillna('').astype(str).str.strip()
+        for col in ['Year', 'Month', 'Day', 'min', 'max', 'avg']:
+            frame[col] = pd.to_numeric(frame[col], errors='coerce')
+        frame = frame.dropna(subset=['Year', 'Month', 'Day'])
+        frame['DATE'] = pd.to_datetime(dict(year=frame['Year'], month=frame['Month'], day=frame['Day']), errors='coerce')
+        frame = frame.dropna(subset=['DATE'])
+        frame = frame[frame['Station number'] != '']
+        if frame.empty:
+            return jsonify({'status': 'error', 'message': 'No valid station and date rows were found.'}), 400
+        station_ids = frame['Station number'].drop_duplicates()
+        if len(station_ids) != 1:
+            return jsonify({'status': 'error', 'message': 'The workbook must contain daily records for exactly one station.'}), 400
+        id_map = {'min': 'TMIN', 'max': 'TMAX', 'avg': 'TAVG'}
+        id_columns = ['Station number', 'Station name', 'DATE']
+        long_frame = frame.melt(id_vars=id_columns, value_vars=list(id_map), var_name='source_element', value_name='DATA_VALUE')
+        long_frame['ELEMENT'] = long_frame['source_element'].map(id_map)
+        long_frame = long_frame.dropna(subset=['DATA_VALUE'])
+        long_frame = long_frame.rename(columns={'Station number': 'ID'})[['ID', 'DATE', 'ELEMENT', 'DATA_VALUE']]
+        token = session.get('xlsx_dataset_id') or uuid.uuid4().hex
+        session['xlsx_dataset_id'] = token
+        XLSX_DATASETS[token] = long_frame
+        station_id = station_ids.iloc[0]
+        station_name = frame.loc[frame['Station name'] != '', 'Station name'].iloc[0] if (frame['Station name'] != '').any() else ''
+        XLSX_STATION_INFO[token] = {station_id: station_name}
+        return jsonify({'status': 'ok', 'station_count': 1, 'row_count': len(frame), 'station_id': station_id, 'station_name': station_name, 'filename': upload.filename})
+    except Exception as exc:
+        return jsonify({'status': 'error', 'message': f'Could not read workbook: {exc}'}), 400
 
 # --- TRACKING ---
 def get_ip_location(ip1):
@@ -532,6 +598,21 @@ def search_stations():
     query = request.args.get('q', '').strip().upper()
     source = request.args.get('source', 'GHCND')
     if not query: return jsonify([])
+    if source == 'xlsx':
+        dataset_id = session.get('xlsx_dataset_id')
+        dataset = XLSX_DATASETS.get(dataset_id)
+        if dataset is None:
+            return jsonify([])
+        info = XLSX_STATION_INFO.get(dataset_id, {})
+        results = []
+        for station_id in dataset['ID'].drop_duplicates():
+            name = info.get(station_id, '')
+            if query not in station_id.upper() and query not in name.upper():
+                continue
+            results.append({'value': f"{station_id} - {name}" if name else station_id, 'id': station_id, 'name': name, 'lat': '', 'lon': '', 'elev': ''})
+            if len(results) >= 20:
+                break
+        return jsonify(results)
     df = GHCND_DF if source == 'GHCND' else GSOD_DF
     if df is None: return jsonify([])
     if source == 'GSOD': mask = (df['USAF'].str.contains(query, case=False)) | (df['NAME'].str.contains(query, case=False))
@@ -746,7 +827,7 @@ def get_data():
         records_list = pivoted_df.to_dict(orient='records')
 
         multi_stations = []
-        if has_advanced_access:
+        if has_advanced_access and source != 'xlsx':
             center_mode = req.get('center_mode', 'station')
             center_lat_input = req.get('center_lat')
             center_lon_input = req.get('center_lon')
@@ -1318,6 +1399,7 @@ def calendar_months_stats():
                  station_info['elev'] = row.iloc[0]['ELEV']
     except: pass
 
+    if source == 'xlsx': station_name, station_info = get_xlsx_station_metadata(station_id)
     df = fetch_and_clean_data(source, station_id, start_date, end_date)
     
     if df.empty:
@@ -1516,6 +1598,7 @@ def date_details():
 
     # 2. Fetch Data
     if req_start and req_end:
+        if source == 'xlsx': station_name, station_info = get_xlsx_station_metadata(station_id)
         df = fetch_and_clean_data(source, station_id, req_start, req_end)
     
     if df.empty:
@@ -1652,6 +1735,7 @@ def period_stats():
                 station_info['lon'] = row.iloc[0]['LON']
                 station_info['elev'] = row.iloc[0]['ELEV']
 
+        if source == 'xlsx': station_name, station_info = get_xlsx_station_metadata(station_id)
         df = fetch_and_clean_data(source, station_id, start_date, end_date)
         if df.empty:
             return render_template('period_stats.html', station_name=station_name, station_info=station_info, 
@@ -1806,6 +1890,7 @@ def year_by_year():
                 station_info['lon'] = row.iloc[0]['LON']
                 station_info['elev'] = row.iloc[0]['ELEV']
 
+        if source == 'xlsx': station_name, station_info = get_xlsx_station_metadata(station_id)
         df = fetch_and_clean_data(source, station_id, start_date, end_date)
         if df.empty:
             return render_template('year_by_year.html', station_name=station_name, station_info=station_info,
@@ -1885,6 +1970,7 @@ def extreme_temps():
     except: pass
 
     # Fetch ALL data (start_date=None, end_date=None)
+    if source == 'xlsx': station_name, station_info = get_xlsx_station_metadata(station_id)
     df = fetch_and_clean_data(source, station_id, None, None)
     
     results = []

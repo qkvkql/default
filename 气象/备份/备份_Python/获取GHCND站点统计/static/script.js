@@ -15,6 +15,7 @@ let rawMonthlyList = [];
 let monthlySortCol = 'ym';
 let monthlySortDir = 'desc';
 let stationLookup = {};
+let nonXlsxStationSelection = null;
 
 // Helper function to convert season+hemisphere to internal period mode
 function getPeriodModeFromSeason(seasonMode, hemisphere) {
@@ -111,9 +112,39 @@ document.addEventListener('DOMContentLoaded', () => {
     const dataSource = document.getElementById('dataSource');
     if (dataSource) {
         dataSource.addEventListener('change', function () {
+            const wasXlsx = this.dataset.previousValue === 'xlsx';
+            const isXlsx = this.value === 'xlsx';
+            if (isXlsx && !wasXlsx) {
+                nonXlsxStationSelection = {
+                    input: document.getElementById('stationInput').value,
+                    id: document.getElementById('stationId').value
+                };
+            }
             const wbanRow = document.getElementById('wbanRow');
             if (wbanRow) wbanRow.style.display = (this.value === 'GSOD') ? 'flex' : 'none';
+            const uploadRow = document.getElementById('xlsxUploadRow');
+            if (uploadRow) uploadRow.style.display = isXlsx ? 'flex' : 'none';
+            const stationInput = document.getElementById('stationInput');
+            const stationRow = stationInput ? stationInput.closest('.param-row') : null;
+            if (stationInput) stationInput.disabled = isXlsx;
+            if (stationRow) stationRow.classList.toggle('xlsx-single-station', isXlsx);
+            const info = document.getElementById('stationInfoDisplay');
+            if (isXlsx) {
+                if (!wasXlsx) {
+                    stationInput.value = '';
+                    document.getElementById('stationId').value = '';
+                }
+                if (info) info.style.display = 'none';
+            } else if (wasXlsx && nonXlsxStationSelection) {
+                stationInput.value = nonXlsxStationSelection.input;
+                document.getElementById('stationId').value = nonXlsxStationSelection.id;
+                stationInput.dispatchEvent(new Event('input', { bubbles: true }));
+                if (stationInput.value) searchStations();
+            }
+            setXlsxMultiStationControls(isXlsx);
+            this.dataset.previousValue = this.value;
         });
+        dataSource.dataset.previousValue = dataSource.value;
     }
 
     document.querySelectorAll('input[name="hemisphere"], input[name="season"]').forEach(radio => {
@@ -123,6 +154,62 @@ document.addEventListener('DOMContentLoaded', () => {
     syncPeriodColumns();
     updateDayDropdown(); // Initialize day dropdown on page load
 });
+
+function setXlsxMultiStationControls(disabled) {
+    ['multiStationSection', 'multiStationListSection', 'multiStatsSection'].forEach(id => {
+        const wrapper = document.getElementById(id);
+        if (!wrapper) return;
+        const section = wrapper.closest('.section') || wrapper;
+        if (id === 'multiStationSection') {
+            section.style.display = '';
+            const content = wrapper.querySelector('.collapsible-content');
+            if (content) content.style.opacity = disabled ? '0.5' : '';
+        } else {
+            section.style.display = disabled ? 'none' : '';
+        }
+        wrapper.setAttribute('aria-disabled', disabled ? 'true' : 'false');
+        wrapper.querySelectorAll('input, select, button').forEach(control => {
+            if (control.dataset.xlsxOriginalDisabled === undefined) {
+                control.dataset.xlsxOriginalDisabled = control.disabled ? 'true' : 'false';
+            }
+            control.disabled = disabled || control.dataset.xlsxOriginalDisabled === 'true';
+        });
+    });
+}
+
+async function uploadXlsxFile() {
+    const input = document.getElementById('xlsxFileInput');
+    const status = document.getElementById('xlsxUploadStatus');
+    const button = document.getElementById('xlsxUploadButton');
+    if (!input.files || !input.files[0]) {
+        status.textContent = XLSX_UPLOAD_SELECT_FILE;
+        return;
+    }
+    const form = new FormData();
+    form.append('file', input.files[0]);
+    button.disabled = true;
+    status.textContent = XLSX_UPLOAD_READING;
+    try {
+        const response = await fetch('/upload_xlsx', { method: 'POST', body: form });
+        const result = await response.json();
+        if (!response.ok || result.status !== 'ok') throw new Error(result.message || XLSX_UPLOAD_FAILED);
+        status.textContent = `${result.filename}: ${result.station_count} ${XLSX_STATION_COUNT}, ${result.row_count} ${XLSX_DAILY_ROWS}`;
+        const stationInput = document.getElementById('stationInput');
+        const stationValue = result.station_name ? `${result.station_id} - ${result.station_name}` : result.station_id;
+        stationInput.value = stationValue;
+        document.getElementById('stationId').value = result.station_id;
+        document.getElementById('stationOptions').innerHTML = '';
+        stationLookup = {};
+        const station = { id: result.station_id, name: result.station_name || '', lat: '', lon: '', elev: '' };
+        stationLookup[stationValue] = station;
+        stationLookup[result.station_id] = station;
+        handleStationInput();
+    } catch (error) {
+        status.textContent = error.message || XLSX_UPLOAD_FAILED;
+    } finally {
+        button.disabled = false;
+    }
+}
 
 async function fetchDefaultStationDetails(query) {
     try {
@@ -221,6 +308,7 @@ async function searchStations() {
                 stationLookup[item.value] = item;
                 stationLookup[item.id] = item;
             });
+            handleStationInput();
         } catch (err) { console.error(err); }
     }, 300);
 }
@@ -234,8 +322,8 @@ function handleStationInput() {
         infoDiv.innerHTML = `
             <div style="font-size: 0.85em; color: #666; margin-bottom: 5px;">${STATION_INFO_TITLE}</div>
             <div class="copyable" title="Copy Name" style="margin-bottom: 3px;">${data.name}</div>
-            <div class="copyable" title="Copy Coordinates" style="margin-bottom: 3px;">${data.lat}\t${data.lon}</div>
-            <div class="copyable" title="Copy Elevation">${data.elev}m</div>
+            <div class="copyable" title="Copy Coordinates" style="margin-bottom: 3px;">${data.lat || ''}${data.lat && data.lon ? '\t' : ''}${data.lon || ''}</div>
+            <div class="copyable" title="Copy Elevation">${data.elev ? `${data.elev}m` : ''}</div>
         `;
     } else { infoDiv.style.display = 'none'; }
 }

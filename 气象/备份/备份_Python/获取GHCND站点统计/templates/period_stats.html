@@ -215,7 +215,7 @@
                 <div class="station-meta">
                     <span class="meta-item copyable" title="Click to copy Coordinates">{{ station_info.lat }}&#9;{{
                         station_info.lon }}</span>
-                    <span class="meta-item copyable" title="Click to copy Elevation">{{ station_info.elev }}m</span>
+                    <span class="meta-item copyable" title="Click to copy Elevation">{{ station_info.elev }}{{ 'm' if station_info.elev else '' }}</span>
                 </div>
                 {% endif %}
             </div>

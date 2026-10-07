@@ -105,14 +105,14 @@
             <div class="meta-card" onclick="copyText('{{ station_info.lat }}\t{{ station_info.lon }}', this)"
                 title="Click to copy coordinates">
                 <span class="meta-label">Coords</span>
-                <span class="meta-value">{{ station_info.lat }}, {{ station_info.lon }}</span>
+                <span class="meta-value">{{ station_info.lat }}{{ ', ' if station_info.lat and station_info.lon else '' }}{{ station_info.lon }}</span>
                 <span class="copy-hint">Copy</span>
             </div>
 
             <!-- Elevation -->
             <div class="meta-card" onclick="copyText('{{ station_info.elev }}', this)" title="Click to copy elevation">
                 <span class="meta-label">Elev</span>
-                <span class="meta-value">{{ station_info.elev }}m</span>
+                <span class="meta-value">{{ station_info.elev }}{{ 'm' if station_info.elev else '' }}</span>
                 <span class="copy-hint">Copy</span>
             </div>
         </div>
