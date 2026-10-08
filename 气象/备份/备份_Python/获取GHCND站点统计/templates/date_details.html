@@ -224,10 +224,9 @@
                 <div style="margin-top: 5px; margin-bottom: 20px;">
                     <p style="font-size: 1.1rem; color: #555;">
                         <strong>
-                            {% if period_mode == 'p1' %}{{ t('season.winter') }}{% else %}{{ t('season.summer') }}{%
-                            endif %}:
+                            {{ t('season.' + season_name) }}:
                         </strong>
-                        {{ value }}
+                        {% if period_mode == 'p2' %}{{ value.split('-')[0] }}{% else %}{{ value }}{% endif %}
                     </p>
                 </div>
                 {% elif query_type == 'year' %}
@@ -329,7 +328,7 @@
                     {% if query_type == 'period' %}
                         {% if period_mode == 'p1' %}
                         <option value="winter_3">{{ t('months.winter_3') }}</option>
-                        {% elif period_mode == 'p2' %}
+                        {% else %}
                         <option value="summer_3">{{ t('months.summer_3') }}</option>
                         {% endif %}
                     {% endif %}

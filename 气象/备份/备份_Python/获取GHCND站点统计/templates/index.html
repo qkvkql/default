@@ -412,8 +412,9 @@
                     const end = document.getElementById('endDate').value;
                     const month = document.getElementById('monthFilter').value;
                     const day = document.getElementById('dayFilter').value;
-                    const period = document.querySelector('input[name="season"]:checked').value === 'winter' ? 'p1' : 'p2';
                     const hemi = document.querySelector('input[name="hemisphere"]:checked').value;
+                    const season = document.querySelector('input[name="season"]:checked').value;
+                    const period = getPeriodModeFromSeason(season, hemi);
 
                     const tmin_val = document.getElementById('tminVal').value;
                     const tmin_dir = document.getElementById('tminDir').value;

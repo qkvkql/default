@@ -237,7 +237,7 @@
 
         {% if period_summary %}
         <h2 class="section-title">
-            {% if period_mode == 'p1' %}{{ t('season.winter') }}{% else %}{{ t('season.summer') }}{% endif %}
+            {{ t('season.' + season_name) }}
             {{ t('sections.averages_suffix') if lang() == 'en' else t('sections.averages_suffix_zh') }}
         </h2>
         <form class="min-days-form" id="minDaysForm">
@@ -275,9 +275,44 @@
         </div>
         {% endif %}
 
+        {% if streaks and streaks_record_count > 10 %}
+        <div class="collapsible-wrapper" id="streaksCollapsible">
+            <div class="collapsible-header" onclick="toggleSection('streaksCollapsible')">
+                <strong style="font-size: 1.1rem; color: #333;">{{ t('details_page.consecutive_days_title') }}</strong>
+                <span class="collapsible-icon">▼</span>
+            </div>
+            <div class="collapsible-content">
+                <div class="collapsible-inner">
+                    <div style="display: flex; gap: 20px; margin-bottom: 0; flex-wrap: wrap;">
+                        {% for metric, list in streaks.items() %}
+                        <div style="flex: 1; min-width: 250px; background: #f9f9f9; padding: 10px; border-radius: 5px; border: 1px solid #eee;">
+                            <h4 style="margin: 0 0 10px; font-size: 1rem; color: #333; border-bottom: 2px solid #ddd; padding-bottom: 5px;">
+                                {% set symbol_map = {'lte': ' <= ', 'gte': ' >= '} %}
+                                {{ t('metrics.' + metric|lower) }}
+                                {{ symbol_map.get(thresholds[metric]['dir'], '') }}{{ thresholds[metric]['val'] }}
+                                {{ t('details_page.top_consecutive') }}
+                            </h4>
+                            {% if list %}
+                            <ol style="margin: 0; padding-left: 20px; font-size: 0.9rem;">
+                                {% for item in list %}
+                                <li style="margin-bottom: 4px;">{{ item }}</li>
+                                {% endfor %}
+                            </ol>
+                            {% else %}
+                            <p style="margin: 0; font-size: 0.9rem; color: #888;">{{ t('details_page.no_streaks') }}</p>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div style="margin-bottom: 20px;"></div>
+        {% endif %}
+
         {% if period_stats %}
         <h2 class="section-title">
-            {% if period_mode == 'p1' %}{{ t('season.winter') }}{% else %}{{ t('season.summer') }}{% endif %}
+            {{ t('season.' + season_name) }}
         </h2>
         <div style="text-align:right; margin-bottom:10px;">
             <button class="small-btn" style="background-color: #17a2b8;" onclick="copyPeriodTable()">{{
@@ -288,8 +323,7 @@
                 <thead>
                     <tr>
                         <th onclick="sortTable(0)">
-                            {% if period_mode == 'p1' %}{{ t('season.winter') }}{% else %}{{ t('season.summer') }}{%
-                            endif %}
+                            {{ t('season.' + season_name) }}
                             &#8645;
                         </th>
                         <th onclick="sortTable(1)">{{ t('tables.data_coverage') }} &#8645;</th>
@@ -307,7 +341,7 @@
                     {% for row in period_stats %}
                     <tr>
                         <td style="font-weight:bold; cursor:pointer; color:#007bff;"
-                            onclick="openDateDetails('{{ row.range }}')">{{ row.range }}
+                            onclick="openDateDetails('{{ row.range }}')">{% if period_mode == 'p2' %}{{ row.range.split('-')[0] }}{% else %}{{ row.range }}{% endif %}
                             {% if row.valid_tmin_period %}<span class="valid-tmin-badge">{{ t('period_stats.valid_tmin') }}</span>{% endif %}
                             {% if row.valid_tmax_period %}<span class="valid-tmax-badge">{{ t('period_stats.valid_tmax') }}</span>{% endif %}
                         </td>
@@ -332,6 +366,11 @@
     <div id="copyToast">{{ t('messages.copied_to_clipboard') }}</div>
 
     <script>
+        function toggleSection(sectionId) {
+            const section = document.getElementById(sectionId);
+            if (section) section.classList.toggle('active');
+        }
+
         function showToast(message) {
             const toast = document.getElementById('copyToast');
             toast.textContent = message;
@@ -426,6 +465,7 @@
             const sid = urlParams.get('station_id');
             const ds = urlParams.get('source');
             const pm = urlParams.get('period') || 'p1';
+            const hemi = urlParams.get('hemisphere') || 'north';
             const tmin_val = urlParams.get('tmin_val') || '';
             const tmin_dir = urlParams.get('tmin_dir') || 'lte';
             const tavg_val = urlParams.get('tavg_val') || '';
@@ -433,7 +473,7 @@
             const tmax_val = urlParams.get('tmax_val') || '';
             const tmax_dir = urlParams.get('tmax_dir') || 'lte';
 
-            const url = `/date_details?station_id=${sid}&source=${ds}&type=period&value=${range}&period_mode=${pm}&tmin_val=${tmin_val}&tmin_dir=${tmin_dir}&tavg_val=${tavg_val}&tavg_dir=${tavg_dir}&tmax_val=${tmax_val}&tmax_dir=${tmax_dir}`;
+            const url = `/date_details?station_id=${sid}&source=${ds}&type=period&value=${range}&period_mode=${pm}&hemisphere=${hemi}&tmin_val=${tmin_val}&tmin_dir=${tmin_dir}&tavg_val=${tavg_val}&tavg_dir=${tavg_dir}&tmax_val=${tmax_val}&tmax_dir=${tmax_dir}`;
             window.open(url, '_blank');
         }
 

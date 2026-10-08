@@ -71,6 +71,7 @@ function openDateDetails(type, value, specificStationId = null) {
         type: type,
         value: value,
         period_mode: periodMode,
+        hemisphere: hemisphere,
         tmin_val: tminVal, tmin_dir: tminDir,
         tavg_val: tavgVal, tavg_dir: tavgDir,
         tmax_val: tmaxVal, tmax_dir: tmaxDir
@@ -826,11 +827,15 @@ function renderPeriodTable() {
                         <span class="tooltip-note clickable-date" onclick="event.stopPropagation(); openDateDetails('list', '${obj.dates.join(',')}')" title="Click to view details">${dateText}</span>
                     </div>`;
         };
-        const getStyle = (key) => periodColVisibility[key] ? '' : 'display: none;';
-        const getCls = (obj) => (obj && obj.val !== '-') ? ' class="copy-cell"' : '';
+    const getStyle = (key) => periodColVisibility[key] ? '' : 'display: none;';
+    const getCls = (obj) => (obj && obj.val !== '-') ? ' class="copy-cell"' : '';
+    const selectedSeason = document.querySelector('input[name="season"]:checked')?.value || 'winter';
+    const selectedHemisphere = document.querySelector('input[name="hemisphere"]:checked')?.value || 'north';
+    const periodMode = getPeriodModeFromSeason(selectedSeason, selectedHemisphere);
+    const periodLabel = period => periodMode === 'p2' ? period.split('-')[0] : period;
 
         tr.innerHTML = `
-            <td><span class="clickable-date" onclick="event.stopPropagation(); openDateDetails('period', '${p.range}')" title="View Period Details">${p.range}</span></td>
+            <td><span class="clickable-date" onclick="event.stopPropagation(); openDateDetails('period', '${p.range}')" title="View Period Details">${periodLabel(p.range)}</span></td>
             <td class="copy-cell" title="Click to copy">${p.count_actual} / ${p.count_expected}</td>
             <td style="${getStyle('min_tmin')}"${getCls(p.min_tmin)}>${renderWithTooltip(p.min_tmin)}</td>
             <td style="${getStyle('min_tmax')}"${getCls(p.min_tmax)}>${renderWithTooltip(p.min_tmax)}</td>
