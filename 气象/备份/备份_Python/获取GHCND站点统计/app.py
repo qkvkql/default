@@ -259,6 +259,14 @@ def haversine_vectorized(lat1, lon1, lat2_series, lon2_series):
     c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1-a))
     return R * c
 
+def filter_valid_temperature_records(df):
+    """Drop missing and implausible temperatures consistently across sources."""
+    if df.empty or 'DATA_VALUE' not in df.columns:
+        return df
+    df = df.copy()
+    df['DATA_VALUE'] = pd.to_numeric(df['DATA_VALUE'], errors='coerce')
+    return df[df['DATA_VALUE'].gt(-110) & df['DATA_VALUE'].lt(70)].reset_index(drop=True)
+
 def fetch_and_clean_data(source, station_id, start_date, end_date):
     df = pd.DataFrame()
     if source == 'xlsx':
@@ -270,7 +278,7 @@ def fetch_and_clean_data(source, station_id, start_date, end_date):
             df = df[df['DATE'] >= pd.to_datetime(start_date)]
         if end_date:
             df = df[df['DATE'] <= pd.to_datetime(end_date)]
-        return df.reset_index(drop=True)
+        return filter_valid_temperature_records(df)
     if source == 'GHCND':
         url = f'https://noaa-ghcn-pds.s3.amazonaws.com/csv/by_station/{station_id}.csv'
         try:
@@ -283,8 +291,6 @@ def fetch_and_clean_data(source, station_id, start_date, end_date):
             if end_date: df = df[df['DATE'] <= end_date]
             df = df[df['ELEMENT'].isin(['TMIN', 'TAVG', 'TMAX'])].copy()
             df['DATA_VALUE'] = df['DATA_VALUE'] / 10.0
-            # Filter Extreme Values: -110 to 70 Celsius
-            df = df[(df['DATA_VALUE'] >= -110) & (df['DATA_VALUE'] <= 70)]
         except Exception:
             return pd.DataFrame()
     else:
@@ -316,9 +322,8 @@ def fetch_and_clean_data(source, station_id, start_date, end_date):
                     df = temp_df.melt(id_vars=['STATION', 'DATE'], value_vars=['TAVG', 'TMAX', 'TMIN'], var_name='ELEMENT', value_name='DATA_VALUE')
                     df = df.rename(columns={'STATION': 'ID'})
                     df = df.dropna(subset=['DATA_VALUE'])
-                    df = df[(df['DATA_VALUE'] >= -110) & (df['DATA_VALUE'] <= 70)]
         except Exception: pass
-    return df
+    return filter_valid_temperature_records(df)
 
 def get_xlsx_dataset():
     return XLSX_DATASETS.get(session.get('xlsx_dataset_id'))
