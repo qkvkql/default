@@ -241,9 +241,9 @@
                 {% endif %}
                 <h3 style="margin-top: 5px; color: #555; font-size: 1rem;">
                     {% if expected_total %}
-                    {{ t('details_page.expected_total', count=records|length, expected=expected_total) }}
+                    {{ t('details_page.expected_total', tmin=valid_record_counts.TMIN, tavg=valid_record_counts.TAVG, tmax=valid_record_counts.TMAX, expected=expected_total) }}
                     {% else %}
-                    {{ t('details_page.total_records', count=records|length) }}
+                    {{ t('details_page.total_records', tmin=valid_record_counts.TMIN, tavg=valid_record_counts.TAVG, tmax=valid_record_counts.TMAX) }}
                     {% endif %}
                 </h3>
             </div>
@@ -360,8 +360,7 @@
                             <th>{{ t('details_page.stat_min') }}(℃)</th>
                             <th>{{ t('details_page.stat_avg') }}(℃)</th>
                             <th>{{ t('details_page.stat_max') }}(℃)</th>
-                            <th>{{ t('details_page.stat_valid_days') }}</th>
-                            <th>{{ t('details_page.stat_expected_days') }}</th>
+                            <th>{{ t('details_page.stat_days_ratio') }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -370,24 +369,21 @@
                             <td class="stat-min">-</td>
                             <td class="stat-avg">-</td>
                             <td class="stat-max">-</td>
-                            <td class="stat-valid">-</td>
-                            <td class="stat-expected">-</td>
+                            <td class="stat-days">-</td>
                         </tr>
                         <tr data-element="TAVG">
                             <td><strong>{{ t('metrics.tavg') }}</strong></td>
                             <td class="stat-min">-</td>
                             <td class="stat-avg">-</td>
                             <td class="stat-max">-</td>
-                            <td class="stat-valid">-</td>
-                            <td class="stat-expected">-</td>
+                            <td class="stat-days">-</td>
                         </tr>
                         <tr data-element="TMAX">
                             <td><strong>{{ t('metrics.tmax') }}</strong></td>
                             <td class="stat-min">-</td>
                             <td class="stat-avg">-</td>
                             <td class="stat-max">-</td>
-                            <td class="stat-valid">-</td>
-                            <td class="stat-expected">-</td>
+                            <td class="stat-days">-</td>
                         </tr>
                     </tbody>
                 </table>
@@ -600,14 +596,12 @@
                     row.querySelector('.stat-min').innerText = min;
                     row.querySelector('.stat-avg').innerText = avg;
                     row.querySelector('.stat-max').innerText = max;
-                    row.querySelector('.stat-valid').innerText = vals.length;
-                    row.querySelector('.stat-expected').innerText = expectedCount;
+                    row.querySelector('.stat-days').innerText = `${vals.length} / ${expectedCount}`;
                 } else {
                     row.querySelector('.stat-min').innerText = '-';
                     row.querySelector('.stat-avg').innerText = '-';
                     row.querySelector('.stat-max').innerText = '-';
-                    row.querySelector('.stat-valid').innerText = 0;
-                    row.querySelector('.stat-expected').innerText = expectedCount;
+                    row.querySelector('.stat-days').innerText = `0 / ${expectedCount}`;
                 }
             });
         }

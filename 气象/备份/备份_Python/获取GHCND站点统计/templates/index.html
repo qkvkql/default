@@ -729,7 +729,7 @@
                         <div class="record-controls">
                             <div class="control-group" style="flex:1;">
                                 <span style="font-weight:bold;">{{ t('tables.select_statistic') }}</span>
-                                <select id="multiStatSelect" style="width:auto; max-width:250px; padding:5px;">
+                                <select id="multiStatSelect" style="width:auto; max-width:380px; padding:5px;">
                                     <option value="min_tmin">{{ t('statistics.minimum_tmin') }}</option>
                                     <option value="min_tavg">{{ t('statistics.minimum_tavg') }}</option>
                                     <option value="min_tmax">{{ t('statistics.minimum_tmax') }}</option>
@@ -794,7 +794,7 @@
                         <div class="table-responsive">
                             <table class="data-table" id="multiStatResultTable">
                                 <thead>
-                                    <tr>
+                                    <tr class="multi-stat-group-row">
                                         <th onclick="sortMultiStatTable('id')">{{ t('tables.station_id') }} &#8645;</th>
                                         <th onclick="sortMultiStatTable('name')">{{ t('tables.station_name') }} &#8645;
                                         </th>
@@ -804,8 +804,6 @@
                                         </th>
                                         <th onclick="sortMultiStatTable('dist')">{{ t('tables.distance_km') }} &#8645;
                                         </th>
-                                        <th onclick="sortMultiStatTable('val')">{{ t('tables.value') }} &#8645;</th>
-                                        <th>{{ t('tables.relevant_dates_periods') }}</th>
                                     </tr>
                                 </thead>
                                 <tbody></tbody>

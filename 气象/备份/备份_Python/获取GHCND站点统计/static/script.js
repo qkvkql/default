@@ -9,8 +9,21 @@ let multiSortBy = 'dist';
 let multiSortDir = 'asc';
 let currentMultiStations = [];
 let rawMultiStatsResults = [];
+let rawMultiStatMetricOrder = [];
 let multiStatSortCol = 'val';
 let multiStatSortDir = 'desc';
+const MULTI_STAT_ALIASES = {
+    min_tmin: ['X', 'N-TN'], min_tavg: ['X', 'N-TA'], min_tmax: ['X', 'N-TX'],
+    max_tmin: ['X', 'X-TN'], max_tavg: ['X', 'X-TA'], max_tmax: ['X', 'X-TX'],
+    avg_tmin: ['A', 'A-TN'], avg_tavg: ['A', 'A-TA'], avg_tmax: ['A', 'A-TX'],
+    max_days_tmin: ['PTH', 'MNP'], max_days_tavg: ['PTH', 'MAP'], max_days_tmax: ['PTH', 'MXP'],
+    total_days_tmin: ['TTH', 'TNP'], total_days_tavg: ['TTH', 'TAP'], total_days_tmax: ['TTH', 'TXP'],
+    valid_days_tmin: ['TD', 'TD-N'], valid_days_tavg: ['TD', 'TD-A'], valid_days_tmax: ['TD', 'TD-X'],
+    min_monthly_avg_tmin: ['MX', 'NMN'], min_monthly_avg_tavg: ['MX', 'NMA'], min_monthly_avg_tmax: ['MX', 'NMX'],
+    max_monthly_avg_tmin: ['MX', 'XMN'], max_monthly_avg_tavg: ['MX', 'XMA'], max_monthly_avg_tmax: ['MX', 'XMX'],
+    min_single_month_avg_tmin: ['SMX', 'NSN'], min_single_month_avg_tavg: ['SMX', 'NSA'], min_single_month_avg_tmax: ['SMX', 'NSX'],
+    max_single_month_avg_tmin: ['SMX', 'XSN'], max_single_month_avg_tavg: ['SMX', 'XSA'], max_single_month_avg_tmax: ['SMX', 'XSX'],
+};
 let rawMonthlyList = [];
 let monthlySortCol = 'ym';
 let monthlySortDir = 'desc';
@@ -101,6 +114,7 @@ function showPeriodModal(ranges, specificStationId = null) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    decorateMultiStatOptions();
     const hiddenId = document.getElementById('stationId');
     const visualInput = document.getElementById('stationInput');
     if (hiddenId && hiddenId.value && !visualInput.value) {
@@ -562,7 +576,11 @@ function copyMultiStatsTable() {
     const table = document.getElementById('multiStatResultTable');
     if (!table) return;
     let tsv = [];
-    const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.innerText.replace(' \u21c5', '').trim());
+    const headers = [
+        ...Array.from(table.querySelectorAll('.multi-stat-group-row th:not(.multi-metric-header)'))
+            .map(th => th.innerText.replace(' \u21c5', '').trim()),
+        ...Array.from(table.querySelectorAll('.multi-metric-header')).map(th => th.innerText.trim()),
+    ];
     tsv.push(headers.join('\t'));
     const rows = table.querySelectorAll('tbody tr');
     rows.forEach(tr => {
@@ -574,19 +592,80 @@ function copyMultiStatsTable() {
 }
 
 function sortMultiStatTable(column) {
-    if (multiStatSortCol === column) { multiStatSortDir = (multiStatSortDir === 'asc') ? 'desc' : 'asc'; }
-    else { multiStatSortCol = column; multiStatSortDir = (column === 'val' || column === 'dist' || column === 'lat' || column === 'lon' || column === 'elev') ? 'desc' : 'asc'; }
+    if (multiStatSortCol === column) {
+        multiStatSortDir = (multiStatSortDir === 'asc') ? 'desc' : 'asc';
+    } else {
+        multiStatSortCol = column;
+        const isValue = column.startsWith('stat-value:');
+        const metric = isValue ? column.slice('stat-value:'.length) : '';
+        multiStatSortDir = isValue
+            ? (metric.startsWith('min_') ? 'asc' : 'desc')
+            : (['dist', 'lat', 'lon', 'elev'].includes(column) ? 'desc' : 'asc');
+    }
     renderMultiStatTable();
+}
+
+function decorateMultiStatOptions() {
+    const select = document.getElementById('multiStatSelect');
+    if (!select) return;
+    Array.from(select.options).forEach(option => {
+        const alias = MULTI_STAT_ALIASES[option.value];
+        if (!alias) return;
+        const [type, optionAlias] = alias;
+        const fullAlias = `${type}_${optionAlias}`;
+        if (option.dataset.alias !== fullAlias) {
+            option.dataset.baseLabel = option.dataset.baseLabel || option.textContent.trim();
+            option.dataset.alias = fullAlias;
+            option.textContent = `${option.dataset.baseLabel} (${fullAlias})`;
+        }
+    });
 }
 
 function renderMultiStatTable() {
     const tbody = document.querySelector('#multiStatResultTable tbody');
     if (!tbody) return;
+    const table = document.getElementById('multiStatResultTable');
+    const groupRow = table.querySelector('.multi-stat-group-row');
+    const metricOrder = rawMultiStatMetricOrder.length
+        ? rawMultiStatMetricOrder
+        : Array.from(document.getElementById('multiStatSelect').options).map(option => option.value);
+    const optionLabels = Object.fromEntries(Array.from(document.getElementById('multiStatSelect').options)
+        .map(option => [option.value, option.dataset.baseLabel || option.textContent.trim()]));
+
+    if (groupRow) {
+        groupRow.querySelectorAll('.multi-metric-header').forEach(header => header.remove());
+        metricOrder.forEach(metric => {
+            const [type, optionAlias] = MULTI_STAT_ALIASES[metric] || ['', metric];
+            const alias = `${type}_${optionAlias}`;
+            const valueHeader = document.createElement('th');
+            valueHeader.className = 'multi-metric-header';
+            valueHeader.textContent = `V: ${alias}`;
+            valueHeader.title = optionLabels[metric] || metric;
+            valueHeader.style.cursor = 'pointer';
+            valueHeader.onclick = () => sortMultiStatTable(`stat-value:${metric}`);
+            const datesHeader = document.createElement('th');
+            datesHeader.className = 'multi-metric-header';
+            datesHeader.textContent = `DP: ${alias}`;
+            datesHeader.title = optionLabels[metric] || metric;
+            datesHeader.style.cursor = 'pointer';
+            datesHeader.onclick = () => sortMultiStatTable(`stat-dates:${metric}`);
+            groupRow.append(valueHeader, datesHeader);
+        });
+    }
+
     tbody.innerHTML = '';
-    if (rawMultiStatsResults.length === 0) { tbody.innerHTML = `<tr><td colspan="5">No stats available.</td></tr>`; return; }
+    if (rawMultiStatsResults.length === 0) { tbody.innerHTML = `<tr><td colspan="66">No stats available.</td></tr>`; return; }
     rawMultiStatsResults.sort((a, b) => {
-        let valA = a[multiStatSortCol];
-        let valB = b[multiStatSortCol];
+        const isStatValue = multiStatSortCol.startsWith('stat-value:');
+        const isStatDates = multiStatSortCol.startsWith('stat-dates:');
+        const metric = isStatValue ? multiStatSortCol.slice('stat-value:'.length)
+            : (isStatDates ? multiStatSortCol.slice('stat-dates:'.length) : null);
+        let valA = metric ? (a.stats?.[metric] || {})[isStatDates ? 'dates' : 'val'] : a[multiStatSortCol];
+        let valB = metric ? (b.stats?.[metric] || {})[isStatDates ? 'dates' : 'val'] : b[multiStatSortCol];
+        if (isStatDates) {
+            valA = Array.isArray(valA) ? valA.join(', ') : '';
+            valB = Array.isArray(valB) ? valB.join(', ') : '';
+        }
 
         const isEmpty = (v) => v === '-' || v === null || v === undefined || (typeof v === 'string' && v.trim() === '');
         let isEmptyA = isEmpty(valA);
@@ -597,7 +676,7 @@ function renderMultiStatTable() {
         if (isEmptyB) return -1; // B is empty -> always bottom
 
         // Both not empty, proceed with normal sort
-        if (['val', 'dist', 'lat', 'lon', 'elev'].includes(multiStatSortCol)) {
+        if (isStatValue || ['dist', 'lat', 'lon', 'elev'].includes(multiStatSortCol)) {
             valA = parseFloat(valA || 0);
             valB = parseFloat(valB || 0);
         }
@@ -608,40 +687,32 @@ function renderMultiStatTable() {
     });
     rawMultiStatsResults.forEach(row => {
         const tr = document.createElement('tr');
-        let datesCell = '';
-
-        if (row.dates && row.dates.length > 0) {
-            // Check if dates are period ranges (YYYY-YYYY)
-            // Heuristic: check if the first item contains a hyphen and looks like a year-year
-            const isPeriodLike = row.dates[0].match(/^\d{4}-\d{4}$/);
-            const isMonthName = row.dates[0].match(/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)$/);
-            const isYearMonth = row.dates[0].match(/^\d{4}-\d{2}$/);
-
-            if (isPeriodLike && row.dates.length > 1) {
-                // Multiple periods -> Show Modal Trigger
-                const label = `${row.dates.length} Periods Found`;
-                // Pass row.id as specificStationId
-                datesCell = `<span class="clickable-date" onclick="event.stopPropagation(); showPeriodModal('${row.dates.join(',').replace(/'/g, "\\'")}'.split(','), '${row.id}')" title="Click to Select Period">${label}</span>`;
-            } else if (isPeriodLike && row.dates.length === 1) {
-                // Single period -> Direct Link
-                datesCell = `<span class="clickable-date" onclick="event.stopPropagation(); openDateDetails('period', '${row.dates[0]}', '${row.id}')" title="View Details">${row.dates[0]}</span>`;
-            } else if (isMonthName) {
-                // Month names -> Plain Text
-                datesCell = row.dates.join(', ');
-            } else if (isYearMonth) {
-                datesCell = row.dates.map(ym => `<span class="clickable-date" onclick="event.stopPropagation(); openDateDetails('month', '${ym}', '${row.id}')" title="View Month Details">${ym}</span>`).join(', ');
-            } else {
-                // Regular dates list (global stats or single dates) -> Direct Link (Type=List)
-                datesCell = `<span class="clickable-date" onclick="event.stopPropagation(); openDateDetails('list', '${row.dates.join(',')}', '${row.id}')" title="View Details">${row.dates.join(', ')}</span>`;
-            }
-        }
-
-        // Helper to add 'copy-cell' if val is valid
         const cls = (val) => (val && val !== '-' && val !== 'None') ? ' class="copy-cell"' : '';
-
-        // ID is index 0 (excluded), Name (1), Lat (2), Lon (3), Elev (4), Dist (5), Val (6)
-        // datesCell (7) is interactive
-        tr.innerHTML = `<td>${row.id}</td><td${cls(row.name)}>${row.name}</td><td${cls(row.lat)}>${row.lat}</td><td${cls(row.lon)}>${row.lon}</td><td${cls(row.elev)}>${row.elev}</td><td${cls(row.dist)}>${row.dist}</td><td${cls(row.val)}>${row.val}</td><td>${datesCell}</td>`;
+        const metricCells = metricOrder.map(metric => {
+            const result = (row.stats && row.stats[metric]) || { val: '-', dates: [] };
+            const dates = result.dates || [];
+            let datesCell = '';
+            if (dates.length) {
+                const first = dates[0];
+                const isPeriod = /^\d{4}-\d{4}$/.test(first);
+                const isMonth = /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)$/.test(first);
+                const isYearMonth = /^\d{4}-\d{2}$/.test(first);
+                if (isPeriod && dates.length > 1) {
+                    const safeDates = dates.join(',').replace(/'/g, "\\'");
+                    datesCell = `<span class="clickable-date" onclick="event.stopPropagation(); showPeriodModal('${safeDates}'.split(','), '${row.id}')" title="Click to Select Period">${dates.length} Periods Found</span>`;
+                } else if (isPeriod) {
+                    datesCell = `<span class="clickable-date" onclick="event.stopPropagation(); openDateDetails('period', '${first}', '${row.id}')" title="View Details">${first}</span>`;
+                } else if (isMonth) {
+                    datesCell = dates.join(', ');
+                } else if (isYearMonth) {
+                    datesCell = dates.map(ym => `<span class="clickable-date" onclick="event.stopPropagation(); openDateDetails('month', '${ym}', '${row.id}')" title="View Month Details">${ym}</span>`).join(', ');
+                } else {
+                    datesCell = `<span class="clickable-date" onclick="event.stopPropagation(); openDateDetails('list', '${dates.join(',')}', '${row.id}')" title="View Details">${dates.join(', ')}</span>`;
+                }
+            }
+            return `<td${cls(result.val)}>${result.val}</td><td>${datesCell}</td>`;
+        }).join('');
+        tr.innerHTML = `<td>${row.id}</td><td${cls(row.name)}>${row.name}</td><td${cls(row.lat)}>${row.lat}</td><td${cls(row.lon)}>${row.lon}</td><td${cls(row.elev)}>${row.elev}</td><td${cls(row.dist)}>${row.dist}</td>${metricCells}`;
         tbody.appendChild(tr);
     });
 }
@@ -654,11 +725,12 @@ async function calcMultiStats() {
     const timerResultArea = document.getElementById('multiStatTimerResult');
     if (timerResultArea) timerResultArea.innerText = '';
     rawMultiStatsResults = [];
+    rawMultiStatMetricOrder = [];
     if (currentMultiStations.length === 0) { alert("No stations in list. Update Part 4 first."); return; }
     loading.classList.remove('hidden');
 
     const selectedMetric = document.getElementById('multiStatSelect').value;
-    multiStatSortCol = 'val';
+    multiStatSortCol = `stat-value:${selectedMetric}`;
     multiStatSortDir = selectedMetric.startsWith('min_') ? 'asc' : 'desc';
 
     const timerSpan = document.getElementById('multiStatTimer');
@@ -702,10 +774,11 @@ async function calcMultiStats() {
         if (response.status === 401) { window.location.href = "/login"; return; }
         const result = await response.json();
         if (result.status === 'success') {
+            rawMultiStatMetricOrder = result.metric_order || [];
             result.results.forEach(row => { row.dist = distMap[row.id]; rawMultiStatsResults.push(row); });
             renderMultiStatTable();
-        } else { tbody.innerHTML = `<tr><td colspan="5">Error: ${result.message}</td></tr>`; }
-    } catch (err) { tbody.innerHTML = `<tr><td colspan="5">Network Error</td></tr>`; }
+        } else { tbody.innerHTML = `<tr><td colspan="66">Error: ${result.message}</td></tr>`; }
+    } catch (err) { tbody.innerHTML = `<tr><td colspan="66">Network Error</td></tr>`; }
     finally {
         clearInterval(timerInterval);
         const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
