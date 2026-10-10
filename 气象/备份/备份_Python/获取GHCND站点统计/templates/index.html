@@ -106,6 +106,20 @@
                 <!-- Note removed from here -->
             </div>
 
+            <div class="param-row valid-temperature-range-row">
+                <label>{{ t('params.valid_temperature_range') }}</label>
+                <div class="valid-temperature-range-inputs">
+                    <label for="validTempLow">{{ t('params.valid_temperature_low') }}</label>
+                    <input type="number" id="validTempLow" step="any" required
+                        value="{{ session.get('valid_temp_low', -110) }}" aria-label="{{ t('params.valid_temperature_low') }}">
+                    <span>{{ t('params.to') }}</span>
+                    <label for="validTempHigh">{{ t('params.valid_temperature_high') }}</label>
+                    <input type="number" id="validTempHigh" step="any" required
+                        value="{{ session.get('valid_temp_high', 70) }}" aria-label="{{ t('params.valid_temperature_high') }}">
+                    <span>°C</span>
+                </div>
+            </div>
+
             <div class="param-row" id="xlsxUploadRow" style="display:none;">
                 <label for="xlsxFileInput">{{ t('params.xlsx_file') }}</label>
                 <input type="file" id="xlsxFileInput" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
@@ -214,7 +228,7 @@
                                     <option value="lte">&le;</option>
                                     <option value="gte">&ge;</option>
                                 </select>
-                                <input type="number" id="tminVal" value="-50"
+                                <input type="number" id="tminVal" value="-40"
                                     placeholder="{{ t('thresholds.value_c') }}">
                             </div>
                             <div class="thresh-box">
@@ -396,16 +410,19 @@
             </div>
             <script>
                 function openExtremeTemps() {
+                    if (!validateValidTemperatureRange()) return;
                     const sid = document.getElementById('stationId').value;
                     const ds = document.getElementById('dataSource').value;
+                    const range = getValidTemperatureRangeParams();
                     let season = 'winter';
                     const seasonEls = document.getElementsByName('season');
                     for (let el of seasonEls) { if (el.checked) season = el.value; }
 
-                    const url = `/extreme_temps?station_id=${sid}&source=${ds}&season=${season}`;
+                    const url = `/extreme_temps?station_id=${sid}&source=${ds}&season=${season}&valid_temp_low=${encodeURIComponent(range.valid_temp_low)}&valid_temp_high=${encodeURIComponent(range.valid_temp_high)}`;
                     window.open(url, '_blank');
                 }
                 function openPeriodStats() {
+                    if (!validateValidTemperatureRange()) return;
                     const sid = document.getElementById('stationId').value;
                     const ds = document.getElementById('dataSource').value;
                     const start = document.getElementById('startDate').value;
@@ -422,13 +439,15 @@
                     const tavg_dir = document.getElementById('tavgDir').value;
                     const tmax_val = document.getElementById('tmaxVal').value;
                     const tmax_dir = document.getElementById('tmaxDir').value;
+                    const range = getValidTemperatureRangeParams();
 
                     let url = `/period_stats?station_id=${sid}&source=${ds}&start_date=${start}&end_date=${end}&month_filter=${month}&day_filter=${day}&period=${period}&hemisphere=${hemi}`;
-                    url += `&tmin_val=${tmin_val}&tmin_dir=${tmin_dir}&tavg_val=${tavg_val}&tavg_dir=${tavg_dir}&tmax_val=${tmax_val}&tmax_dir=${tmax_dir}`;
+                    url += `&tmin_val=${tmin_val}&tmin_dir=${tmin_dir}&tavg_val=${tavg_val}&tavg_dir=${tavg_dir}&tmax_val=${tmax_val}&tmax_dir=${tmax_dir}&valid_temp_low=${encodeURIComponent(range.valid_temp_low)}&valid_temp_high=${encodeURIComponent(range.valid_temp_high)}`;
 
                     window.open(url, '_blank');
                 }
                 function openCalendarMonthsStats() {
+                    if (!validateValidTemperatureRange()) return;
                     const sid = document.getElementById('stationId').value;
                     const ds = document.getElementById('dataSource').value;
                     const start = document.getElementById('startDate').value;
@@ -440,6 +459,7 @@
                     const tavg_dir = document.getElementById('tavgDir').value;
                     const tmax_val = document.getElementById('tmaxVal').value;
                     const tmax_dir = document.getElementById('tmaxDir').value;
+                    const range = getValidTemperatureRangeParams();
 
                     const custom_avg_tmin = document.getElementById('customAvgTmin').value;
                     const custom_avg_tavg = document.getElementById('customAvgTavg').value;
@@ -447,12 +467,13 @@
 
                     let url = `/calendar_months_stats?station_id=${sid}&source=${ds}&start_date=${start}&end_date=${end}`;
                     url += `&tmin_val=${tmin_val}&tmin_dir=${tmin_dir}&tavg_val=${tavg_val}&tavg_dir=${tavg_dir}&tmax_val=${tmax_val}&tmax_dir=${tmax_dir}`;
-                    url += `&custom_avg_tmin=${custom_avg_tmin}&custom_avg_tavg=${custom_avg_tavg}&custom_avg_tmax=${custom_avg_tmax}`;
+                    url += `&custom_avg_tmin=${custom_avg_tmin}&custom_avg_tavg=${custom_avg_tavg}&custom_avg_tmax=${custom_avg_tmax}&valid_temp_low=${encodeURIComponent(range.valid_temp_low)}&valid_temp_high=${encodeURIComponent(range.valid_temp_high)}`;
 
                     window.open(url, '_blank');
                 }
                 const openYearStats = openCalendarMonthsStats;
                 function openYearByYear() {
+                    if (!validateValidTemperatureRange()) return;
                     const sid = document.getElementById('stationId').value;
                     const ds = document.getElementById('dataSource').value;
                     const start = document.getElementById('startDate').value;
@@ -464,9 +485,10 @@
                     const tavg_dir = document.getElementById('tavgDir').value;
                     const tmax_val = document.getElementById('tmaxVal').value;
                     const tmax_dir = document.getElementById('tmaxDir').value;
+                    const range = getValidTemperatureRangeParams();
 
                     let url = `/year_by_year?station_id=${sid}&source=${ds}&start_date=${start}&end_date=${end}`;
-                    url += `&tmin_val=${tmin_val}&tmin_dir=${tmin_dir}&tavg_val=${tavg_val}&tavg_dir=${tavg_dir}&tmax_val=${tmax_val}&tmax_dir=${tmax_dir}`;
+                    url += `&tmin_val=${tmin_val}&tmin_dir=${tmin_dir}&tavg_val=${tavg_val}&tavg_dir=${tavg_dir}&tmax_val=${tmax_val}&tmax_dir=${tmax_dir}&valid_temp_low=${encodeURIComponent(range.valid_temp_low)}&valid_temp_high=${encodeURIComponent(range.valid_temp_high)}`;
                     window.open(url, '_blank');
                 }
             </script>
@@ -679,6 +701,18 @@
                         <div id="multiStationCountArea" style="margin-bottom: 5px; font-weight: bold;">
                             {{ t('tables.total_result_rows') }} <span id="multiStationCount">0</span>
                         </div>
+
+                        <div class="record-controls" style="margin-bottom: 10px;">
+                            <div class="control-group">
+                                <select id="multiStationSearchMode" aria-label="Station search mode" style="width:auto; padding:5px;">
+                                    <option value="id_prefix">station id starts from</option>
+                                    <option value="name_contains">station name contains</option>
+                                </select>
+                                <input type="search" id="multiStationSearchKeyword" placeholder="Enter keyword" aria-label="Station search keyword">
+                                <button class="small-btn" onclick="getMultiStationSubset()">Get Subset</button>
+                                <button class="small-btn" onclick="removeMultiStationSubset()">Remove Subset</button>
+                            </div>
+                        </div>
                         
                         <div id="pogodaiklimatLinkArea" style="margin-bottom: 10px; border: 1px solid #ccc; padding: 5px; border-radius: 4px; background-color: #f9f9f9;">
                             <label style="font-weight: normal; cursor: pointer; display: flex; align-items: center;">
@@ -742,6 +776,9 @@
                                     <option value="max_days_tmin">{{ t('statistics.max_days_tmin') }}</option>
                                     <option value="max_days_tavg">{{ t('statistics.max_days_tavg') }}</option>
                                     <option value="max_days_tmax">{{ t('statistics.max_days_tmax') }}</option>
+                                    <option value="consecutive_days_tmin">{{ t('statistics.consecutive_days_tmin') }}</option>
+                                    <option value="consecutive_days_tavg">{{ t('statistics.consecutive_days_tavg') }}</option>
+                                    <option value="consecutive_days_tmax">{{ t('statistics.consecutive_days_tmax') }}</option>
                                     <option value="total_days_tmin">{{ t('statistics.total_days_tmin') }}</option>
                                     <option value="total_days_tavg">{{ t('statistics.total_days_tavg') }}</option>
                                     <option value="total_days_tmax">{{ t('statistics.total_days_tmax') }}</option>
@@ -773,6 +810,10 @@
                                     <option value="max_single_month_avg_tmax">{{ t('statistics.max_single_month_avg_tmax') }}
                                     </option>
                                 </select>
+                                <label for="calculateAllMultiStats" style="display:inline-flex; align-items:center; gap:6px; margin-left:12px; font-weight:normal;">
+                                    <input type="checkbox" id="calculateAllMultiStats">
+                                    {{ t('tables.calculate_all_options') }}
+                                </label>
                             </div>
                             <div class="control-group">
                                 <button class="small-btn" onclick="calcMultiStats()">{{ t('tables.calculate_stats')
@@ -837,6 +878,9 @@
         const XLSX_UPLOAD_FAILED = "{{ t('params.xlsx_upload_failed') }}";
         const XLSX_STATION_COUNT = "{{ t('params.xlsx_stations') }}";
         const XLSX_DAILY_ROWS = "{{ t('params.xlsx_daily_rows') }}";
+        const CONSECUTIVE_RANGE_TO = "{{ t('params.to') }}";
+        const CONSECUTIVE_DAY_LABEL = "{{ t('details_page.day', count=1) }}";
+        const CONSECUTIVE_DAYS_LABEL = "{{ t('details_page.days', count=2) }}";
     </script>
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>

@@ -181,6 +181,7 @@ GHCND_DF = None
 GSOD_DF = None
 XLSX_DATASETS = {}
 XLSX_STATION_INFO = {}
+_USE_REQUEST_CONTEXT = object()
 
 def load_ghcnd_stations():
     global GHCND_DF
@@ -259,13 +260,34 @@ def haversine_vectorized(lat1, lon1, lat2_series, lon2_series):
     c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1-a))
     return R * c
 
-def filter_valid_temperature_records(df):
-    """Drop missing and implausible temperatures consistently across sources."""
+def filter_valid_temperature_records(df, valid_temperature_range=None):
+    """Drop missing and out-of-range temperatures consistently across sources."""
     if df.empty or 'DATA_VALUE' not in df.columns:
         return df
     df = df.copy()
     df['DATA_VALUE'] = pd.to_numeric(df['DATA_VALUE'], errors='coerce')
-    return df[df['DATA_VALUE'].gt(-110) & df['DATA_VALUE'].lt(70)].reset_index(drop=True)
+    low, high = valid_temperature_range or get_valid_temperature_range()
+    return df[df['DATA_VALUE'].gt(low) & df['DATA_VALUE'].lt(high)].reset_index(drop=True)
+
+def get_valid_temperature_range():
+    """Read and remember the user's Celsius bounds for this session."""
+    default_low, default_high = -110.0, 70.0
+    payload = request.get_json(silent=True) if request.method in {'POST', 'PUT', 'PATCH'} else None
+    payload = payload if isinstance(payload, dict) else {}
+    low_value = payload.get('valid_temp_low', request.args.get('valid_temp_low'))
+    high_value = payload.get('valid_temp_high', request.args.get('valid_temp_high'))
+    low_value = session.get('valid_temp_low', default_low) if low_value is None else low_value
+    high_value = session.get('valid_temp_high', default_high) if high_value is None else high_value
+    try:
+        low, high = float(low_value), float(high_value)
+        if not np.isfinite(low) or not np.isfinite(high) or low >= high:
+            raise ValueError
+    except (TypeError, ValueError):
+        low = float(session.get('valid_temp_low', default_low))
+        high = float(session.get('valid_temp_high', default_high))
+    session['valid_temp_low'] = low
+    session['valid_temp_high'] = high
+    return low, high
 
 def get_period_season_name(period_mode, hemisphere='north'):
     """Map the fixed period boundaries to the local hemisphere's season."""
@@ -273,10 +295,16 @@ def get_period_season_name(period_mode, hemisphere='north'):
                 (hemisphere == 'south' and period_mode == 'p2')
     return 'winter' if is_winter else 'summer'
 
-def fetch_and_clean_data(source, station_id, start_date, end_date):
+def fetch_and_clean_data(source, station_id, start_date, end_date,
+                         valid_temperature_range=None, xlsx_dataset_id=_USE_REQUEST_CONTEXT):
+    # Resolve request-bound settings before entering any worker threads.
+    if valid_temperature_range is None:
+        valid_temperature_range = get_valid_temperature_range()
+    if xlsx_dataset_id is _USE_REQUEST_CONTEXT:
+        xlsx_dataset_id = session.get('xlsx_dataset_id')
     df = pd.DataFrame()
     if source == 'xlsx':
-        dataset = XLSX_DATASETS.get(session.get('xlsx_dataset_id'))
+        dataset = XLSX_DATASETS.get(xlsx_dataset_id)
         if dataset is None:
             return df
         df = dataset[dataset['ID'] == str(station_id)].copy()
@@ -284,7 +312,7 @@ def fetch_and_clean_data(source, station_id, start_date, end_date):
             df = df[df['DATE'] >= pd.to_datetime(start_date)]
         if end_date:
             df = df[df['DATE'] <= pd.to_datetime(end_date)]
-        return filter_valid_temperature_records(df)
+        return filter_valid_temperature_records(df, valid_temperature_range)
     if source == 'GHCND':
         url = f'https://noaa-ghcn-pds.s3.amazonaws.com/csv/by_station/{station_id}.csv'
         try:
@@ -329,7 +357,7 @@ def fetch_and_clean_data(source, station_id, start_date, end_date):
                     df = df.rename(columns={'STATION': 'ID'})
                     df = df.dropna(subset=['DATA_VALUE'])
         except Exception: pass
-    return filter_valid_temperature_records(df)
+    return filter_valid_temperature_records(df, valid_temperature_range)
 
 def get_xlsx_dataset():
     return XLSX_DATASETS.get(session.get('xlsx_dataset_id'))
@@ -1034,6 +1062,8 @@ def get_data():
 def get_multi_stats():
     try:
         req = request.json or {}
+        valid_temperature_range = get_valid_temperature_range()
+        xlsx_dataset_id = session.get('xlsx_dataset_id')
         station_ids = req.get('station_ids', [])
         if not isinstance(station_ids, list):
             return jsonify({'status': 'error', 'message': 'station_ids must be a list'}), 400
@@ -1044,6 +1074,7 @@ def get_multi_stats():
         metrics = [
             'min_tmin', 'min_tavg', 'min_tmax', 'max_tmin', 'max_tavg', 'max_tmax',
             'avg_tmin', 'avg_tavg', 'avg_tmax', 'max_days_tmin', 'max_days_tavg', 'max_days_tmax',
+            'consecutive_days_tmin', 'consecutive_days_tavg', 'consecutive_days_tmax',
             'total_days_tmin', 'total_days_tavg', 'total_days_tmax', 'valid_days_tmin', 'valid_days_tavg', 'valid_days_tmax',
             'min_monthly_avg_tmin', 'min_monthly_avg_tavg', 'min_monthly_avg_tmax',
             'max_monthly_avg_tmin', 'max_monthly_avg_tavg', 'max_monthly_avg_tmax',
@@ -1053,7 +1084,8 @@ def get_multi_stats():
         selected_metric = req.get('metric', metrics[0])
         if selected_metric not in metrics:
             selected_metric = metrics[0]
-        metric_order = [selected_metric] + [m for m in metrics if m != selected_metric]
+        calculate_all_options = req.get('calculate_all_options') is True
+        metric_order = ([selected_metric] + [m for m in metrics if m != selected_metric]) if calculate_all_options else [selected_metric]
         source, start_date, end_date = req.get('source', 'GHCND'), req.get('start_date'), req.get('end_date')
         month_filter, day_filter, period_mode = req.get('month_filter'), req.get('day_filter', '0'), req.get('period')
 
@@ -1120,6 +1152,34 @@ def get_multi_stats():
                         if not counts.empty:
                             dates = [f'{int(y)}-{int(y)+1}' for y in counts[counts == counts.max()].index.tolist()]
                 else: val = 0
+            elif metric.startswith('consecutive_days_'):
+                elem = metric.rsplit('_', 1)[1].upper()
+                sub = data[elem]
+                limit, direction = thresholds[elem]
+                if limit is not None and not sub.empty:
+                    matches = sub.loc[
+                        sub['DATA_VALUE'].le(limit) if direction == 'lte' else sub['DATA_VALUE'].ge(limit),
+                        'DATE'
+                    ].drop_duplicates().sort_values()
+                    if not matches.empty:
+                        groups = matches.diff().ne(pd.Timedelta(days=1)).cumsum()
+                        streaks = matches.groupby(groups).agg(['min', 'max', 'count'])
+                        longest = streaks['count'].max()
+                        longest_streaks = streaks[streaks['count'] == longest]
+                        val = int(longest)
+                        return {
+                            'val': val,
+                            'dates': [],
+                            'streaks': [
+                                {
+                                    'start': row['min'].strftime('%Y-%m-%d'),
+                                    'end': row['max'].strftime('%Y-%m-%d'),
+                                    'count': val,
+                                }
+                                for _, row in longest_streaks.iterrows()
+                            ],
+                        }
+                val = 0 if limit is not None else '-'
             elif metric.startswith('total_days_'):
                 elem = metric.split('_')[2].upper()
                 sub = data[elem]
@@ -1148,7 +1208,11 @@ def get_multi_stats():
                 lat, lon, elev = row.iloc[0]['LAT'], row.iloc[0]['LON'], row.iloc[0]['ELEV']
 
             # Fetch each station once and reuse its records for every statistic.
-            df = fetch_and_clean_data(source, sid, start_date, end_date)
+            df = fetch_and_clean_data(
+                source, sid, start_date, end_date,
+                valid_temperature_range=valid_temperature_range,
+                xlsx_dataset_id=xlsx_dataset_id
+            )
             if not df.empty and month_filter and month_filter != '0':
                 if month_filter == 'winter_3': df = df[df['DATE'].dt.month.isin([12, 1, 2])]
                 elif month_filter == 'summer_3': df = df[df['DATE'].dt.month.isin([6, 7, 8])]
@@ -1156,10 +1220,10 @@ def get_multi_stats():
                     df = df[df['DATE'].dt.month == int(month_filter)]
                     if day_filter and day_filter != '0': df = df[df['DATE'].dt.day == int(day_filter)]
             if df.empty:
-                stats = {m: {'val': '-', 'dates': []} for m in metrics}
+                stats = {m: {'val': '-', 'dates': []} for m in metric_order}
             else:
                 data = {elem: df[df['ELEMENT'] == elem] for elem in ('TMIN', 'TAVG', 'TMAX')}
-                stats = {m: calculate_metric(m, data) for m in metrics}
+                stats = {m: calculate_metric(m, data) for m in metric_order}
             return {'id': sid, 'name': name, 'lat': lat, 'lon': lon, 'elev': elev, 'stats': stats}
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:

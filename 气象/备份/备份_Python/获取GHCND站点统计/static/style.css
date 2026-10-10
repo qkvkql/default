@@ -218,6 +218,22 @@ h3 {
     width: 100%;
 }
 
+.valid-temperature-range-inputs {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.valid-temperature-range-inputs label {
+    width: auto;
+    font-weight: normal;
+}
+
+.valid-temperature-range-inputs input[type="number"] {
+    width: 110px;
+}
+
 .radio-group {
     display: flex;
     flex-wrap: wrap;

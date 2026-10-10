@@ -8,6 +8,9 @@ let periodColVisibility = { min_tmin: true, max_tmin: true, min_tmax: true, max_
 let multiSortBy = 'dist';
 let multiSortDir = 'asc';
 let currentMultiStations = [];
+let hasMultiSubsetOperation = false;
+let lastMultiSubsetSource = null;
+let lastMultiSubsetCriteria = null;
 let rawMultiStatsResults = [];
 let rawMultiStatMetricOrder = [];
 let multiStatSortCol = 'val';
@@ -17,6 +20,7 @@ const MULTI_STAT_ALIASES = {
     max_tmin: ['X', 'X-TN'], max_tavg: ['X', 'X-TA'], max_tmax: ['X', 'X-TX'],
     avg_tmin: ['A', 'A-TN'], avg_tavg: ['A', 'A-TA'], avg_tmax: ['A', 'A-TX'],
     max_days_tmin: ['PTH', 'MNP'], max_days_tavg: ['PTH', 'MAP'], max_days_tmax: ['PTH', 'MXP'],
+    consecutive_days_tmin: ['CS', 'CTN'], consecutive_days_tavg: ['CS', 'CTA'], consecutive_days_tmax: ['CS', 'CTX'],
     total_days_tmin: ['TTH', 'TNP'], total_days_tavg: ['TTH', 'TAP'], total_days_tmax: ['TTH', 'TXP'],
     valid_days_tmin: ['TD', 'TD-N'], valid_days_tavg: ['TD', 'TD-A'], valid_days_tmax: ['TD', 'TD-X'],
     min_monthly_avg_tmin: ['MX', 'NMN'], min_monthly_avg_tavg: ['MX', 'NMA'], min_monthly_avg_tmax: ['MX', 'NMX'],
@@ -62,7 +66,26 @@ function getElementValueSafe(id, defaultVal) {
     return el ? el.value : defaultVal;
 }
 
+function getValidTemperatureRangeParams() {
+    return {
+        valid_temp_low: getElementValueSafe('validTempLow', '-110'),
+        valid_temp_high: getElementValueSafe('validTempHigh', '70')
+    };
+}
+
+function validateValidTemperatureRange() {
+    const lowInput = document.getElementById('validTempLow');
+    const highInput = document.getElementById('validTempHigh');
+    if (!lowInput || !highInput) return true;
+    const low = Number(lowInput.value);
+    const high = Number(highInput.value);
+    highInput.setCustomValidity(Number.isFinite(low) && Number.isFinite(high) && low < high
+        ? '' : 'The high boundary must be greater than the low boundary.');
+    return lowInput.reportValidity() && highInput.reportValidity();
+}
+
 function openDateDetails(type, value, specificStationId = null) {
+    if (!validateValidTemperatureRange()) return;
     const stationId = specificStationId || document.getElementById('stationId').value;
     const source = document.getElementById('dataSource').value;
     const seasonMode = document.querySelector('input[name="season"]:checked').value;
@@ -87,7 +110,8 @@ function openDateDetails(type, value, specificStationId = null) {
         hemisphere: hemisphere,
         tmin_val: tminVal, tmin_dir: tminDir,
         tavg_val: tavgVal, tavg_dir: tavgDir,
-        tmax_val: tmaxVal, tmax_dir: tmaxDir
+        tmax_val: tmaxVal, tmax_dir: tmaxDir,
+        ...getValidTemperatureRangeParams()
     });
 
     const url = `/date_details?${params.toString()}`;
@@ -557,6 +581,94 @@ function updateMultiStations() {
     fetchData();
 }
 
+function renderCurrentMultiStations() {
+    const tbody = document.querySelector('#multiStationTable tbody');
+    const countEl = document.getElementById('multiStationCount');
+    if (!tbody) return;
+
+    tbody.innerHTML = '';
+    if (countEl) countEl.innerText = currentMultiStations.length;
+    if (currentMultiStations.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">No matching stations found.</td></tr>';
+        return;
+    }
+
+    currentMultiStations.forEach(st => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="copy-cell">${st.id}</td>
+            <td class="copy-cell">${st.name}</td>
+            <td class="copy-cell">${st.lat}</td>
+            <td class="copy-cell">${st.lon}</td>
+            <td class="copy-cell">${st.elev}</td>
+            <td class="copy-cell">${st.dist}</td>
+            <td class="copy-cell">${st.country}</td>`;
+        tbody.appendChild(tr);
+    });
+}
+
+function getMultiStationSearchCriteria() {
+    const mode = document.getElementById('multiStationSearchMode')?.value;
+    const keyword = (document.getElementById('multiStationSearchKeyword')?.value || '').trim().toLocaleLowerCase();
+    return keyword ? { mode, keyword } : null;
+}
+
+function matchesMultiStationSearch(station, criteria) {
+    if (criteria.mode === 'name_contains') return (station.name || '').toLocaleLowerCase().includes(criteria.keyword);
+    return (station.id || '').toLocaleLowerCase().startsWith(criteria.keyword);
+}
+
+function getMultiStationSubset() {
+    const criteria = getMultiStationSearchCriteria();
+    if (!criteria) return;
+
+    const repeatsLastSubset = lastMultiSubsetSource && lastMultiSubsetCriteria &&
+        lastMultiSubsetCriteria.mode === criteria.mode && lastMultiSubsetCriteria.keyword === criteria.keyword;
+    if (!repeatsLastSubset) lastMultiSubsetSource = currentMultiStations.slice();
+    lastMultiSubsetCriteria = criteria;
+    currentMultiStations = lastMultiSubsetSource.filter(st => matchesMultiStationSearch(st, criteria));
+    hasMultiSubsetOperation = true;
+    renderCurrentMultiStations();
+}
+
+function removeMultiStationSubset() {
+    const criteria = getMultiStationSearchCriteria();
+    if (!criteria) return;
+
+    // If this removes the subset just produced, use its original source so the
+    // result is the complementary set from the same list.
+    const isComplementOfLastSubset = lastMultiSubsetSource && lastMultiSubsetCriteria &&
+        lastMultiSubsetCriteria.mode === criteria.mode && lastMultiSubsetCriteria.keyword === criteria.keyword;
+    const source = isComplementOfLastSubset ? lastMultiSubsetSource : currentMultiStations;
+    currentMultiStations = source.filter(st => !matchesMultiStationSearch(st, criteria));
+    lastMultiSubsetSource = null;
+    lastMultiSubsetCriteria = null;
+    hasMultiSubsetOperation = true;
+    renderCurrentMultiStations();
+}
+
+function sortCurrentMultiStations() {
+    const numericColumns = new Set(['lat', 'lon', 'elev', 'dist']);
+    const isEmpty = value => value === null || value === undefined || value === '-' ||
+        (typeof value === 'string' && (value.trim() === '' || value.trim().toLowerCase() === 'none'));
+    currentMultiStations.sort((a, b) => {
+        const valueA = a[multiSortBy];
+        const valueB = b[multiSortBy];
+        if (isEmpty(valueA) && isEmpty(valueB)) return 0;
+        if (isEmpty(valueA)) return 1;
+        if (isEmpty(valueB)) return -1;
+
+        let comparison;
+        if (numericColumns.has(multiSortBy)) {
+            comparison = Number(valueA) - Number(valueB);
+        } else {
+            comparison = String(valueA).localeCompare(String(valueB));
+        }
+        return multiSortDir === 'asc' ? comparison : -comparison;
+    });
+    renderCurrentMultiStations();
+}
+
 function copyMultiTable() {
     const table = document.getElementById('multiStationTable');
     if (!table) return;
@@ -621,6 +733,12 @@ function decorateMultiStatOptions() {
     });
 }
 
+function getMultiStatsColumnCount() {
+    const select = document.getElementById('multiStatSelect');
+    const calculateAll = document.getElementById('calculateAllMultiStats')?.checked;
+    return 6 + (calculateAll ? (select?.options.length || 0) : 1) * 2;
+}
+
 function renderMultiStatTable() {
     const tbody = document.querySelector('#multiStatResultTable tbody');
     if (!tbody) return;
@@ -654,7 +772,7 @@ function renderMultiStatTable() {
     }
 
     tbody.innerHTML = '';
-    if (rawMultiStatsResults.length === 0) { tbody.innerHTML = `<tr><td colspan="66">No stats available.</td></tr>`; return; }
+    if (rawMultiStatsResults.length === 0) { tbody.innerHTML = `<tr><td colspan="${getMultiStatsColumnCount()}">No stats available.</td></tr>`; return; }
     rawMultiStatsResults.sort((a, b) => {
         const isStatValue = multiStatSortCol.startsWith('stat-value:');
         const isStatDates = multiStatSortCol.startsWith('stat-dates:');
@@ -692,7 +810,14 @@ function renderMultiStatTable() {
             const result = (row.stats && row.stats[metric]) || { val: '-', dates: [] };
             const dates = result.dates || [];
             let datesCell = '';
-            if (dates.length) {
+            if (metric.startsWith('consecutive_days_') && result.streaks?.length) {
+                datesCell = result.streaks.map(({ start, end, count }) => {
+                    const dayLabel = count === 1 ? CONSECUTIVE_DAY_LABEL : CONSECUTIVE_DAYS_LABEL.replace(/^\d+/, count);
+                    return start === end
+                        ? `${start} (${dayLabel})`
+                        : `${start} ${CONSECUTIVE_RANGE_TO} ${end} (${dayLabel})`;
+                }).join(', ');
+            } else if (dates.length) {
                 const first = dates[0];
                 const isPeriod = /^\d{4}-\d{4}$/.test(first);
                 const isMonth = /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)$/.test(first);
@@ -718,6 +843,7 @@ function renderMultiStatTable() {
 }
 
 async function calcMultiStats() {
+    if (!validateValidTemperatureRange()) return;
     const loading = document.getElementById('multiStatLoading');
     const tbody = document.querySelector('#multiStatResultTable tbody');
     if (!tbody) return;
@@ -762,6 +888,8 @@ async function calcMultiStats() {
         tavg_dir: document.getElementById('tavgDir').value,
         tmax_val: document.getElementById('tmaxVal').value,
         tmax_dir: document.getElementById('tmaxDir').value,
+        ...getValidTemperatureRangeParams(),
+        calculate_all_options: document.getElementById('calculateAllMultiStats').checked,
     };
 
     try {
@@ -777,8 +905,8 @@ async function calcMultiStats() {
             rawMultiStatMetricOrder = result.metric_order || [];
             result.results.forEach(row => { row.dist = distMap[row.id]; rawMultiStatsResults.push(row); });
             renderMultiStatTable();
-        } else { tbody.innerHTML = `<tr><td colspan="66">Error: ${result.message}</td></tr>`; }
-    } catch (err) { tbody.innerHTML = `<tr><td colspan="66">Network Error</td></tr>`; }
+        } else { tbody.innerHTML = `<tr><td colspan="${getMultiStatsColumnCount()}">Error: ${result.message}</td></tr>`; }
+    } catch (err) { tbody.innerHTML = `<tr><td colspan="${getMultiStatsColumnCount()}">Network Error</td></tr>`; }
     finally {
         clearInterval(timerInterval);
         const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
@@ -807,10 +935,14 @@ function triggerServerSort(columnName) {
     fetchData(true);
 }
 function triggerMultiSort(columnName) {
-    const loader = document.getElementById('multiStationLoading');
-    if (loader) loader.classList.remove('hidden');
     if (multiSortBy === columnName) { multiSortDir = (multiSortDir === 'asc') ? 'desc' : 'asc'; }
     else { multiSortBy = columnName; multiSortDir = 'asc'; }
+    if (hasMultiSubsetOperation) {
+        sortCurrentMultiStations();
+        return;
+    }
+    const loader = document.getElementById('multiStationLoading');
+    if (loader) loader.classList.remove('hidden');
     fetchData(true);
 }
 function sortPeriodTable(column) {
@@ -924,6 +1056,7 @@ function renderPeriodTable() {
 
 // --- MAIN FETCH ---
 async function fetchData(keepSort = false) {
+    if (!validateValidTemperatureRange()) return;
     const loading = document.getElementById('loading');
     const sortingLoading = document.getElementById('sortingLoading');
     const multiStationLoading = document.getElementById('multiStationLoading');
@@ -949,6 +1082,9 @@ async function fetchData(keepSort = false) {
     rawPeriodStats = [];
     renderPeriodTable();
     currentMultiStations = [];
+    hasMultiSubsetOperation = false;
+    lastMultiSubsetSource = null;
+    lastMultiSubsetCriteria = null;
 
     errorMsg.textContent = '';
 
@@ -994,6 +1130,7 @@ async function fetchData(keepSort = false) {
         tavg_dir: document.getElementById('tavgDir').value,
         tmax_val: document.getElementById('tmaxVal').value,
         tmax_dir: document.getElementById('tmaxDir').value,
+        ...getValidTemperatureRangeParams(),
 
         custom_avg_tmin: document.getElementById('customAvgTmin').value,
         custom_avg_tavg: document.getElementById('customAvgTavg').value,
@@ -1102,21 +1239,7 @@ async function fetchData(keepSort = false) {
         if (multiTbody) {
             if (result.multi_stations && result.multi_stations.length > 0) {
                 currentMultiStations = result.multi_stations;
-                const countEl = document.getElementById('multiStationCount');
-                if (countEl) countEl.innerText = result.multi_stations.length;
-                result.multi_stations.forEach(st => {
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td class="copy-cell">${st.id}</td>
-                        <td class="copy-cell">${st.name}</td>
-                        <td class="copy-cell">${st.lat}</td>
-                        <td class="copy-cell">${st.lon}</td>
-                        <td class="copy-cell">${st.elev}</td>
-                        <td class="copy-cell">${st.dist}</td>
-                        <td class="copy-cell">${st.country}</td>
-        `;
-                    multiTbody.appendChild(tr);
-                });
+                renderCurrentMultiStations();
             } else {
                 multiTbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">No matching stations found.</td></tr>';
                 const countEl = document.getElementById('multiStationCount');
