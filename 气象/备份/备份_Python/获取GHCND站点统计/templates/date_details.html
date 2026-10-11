@@ -549,22 +549,22 @@
                 let startDt, endDt;
                 if (qType === 'year') {
                     const y = parseInt(periodValue);
-                    startDt = new Date(y, 0, 1);
-                    endDt = new Date(y, 11, 31);
+                    startDt = new Date(Date.UTC(y, 0, 1));
+                    endDt = new Date(Date.UTC(y, 11, 31));
                 } else {
                     const year1 = parseInt(periodValue.split('-')[0]);
                     const year2 = parseInt(periodValue.split('-')[1]);
                     if (periodMode === 'p1') {
-                        startDt = new Date(year1, 6, 16); // Month is 0-indexed, so 6 is July
-                        endDt = new Date(year2, 6, 15);
+                        startDt = new Date(Date.UTC(year1, 6, 16)); // Month is 0-indexed, so 6 is July
+                        endDt = new Date(Date.UTC(year2, 6, 15));
                     } else {
-                        startDt = new Date(year1, 0, 16);
-                        endDt = new Date(year2, 0, 15);
+                        startDt = new Date(Date.UTC(year1, 0, 16));
+                        endDt = new Date(Date.UTC(year2, 0, 15));
                     }
                 }
 
-                for (let d = new Date(startDt); d <= endDt; d.setDate(d.getDate() + 1)) {
-                    const m = (d.getMonth() + 1).toString().padStart(2, '0');
+                for (let d = new Date(startDt); d <= endDt; d.setUTCDate(d.getUTCDate() + 1)) {
+                    const m = (d.getUTCMonth() + 1).toString().padStart(2, '0');
                     let match = false;
                     if (monthVal === 'all') match = true;
                     else if (monthVal === 'winter_3') match = ['12', '01', '02'].includes(m);
