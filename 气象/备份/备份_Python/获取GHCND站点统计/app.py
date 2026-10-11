@@ -1102,7 +1102,38 @@ def get_multi_stats():
             'TMAX': (threshold('tmax_val'), req.get('tmax_dir', 'lte')),
         }
 
-        def calculate_metric(metric, data):
+        def normalize_station_frame(frame):
+            """Enforce the common record schema before any metric uses dates."""
+            required = ['DATE', 'ELEMENT', 'DATA_VALUE']
+            if frame is None:
+                return pd.DataFrame(columns=required)
+            if not isinstance(frame, pd.DataFrame):
+                raise TypeError('Station data is not a pandas DataFrame')
+            frame = frame.copy()
+            column_names = {str(column).strip().upper(): column for column in frame.columns}
+            date_column = column_names.get('DATE')
+            if date_column is None and str(frame.index.name or '').strip().upper() == 'DATE':
+                frame = frame.reset_index()
+                date_column = next(column for column in frame.columns if str(column).strip().upper() == 'DATE')
+            if date_column is None:
+                if frame.empty:
+                    return pd.DataFrame(columns=required)
+                raise ValueError('Station data is missing the DATE column')
+            if date_column != 'DATE':
+                frame = frame.rename(columns={date_column: 'DATE'})
+            for column in ('ELEMENT', 'DATA_VALUE'):
+                source_column = column_names.get(column)
+                if source_column is None:
+                    if frame.empty:
+                        frame[column] = pd.Series(dtype='object')
+                    else:
+                        raise ValueError(f'Station data is missing the {column} column')
+                elif source_column != column:
+                    frame = frame.rename(columns={source_column: column})
+            frame['DATE'] = pd.to_datetime(frame['DATE'], errors='coerce')
+            return frame.dropna(subset=['DATE'])
+
+        def calculate_metric(metric, data, boundary_data=None):
             val, dates = '-', []
             if metric.startswith(('min_monthly_avg_', 'max_monthly_avg_')):
                 is_min = metric.startswith('min_')
@@ -1166,6 +1197,9 @@ def get_multi_stats():
                         streaks = matches.groupby(groups).agg(['min', 'max', 'count'])
                         longest = streaks['count'].max()
                         longest_streaks = streaks[streaks['count'] == longest]
+                        boundary_dates = set(
+                            boundary_data[elem]['DATE'].dt.normalize()
+                        ) if boundary_data and elem in boundary_data else set()
                         val = int(longest)
                         return {
                             'val': val,
@@ -1175,6 +1209,10 @@ def get_multi_stats():
                                     'start': row['min'].strftime('%Y-%m-%d'),
                                     'end': row['max'].strftime('%Y-%m-%d'),
                                     'count': val,
+                                    'boundary_missing': (
+                                        row['min'].normalize() - pd.Timedelta(days=1) not in boundary_dates or
+                                        row['max'].normalize() + pd.Timedelta(days=1) not in boundary_dates
+                                    ),
                                 }
                                 for _, row in longest_streaks.iterrows()
                             ],
@@ -1201,30 +1239,53 @@ def get_multi_stats():
 
         def process_station(sid):
             name, lat, lon, elev = 'Unknown', '-', '-', '-'
-            stations = GHCND_DF if source == 'GHCND' else GSOD_DF
-            row = stations[stations['ID'] == sid]
-            if not row.empty:
-                name = row.iloc[0]['NAME']
-                lat, lon, elev = row.iloc[0]['LAT'], row.iloc[0]['LON'], row.iloc[0]['ELEV']
+            empty_stats = {m: {'val': '-', 'dates': []} for m in metric_order}
+            try:
+                stations = GHCND_DF if source == 'GHCND' else GSOD_DF
+                row = stations[stations['ID'] == sid]
+                if not row.empty:
+                    name = row.iloc[0]['NAME']
+                    lat, lon, elev = row.iloc[0]['LAT'], row.iloc[0]['LON'], row.iloc[0]['ELEV']
 
             # Fetch each station once and reuse its records for every statistic.
-            df = fetch_and_clean_data(
-                source, sid, start_date, end_date,
-                valid_temperature_range=valid_temperature_range,
-                xlsx_dataset_id=xlsx_dataset_id
-            )
-            if not df.empty and month_filter and month_filter != '0':
-                if month_filter == 'winter_3': df = df[df['DATE'].dt.month.isin([12, 1, 2])]
-                elif month_filter == 'summer_3': df = df[df['DATE'].dt.month.isin([6, 7, 8])]
+                fetch_start, fetch_end = start_date, end_date
+                if start_date:
+                    fetch_start = (pd.to_datetime(start_date) - pd.Timedelta(days=1)).strftime('%Y-%m-%d')
+                if end_date:
+                    fetch_end = (pd.to_datetime(end_date) + pd.Timedelta(days=1)).strftime('%Y-%m-%d')
+                df = fetch_and_clean_data(
+                    source, sid, fetch_start, fetch_end,
+                    valid_temperature_range=valid_temperature_range,
+                    xlsx_dataset_id=xlsx_dataset_id
+                )
+                df = normalize_station_frame(df)
+                boundary_check_df = df.copy()
+                if start_date:
+                    df = df[df['DATE'] >= pd.to_datetime(start_date)]
+                if end_date:
+                    df = df[df['DATE'] <= pd.to_datetime(end_date)]
+                if not df.empty and month_filter and month_filter != '0':
+                    if month_filter == 'winter_3': df = df[df['DATE'].dt.month.isin([12, 1, 2])]
+                    elif month_filter == 'summer_3': df = df[df['DATE'].dt.month.isin([6, 7, 8])]
+                    else:
+                        df = df[df['DATE'].dt.month == int(month_filter)]
+                        if day_filter and day_filter != '0': df = df[df['DATE'].dt.day == int(day_filter)]
+                if df.empty:
+                    stats = empty_stats
                 else:
-                    df = df[df['DATE'].dt.month == int(month_filter)]
-                    if day_filter and day_filter != '0': df = df[df['DATE'].dt.day == int(day_filter)]
-            if df.empty:
-                stats = {m: {'val': '-', 'dates': []} for m in metric_order}
-            else:
-                data = {elem: df[df['ELEMENT'] == elem] for elem in ('TMIN', 'TAVG', 'TMAX')}
-                stats = {m: calculate_metric(m, data) for m in metric_order}
-            return {'id': sid, 'name': name, 'lat': lat, 'lon': lon, 'elev': elev, 'stats': stats}
+                    data = {elem: df[df['ELEMENT'] == elem] for elem in ('TMIN', 'TAVG', 'TMAX')}
+                    boundary_data = {
+                        elem: boundary_check_df[boundary_check_df['ELEMENT'] == elem]
+                        for elem in ('TMIN', 'TAVG', 'TMAX')
+                    }
+                    stats = {m: calculate_metric(m, data, boundary_data) for m in metric_order}
+                return {'id': sid, 'name': name, 'lat': lat, 'lon': lon, 'elev': elev, 'stats': stats}
+            except Exception as exc:
+                print(f'Multi Stats station {sid} error: {type(exc).__name__}: {exc}')
+                return {
+                    'id': sid, 'name': name, 'lat': lat, 'lon': lon, 'elev': elev,
+                    'stats': empty_stats, 'error': f'{type(exc).__name__}: {exc}'
+                }
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
             results = list(executor.map(process_station, station_ids))
@@ -1554,9 +1615,18 @@ def date_details():
         except: pass
 
     # 2. Fetch Data
+    boundary_check_df = pd.DataFrame()
     if req_start and req_end:
         if source == 'xlsx': station_name, station_info = get_xlsx_station_metadata(station_id)
-        df = fetch_and_clean_data(source, station_id, req_start, req_end)
+        fetch_start, fetch_end = req_start, req_end
+        try:
+            fetch_start = (pd.to_datetime(req_start) - pd.Timedelta(days=1)).strftime('%Y-%m-%d')
+            fetch_end = (pd.to_datetime(req_end) + pd.Timedelta(days=1)).strftime('%Y-%m-%d')
+        except (TypeError, ValueError):
+            pass
+        df = fetch_and_clean_data(source, station_id, fetch_start, fetch_end)
+        boundary_check_df = df.copy()
+        df = df[(df['DATE'] >= pd.to_datetime(req_start)) & (df['DATE'] <= pd.to_datetime(req_end))]
     
     if df.empty:
         return render_template('date_details.html', records=[], station_name=station_name, 
@@ -1627,21 +1697,32 @@ def date_details():
             
             # Sort by count desc
             streaks = streaks.sort_values('count', ascending=False).head(10)
+
+            valid_metric_dates = set(
+                boundary_check_df.loc[boundary_check_df['ELEMENT'] == col, 'DATE']
+                .dt.normalize()
+            )
             
             # Format
             result = []
             for _, row in streaks.iterrows():
-                s = row['start_date'].strftime('%Y-%m-%d')
-                e = row['end_date'].strftime('%Y-%m-%d')
+                start_date = row['start_date'].normalize()
+                end_date = row['end_date'].normalize()
+                s = start_date.strftime('%Y-%m-%d')
+                e = end_date.strftime('%Y-%m-%d')
                 c = row['count']
+                boundary_warning = '❓' if (
+                    start_date - pd.Timedelta(days=1) not in valid_metric_dates or
+                    end_date + pd.Timedelta(days=1) not in valid_metric_dates
+                ) else ''
                 
                 to_str = get_translation('params.to')
                 if s == e:
                     day_text = get_translation('details_page.day', count=int(c))
-                    result.append(f"{s} ({day_text})")
+                    result.append(f"{s} ({day_text}{boundary_warning})")
                 else:
                     days_text = get_translation('details_page.days', count=int(c))
-                    result.append(f"{s} {to_str} {e} ({days_text})")
+                    result.append(f"{s} {to_str} {e} ({days_text}{boundary_warning})")
             return result
 
         streaks_data['TMIN'] = get_top_streaks('TMIN', thresholds['TMIN']['val'], thresholds['TMIN']['dir'])
@@ -1698,12 +1779,32 @@ def period_stats():
                 station_info['elev'] = row.iloc[0]['ELEV']
 
         if source == 'xlsx': station_name, station_info = get_xlsx_station_metadata(station_id)
-        df = fetch_and_clean_data(source, station_id, start_date, end_date)
+        fetch_start_date, fetch_end_date = start_date, end_date
+        try:
+            if start_date:
+                fetch_start_date = (pd.to_datetime(start_date) - pd.Timedelta(days=1)).strftime('%Y-%m-%d')
+            if end_date:
+                fetch_end_date = (pd.to_datetime(end_date) + pd.Timedelta(days=1)).strftime('%Y-%m-%d')
+        except (TypeError, ValueError):
+            fetch_start_date, fetch_end_date = start_date, end_date
+        df = fetch_and_clean_data(source, station_id, fetch_start_date, fetch_end_date)
         if df.empty:
             return render_template('period_stats.html', station_name=station_name, station_info=station_info, 
                                    period_summary=None, period_stats=[], period_mode=period_mode,
                                    hemisphere=hemisphere, season_name=season_name,
                                    error_msg=get_translation('messages.station_data_error'))
+
+        # Keep the complete fetched daily records for streak boundary checks.
+        # Month/day filters affect which streaks are displayed, but must not
+        # make a valid adjacent temperature look missing.
+        boundary_check_df = df.copy()
+        try:
+            if start_date:
+                df = df[df['DATE'] >= pd.to_datetime(start_date)]
+            if end_date:
+                df = df[df['DATE'] <= pd.to_datetime(end_date)]
+        except (TypeError, ValueError):
+            pass
 
         # Apply Month/Day filters if any (though usually we want the full range for period stats)
         if month_filter and month_filter != "0":
@@ -1747,15 +1848,25 @@ def period_stats():
 
             result = []
             to_str = get_translation('params.to')
+            valid_metric_dates = set(
+                boundary_check_df.loc[boundary_check_df['ELEMENT'] == col, 'DATE']
+                .dt.normalize()
+            )
             for _, row in streaks.iterrows():
-                start = row['start_date'].strftime('%Y-%m-%d')
-                end = row['end_date'].strftime('%Y-%m-%d')
+                start_date = row['start_date'].normalize()
+                end_date = row['end_date'].normalize()
+                start = start_date.strftime('%Y-%m-%d')
+                end = end_date.strftime('%Y-%m-%d')
                 count = int(row['count'])
+                boundary_warning = '❓' if (
+                    start_date - pd.Timedelta(days=1) not in valid_metric_dates or
+                    end_date + pd.Timedelta(days=1) not in valid_metric_dates
+                ) else ''
                 if start == end:
-                    result.append(f"{start} ({get_translation('details_page.day', count=count)})")
+                    result.append(f"{start} ({get_translation('details_page.day', count=count)}{boundary_warning})")
                 else:
                     days = get_translation('details_page.days', count=count)
-                    result.append(f"{start} {to_str} {end} ({days})")
+                    result.append(f"{start} {to_str} {end} ({days}{boundary_warning})")
             return result
 
         for metric in ('TMIN', 'TAVG', 'TMAX'):

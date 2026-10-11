@@ -40,6 +40,14 @@ function getPeriodModeFromSeason(seasonMode, hemisphere) {
     return ((hemisphere === 'north' && seasonMode === 'winter') || (hemisphere === 'south' && seasonMode === 'summer')) ? 'p1' : 'p2';
 }
 
+function formatPeriodLabel(period) {
+    const seasonMode = document.querySelector('input[name="season"]:checked')?.value || 'winter';
+    const hemisphere = document.querySelector('input[name="hemisphere"]:checked')?.value || 'north';
+    return getPeriodModeFromSeason(seasonMode, hemisphere) === 'p2'
+        ? period.split('-')[0]
+        : period;
+}
+
 function toggleSection(sectionId) {
     const section = document.getElementById(sectionId);
     if (section) {
@@ -126,7 +134,7 @@ function showPeriodModal(ranges, specificStationId = null) {
     ranges.forEach(range => {
         const div = document.createElement('div');
         div.className = 'period-item';
-        div.textContent = range;
+        div.textContent = formatPeriodLabel(range);
         div.onclick = () => {
             openDateDetails('period', range, specificStationId);
             // Optional: close modal after click? User might want to open multiple. Let's keep it open.
@@ -806,16 +814,23 @@ function renderMultiStatTable() {
     rawMultiStatsResults.forEach(row => {
         const tr = document.createElement('tr');
         const cls = (val) => (val && val !== '-' && val !== 'None') ? ' class="copy-cell"' : '';
+        const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        })[char]);
+        const stationError = row.error
+            ? `<span title="Station data error: ${escapeHtml(row.error)}" style="color:#dc3545; cursor:help; margin-left:4px;">⚠</span>`
+            : '';
         const metricCells = metricOrder.map(metric => {
             const result = (row.stats && row.stats[metric]) || { val: '-', dates: [] };
             const dates = result.dates || [];
             let datesCell = '';
             if (metric.startsWith('consecutive_days_') && result.streaks?.length) {
-                datesCell = result.streaks.map(({ start, end, count }) => {
+                datesCell = result.streaks.map(({ start, end, count, boundary_missing }) => {
                     const dayLabel = count === 1 ? CONSECUTIVE_DAY_LABEL : CONSECUTIVE_DAYS_LABEL.replace(/^\d+/, count);
+                    const boundaryWarning = boundary_missing ? ' <span style="color:#dc3545">❓</span>' : '';
                     return start === end
-                        ? `${start} (${dayLabel})`
-                        : `${start} ${CONSECUTIVE_RANGE_TO} ${end} (${dayLabel})`;
+                        ? `${start} (${dayLabel}${boundaryWarning})`
+                        : `${start} ${CONSECUTIVE_RANGE_TO} ${end} (${dayLabel}${boundaryWarning})`;
                 }).join(', ');
             } else if (dates.length) {
                 const first = dates[0];
@@ -826,7 +841,7 @@ function renderMultiStatTable() {
                     const safeDates = dates.join(',').replace(/'/g, "\\'");
                     datesCell = `<span class="clickable-date" onclick="event.stopPropagation(); showPeriodModal('${safeDates}'.split(','), '${row.id}')" title="Click to Select Period">${dates.length} Periods Found</span>`;
                 } else if (isPeriod) {
-                    datesCell = `<span class="clickable-date" onclick="event.stopPropagation(); openDateDetails('period', '${first}', '${row.id}')" title="View Details">${first}</span>`;
+                    datesCell = `<span class="clickable-date" onclick="event.stopPropagation(); openDateDetails('period', '${first}', '${row.id}')" title="View Details">${formatPeriodLabel(first)}</span>`;
                 } else if (isMonth) {
                     datesCell = dates.join(', ');
                 } else if (isYearMonth) {
@@ -837,7 +852,7 @@ function renderMultiStatTable() {
             }
             return `<td${cls(result.val)}>${result.val}</td><td>${datesCell}</td>`;
         }).join('');
-        tr.innerHTML = `<td>${row.id}</td><td${cls(row.name)}>${row.name}</td><td${cls(row.lat)}>${row.lat}</td><td${cls(row.lon)}>${row.lon}</td><td${cls(row.elev)}>${row.elev}</td><td${cls(row.dist)}>${row.dist}</td>${metricCells}`;
+        tr.innerHTML = `<td>${row.id}${stationError}</td><td${cls(row.name)}>${row.name}</td><td${cls(row.lat)}>${row.lat}</td><td${cls(row.lon)}>${row.lon}</td><td${cls(row.elev)}>${row.elev}</td><td${cls(row.dist)}>${row.dist}</td>${metricCells}`;
         tbody.appendChild(tr);
     });
 }
