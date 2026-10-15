@@ -81,6 +81,14 @@ function getValidTemperatureRangeParams() {
     };
 }
 
+function getCenterCoordinates() {
+    const parts = getElementValueSafe('centerCoordinates', '').trim().split(/[\s,]+/).filter(Boolean);
+    return {
+        center_lat: parts.length >= 2 ? parts[0] : '',
+        center_lon: parts.length >= 2 ? parts[1] : ''
+    };
+}
+
 function validateValidTemperatureRange() {
     const lowInput = document.getElementById('validTempLow');
     const highInput = document.getElementById('validTempHigh');
@@ -322,7 +330,7 @@ function updateDayDropdown() {
 function toggleCenterLocMode() {
     const mode = document.getElementById('centerMode').value;
     const area = document.getElementById('coordsInputArea');
-    if (area) area.style.display = (mode === 'coords') ? 'grid' : 'none';
+    if (area) area.style.display = (mode === 'coords') ? 'flex' : 'none';
 }
 
 async function searchStations() {
@@ -1153,8 +1161,7 @@ async function fetchData(keepSort = false) {
 
         // Safe getters for advanced params
         center_mode: getElementValueSafe('centerMode', 'station'),
-        center_lat: getElementValueSafe('centerLat', ''),
-        center_lon: getElementValueSafe('centerLon', ''),
+        ...getCenterCoordinates(),
         max_dist: (() => {
             const raw = getElementValueSafe('maxDist', 'no_limit').trim();
             return (!raw || raw === 'no_limit') ? 'no_limit' : raw;

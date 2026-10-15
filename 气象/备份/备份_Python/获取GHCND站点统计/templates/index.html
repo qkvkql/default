@@ -81,6 +81,20 @@
                         <a href="https://www.ncei.noaa.gov/pub/data/noaa/isd-history.txt" target="_blank"
                             rel="noopener">{{ t('links.gsod_stations_list') }} ({{ gsod_count }})</a>
                     </div>
+
+                    <div class="popup-item valid-temperature-range-menu">
+                        <label for="validTempLow">{{ t('params.valid_temperature_range') }}</label>
+                        <div class="valid-temperature-range-inputs">
+                            <label for="validTempLow">{{ t('params.valid_temperature_low') }}</label>
+                            <input type="number" id="validTempLow" step="any" required
+                                value="{{ session.get('valid_temp_low', -110) }}" aria-label="{{ t('params.valid_temperature_low') }}">
+                            <span>{{ t('params.to') }}</span>
+                            <label for="validTempHigh">{{ t('params.valid_temperature_high') }}</label>
+                            <input type="number" id="validTempHigh" step="any" required
+                                value="{{ session.get('valid_temp_high', 70) }}" aria-label="{{ t('params.valid_temperature_high') }}">
+                            <span>°C</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -104,20 +118,6 @@
                     <option value="xlsx">{{ t('params.read_xlsx') }}</option>
                 </select>
                 <!-- Note removed from here -->
-            </div>
-
-            <div class="param-row valid-temperature-range-row">
-                <label>{{ t('params.valid_temperature_range') }}</label>
-                <div class="valid-temperature-range-inputs">
-                    <label for="validTempLow">{{ t('params.valid_temperature_low') }}</label>
-                    <input type="number" id="validTempLow" step="any" required
-                        value="{{ session.get('valid_temp_low', -110) }}" aria-label="{{ t('params.valid_temperature_low') }}">
-                    <span>{{ t('params.to') }}</span>
-                    <label for="validTempHigh">{{ t('params.valid_temperature_high') }}</label>
-                    <input type="number" id="validTempHigh" step="any" required
-                        value="{{ session.get('valid_temp_high', 70) }}" aria-label="{{ t('params.valid_temperature_high') }}">
-                    <span>°C</span>
-                </div>
             </div>
 
             <div class="param-row" id="xlsxUploadRow" style="display:none;">
@@ -228,7 +228,7 @@
                                     <option value="lte">&le;</option>
                                     <option value="gte">&ge;</option>
                                 </select>
-                                <input type="number" id="tminVal" value="-40"
+                                <input type="number" id="tminVal" value="-50"
                                     placeholder="{{ t('thresholds.value_c') }}">
                             </div>
                             <div class="thresh-box">
@@ -311,17 +311,11 @@
                                 </select>
                             </div>
 
-                            <div class="param-grid" id="coordsInputArea" style="display:none;">
-                                <div class="thresh-box">
-                                    <strong>{{ t('multi_station.center_latitude') }}</strong>
-                                    <input type="number" id="centerLat"
-                                        placeholder="{{ t('multi_station.decimal_deg') }}">
-                                </div>
-                                <div class="thresh-box">
-                                    <strong>{{ t('multi_station.center_longitude') }}</strong>
-                                    <input type="number" id="centerLon"
-                                        placeholder="{{ t('multi_station.decimal_deg') }}">
-                                </div>
+                            <div class="param-row" id="coordsInputArea" style="display:none;">
+                                <label for="centerCoordinates">{{ t('multi_station.center_latitude') }} / {{ t('multi_station.center_longitude') }}</label>
+                                <input type="text" id="centerCoordinates"
+                                    placeholder="{{ t('multi_station.center_latitude') }}&#9;{{ t('multi_station.center_longitude') }}"
+                                    aria-label="{{ t('multi_station.center_latitude') }} followed by a tab and {{ t('multi_station.center_longitude') }}">
                             </div>
 
                             <div class="param-row">

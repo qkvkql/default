@@ -146,7 +146,8 @@ h3 {
     top: 100%;
     right: 0;
     margin-top: 5px;
-    width: 250px;
+    width: 320px;
+    max-width: calc(100vw - 32px);
     background-color: white;
     border: 1px solid #ced4da;
     border-radius: 6px;
@@ -232,6 +233,20 @@ h3 {
 
 .valid-temperature-range-inputs input[type="number"] {
     width: 110px;
+}
+
+.valid-temperature-range-menu > label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 6px;
+}
+
+.valid-temperature-range-menu .valid-temperature-range-inputs {
+    gap: 5px;
+}
+
+.valid-temperature-range-menu .valid-temperature-range-inputs input[type="number"] {
+    width: 70px;
 }
 
 .radio-group {
