@@ -624,6 +624,103 @@ def home():
     gsod_count = len(GSOD_DF) if GSOD_DF is not None else 0
     return render_template('index.html', ghcnd_count=ghcnd_count, gsod_count=gsod_count)
 
+@app.route('/nearby-places')
+def nearby_places_page():
+    return render_template('nearby_places.html')
+
+@app.route('/api/nearby-places/columns', methods=['POST'])
+def nearby_places_columns():
+    uploaded = request.files.get('file')
+    if not uploaded or not uploaded.filename:
+        return jsonify({'error': 'Choose a .xlsx or .csv file.'}), 400
+    filename = uploaded.filename.lower()
+    try:
+        if filename.endswith(('.xlsx', '.xls')):
+            frame = pd.read_excel(uploaded, nrows=0)
+        elif filename.endswith('.csv'):
+            content = uploaded.read()
+            frame = None
+            for encoding in ('utf-8-sig', 'utf-8', 'cp1252', 'latin-1'):
+                try:
+                    frame = pd.read_csv(io.BytesIO(content), encoding=encoding, sep=None, engine='python', nrows=0)
+                    break
+                except UnicodeDecodeError:
+                    continue
+            if frame is None:
+                return jsonify({'error': 'Could not decode the CSV file.'}), 400
+        else:
+            return jsonify({'error': 'Upload an .xlsx or .csv file.'}), 400
+    except Exception as exc:
+        return jsonify({'error': f'Could not read the uploaded file: {exc}'}), 400
+    return jsonify({'columns': [str(column) for column in frame.columns]})
+
+@app.route('/api/nearby-places', methods=['POST'])
+def nearby_places_search():
+    """Return uploaded places within a Haversine distance of target coordinates."""
+    uploaded = request.files.get('file')
+    if not uploaded or not uploaded.filename:
+        return jsonify({'error': 'Choose a .xlsx or .csv file.'}), 400
+
+    filename = uploaded.filename.lower()
+    try:
+        if filename.endswith(('.xlsx', '.xls')):
+            frame = pd.read_excel(uploaded)
+        elif filename.endswith('.csv'):
+            content = uploaded.read()
+            frame = None
+            for encoding in ('utf-8-sig', 'utf-8', 'cp1252', 'latin-1'):
+                try:
+                    frame = pd.read_csv(io.BytesIO(content), encoding=encoding, sep=None, engine='python')
+                    break
+                except UnicodeDecodeError:
+                    continue
+            if frame is None:
+                return jsonify({'error': 'Could not decode the CSV file.'}), 400
+        else:
+            return jsonify({'error': 'Upload an .xlsx or .csv file.'}), 400
+    except Exception as exc:
+        return jsonify({'error': f'Could not read the uploaded file: {exc}'}), 400
+
+    columns = [str(column) for column in frame.columns]
+    frame.columns = columns
+    lat_col = request.form.get('latitude_column', '')
+    lon_col = request.form.get('longitude_column', '')
+    try:
+        name_cols = json.loads(request.form.get('name_columns', '[]'))
+        target_lat = float(request.form.get('target_latitude', ''))
+        target_lon = float(request.form.get('target_longitude', ''))
+        max_distance = float(request.form.get('max_distance', ''))
+    except (ValueError, TypeError, json.JSONDecodeError):
+        return jsonify({'error': 'Enter valid target coordinates and maximum distance.'}), 400
+
+    if lat_col not in columns or lon_col not in columns or not isinstance(name_cols, list) or not name_cols or any(c not in columns for c in name_cols):
+        return jsonify({'error': 'Select valid latitude, longitude, and name columns.'}), 400
+    if not (np.isfinite(target_lat) and np.isfinite(target_lon) and np.isfinite(max_distance)) or not (-90 <= target_lat <= 90 and -180 <= target_lon <= 180) or max_distance < 0:
+        return jsonify({'error': 'Latitude must be between -90 and 90, longitude between -180 and 180, and distance must be non-negative.'}), 400
+
+    lat_values = pd.to_numeric(frame[lat_col], errors='coerce')
+    lon_values = pd.to_numeric(frame[lon_col], errors='coerce')
+    valid = lat_values.between(-90, 90) & lon_values.between(-180, 180)
+    places = frame.loc[valid].copy()
+    places['_nearby_lat'] = lat_values.loc[valid]
+    places['_nearby_lon'] = lon_values.loc[valid]
+    # Keep the first source row for each exact coordinate pair.
+    places = places.drop_duplicates(subset=['_nearby_lat', '_nearby_lon'], keep='first')
+    places['distance_km'] = haversine_vectorized(
+        target_lat, target_lon, places['_nearby_lat'].to_numpy(), places['_nearby_lon'].to_numpy()
+    )
+    places = places[places['distance_km'] <= max_distance].sort_values('distance_km', ascending=True)
+
+    results = []
+    for _, row in places.iterrows():
+        results.append({
+            'latitude': float(row['_nearby_lat']),
+            'longitude': float(row['_nearby_lon']),
+            'distance_km': float(row['distance_km']),
+            'names': [str(row[column]) if pd.notna(row[column]) else '' for column in name_cols],
+        })
+    return jsonify({'name_columns': name_cols, 'results': results, 'matched_count': len(results)})
+
 @app.route('/set_language/<lang>')
 def set_language(lang):
     """Set language preference"""

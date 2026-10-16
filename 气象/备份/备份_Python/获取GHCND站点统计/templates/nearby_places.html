@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="{{ lang() }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ t('nearby.title') }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .nearby-wrap { max-width: 1100px; margin: 24px auto; }
+        .nearby-form { display: grid; gap: 16px; }
+        .nearby-form label { display: block; font-weight: 600; margin-bottom: 6px; }
+        .nearby-form input, .nearby-form select { width: 100%; max-width: 100%; padding: 9px; }
+        .nearby-form select[multiple] { min-height: 120px; }
+        .nearby-help { color: #666; font-size: .9rem; margin: 4px 0 0; }
+        .nearby-inline { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+        .nearby-actions { display: flex; align-items: center; gap: 12px; }
+        .nearby-actions button { padding: 10px 18px; cursor: pointer; }
+        #nearbyStatus { min-height: 1.3em; }
+        #nearbyStatus.error { color: #b00020; }
+        .nearby-results { overflow-x: auto; }
+        .nearby-results table { width: 100%; border-collapse: collapse; background: white; }
+        .nearby-results th, .nearby-results td { padding: 9px 11px; border: 1px solid #ddd; text-align: left; }
+        .nearby-results th { background: #f1f3f5; cursor: pointer; white-space: nowrap; }
+        .nearby-results tbody tr:nth-child(even) { background: #fafafa; }
+        @media (max-width: 600px) { .nearby-inline { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <main class="container nearby-wrap">
+        <p><a href="{{ url_for('home') }}">← {{ t('nearby.back') }}</a></p>
+        <h1>{{ t('nearby.title') }}</h1>
+        <section class="section">
+            <form id="nearbyForm" class="nearby-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div>
+                    <label for="targetCoordinates">{{ t('nearby.target') }}</label>
+                    <input id="targetCoordinates" type="text" required placeholder="{{ t('nearby.target_placeholder') }}" autocomplete="off">
+                    <p class="nearby-help">{{ t('nearby.target_help') }}</p>
+                </div>
+                <div>
+                    <label for="nearbyFile">{{ t('nearby.file') }}</label>
+                    <input id="nearbyFile" type="file" accept=".xlsx,.csv" required>
+                </div>
+                <div class="nearby-inline">
+                    <div>
+                        <label for="latitudeColumn">{{ t('nearby.latitude_column') }}</label>
+                        <select id="latitudeColumn" required disabled></select>
+                    </div>
+                    <div>
+                        <label for="longitudeColumn">{{ t('nearby.longitude_column') }}</label>
+                        <select id="longitudeColumn" required disabled></select>
+                    </div>
+                </div>
+                <div>
+                    <label for="nameColumns">{{ t('nearby.name_columns') }}</label>
+                    <select id="nameColumns" multiple disabled></select>
+                    <p class="nearby-help">{{ t('nearby.name_help') }}</p>
+                </div>
+                <div>
+                    <label for="maxDistance">{{ t('nearby.max_distance') }}</label>
+                    <input id="maxDistance" type="number" min="0" step="any" required>
+                </div>
+                <div class="nearby-actions">
+                    <button type="submit" id="nearbySubmit" disabled>{{ t('nearby.submit') }}</button>
+                    <span id="nearbyStatus" role="status" aria-live="polite"></span>
+                </div>
+            </form>
+        </section>
+        <section id="nearbyResultsSection" class="section" hidden>
+            <h2>{{ t('nearby.results') }} <small id="nearbyResultCount"></small></h2>
+            <div class="nearby-results" id="nearbyResults"></div>
+        </section>
+    </main>
+    <script src="{{ url_for('static', filename='nearby_places.js') }}"></script>
+</body>
+</html>

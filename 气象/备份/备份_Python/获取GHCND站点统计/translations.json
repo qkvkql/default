@@ -26,6 +26,22 @@
       "invalid_credentials": "Invalid username or password"
     },
     "title": "NOAA Global Daily Statistics",
+    "nearby": {
+      "link": "Find Places Nearby",
+      "title": "Find Places Nearby",
+      "back": "Back to statistics",
+      "target": "Target latitude and longitude",
+      "target_placeholder": "Paste latitude, then a tab, then longitude",
+      "target_help": "Enter one coordinate pair: latitude followed by a tab and longitude.",
+      "file": "Places file (.xlsx or .csv)",
+      "latitude_column": "Latitude column",
+      "longitude_column": "Longitude column",
+      "name_columns": "Place name columns (select one or more)",
+      "name_help": "Hold Ctrl (Windows) or Command (Mac) to select multiple columns.",
+      "max_distance": "Maximum distance (km)",
+      "submit": "Find nearby places",
+      "results": "Nearby places"
+    },
     "sections": {
       "parameters": "Parameters",
       "global_statistics": "Global Statistics",
@@ -358,6 +374,22 @@
       "invalid_credentials": "用户名或密码无效"
     },
     "title": "NOAA逐日气温统计",
+    "nearby": {
+      "link": "查找附近地点",
+      "title": "查找附近地点",
+      "back": "返回统计页",
+      "target": "目标纬度和经度",
+      "target_placeholder": "粘贴纬度，然后按 Tab，再输入经度",
+      "target_help": "输入一组坐标：纬度、制表符、经度。",
+      "file": "地点文件（.xlsx 或 .csv）",
+      "latitude_column": "纬度列",
+      "longitude_column": "经度列",
+      "name_columns": "地点名称列（可多选）",
+      "name_help": "按住 Ctrl（Windows）或 Command（Mac）可选择多列。",
+      "max_distance": "最大距离（公里）",
+      "submit": "查找附近地点",
+      "results": "附近地点"
+    },
     "sections": {
       "parameters": "设置",
       "global_statistics": "概览",
