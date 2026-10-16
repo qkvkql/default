@@ -328,7 +328,7 @@ function updateDayDropdown() {
 }
 
 function toggleCenterLocMode() {
-    const mode = document.getElementById('centerMode').value;
+    const mode = document.querySelector('input[name="centerMode"]:checked')?.value || 'station';
     const area = document.getElementById('coordsInputArea');
     if (area) area.style.display = (mode === 'coords') ? 'flex' : 'none';
 }
@@ -1160,7 +1160,7 @@ async function fetchData(keepSort = false) {
         custom_avg_tmax: document.getElementById('customAvgTmax').value,
 
         // Safe getters for advanced params
-        center_mode: getElementValueSafe('centerMode', 'station'),
+        center_mode: document.querySelector('input[name="centerMode"]:checked')?.value || 'station',
         ...getCenterCoordinates(),
         max_dist: (() => {
             const raw = getElementValueSafe('maxDist', 'no_limit').trim();

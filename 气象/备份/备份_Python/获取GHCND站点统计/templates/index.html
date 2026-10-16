@@ -308,10 +308,19 @@
                         <div id="multiParamsArea">
                             <div class="param-row">
                                 <label>{{ t('multi_station.center_location_mode') }}</label>
-                                <select id="centerMode" onchange="toggleCenterLocMode()">
-                                    <option value="station">{{ t('multi_station.by_weather_station') }}</option>
-                                    <option value="coords">{{ t('multi_station.by_coordinates') }}</option>
-                                </select>
+                                <div class="radio-group" id="centerMode" role="radiogroup"
+                                    aria-label="{{ t('multi_station.center_location_mode') }}">
+                                    <label style="font-weight: normal; width: auto; margin-bottom: 0;">
+                                        <input type="radio" name="centerMode" value="station" checked
+                                            onchange="toggleCenterLocMode()">
+                                        {{ t('multi_station.by_weather_station') }}
+                                    </label>
+                                    <label style="font-weight: normal; width: auto; margin-bottom: 0;">
+                                        <input type="radio" name="centerMode" value="coords"
+                                            onchange="toggleCenterLocMode()">
+                                        {{ t('multi_station.by_coordinates') }}
+                                    </label>
+                                </div>
                             </div>
 
                             <div class="param-row" id="coordsInputArea" style="display:none;">
@@ -322,7 +331,7 @@
                             </div>
 
                             <div class="param-row">
-                                <label>{{ t('multi_station.max_distance_km') }}</label>
+                                <label class="max-distance-label">{{ t('multi_station.max_distance_km') }}</label>
                                 <input type="number" id="maxDist"
                                     placeholder="{{ t('multi_station.enter_distance') }}"
                                     min="0" step="any">

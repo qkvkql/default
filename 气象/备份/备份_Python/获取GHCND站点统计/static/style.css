@@ -219,6 +219,10 @@ h3 {
     width: 100%;
 }
 
+.param-row label.max-distance-label {
+    color: #9d0208;
+}
+
 .valid-temperature-range-inputs {
     display: flex;
     align-items: center;
