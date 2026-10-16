@@ -19,6 +19,13 @@
     align-items: center;
     justify-content: space-between;
     gap: 10px;
+    cursor: grab;
+    user-select: none;
+    touch-action: none;
+}
+
+.panel-header:active {
+    cursor: grabbing;
 }
 
 .panel-body {

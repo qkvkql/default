@@ -35,6 +35,36 @@ function initExtension() {
     header.appendChild(collapseBtn);
     panel.appendChild(header);
 
+    // Drag the panel from its header; leave the collapse button clickable.
+    let dragState = null;
+    header.addEventListener('pointerdown', event => {
+        if (event.button !== 0 || event.target.closest('button')) return;
+        const rect = panel.getBoundingClientRect();
+        dragState = {
+            pointerId: event.pointerId,
+            startX: event.clientX,
+            startY: event.clientY,
+            left: rect.left,
+            top: rect.top
+        };
+        header.setPointerCapture(event.pointerId);
+    });
+    header.addEventListener('pointermove', event => {
+        if (!dragState || event.pointerId !== dragState.pointerId) return;
+        const dx = event.clientX - dragState.startX;
+        const dy = event.clientY - dragState.startY;
+        const maxLeft = Math.max(0, window.innerWidth - panel.offsetWidth);
+        const maxTop = Math.max(0, window.innerHeight - header.offsetHeight);
+        panel.style.left = `${Math.min(maxLeft, Math.max(0, dragState.left + dx))}px`;
+        panel.style.top = `${Math.min(maxTop, Math.max(0, dragState.top + dy))}px`;
+        panel.style.right = 'auto';
+    });
+    const finishDrag = event => {
+        if (dragState && event.pointerId === dragState.pointerId) dragState = null;
+    };
+    header.addEventListener('pointerup', finishDrag);
+    header.addEventListener('pointercancel', finishDrag);
+
     const body = document.createElement('div');
     body.className = 'panel-body';
 

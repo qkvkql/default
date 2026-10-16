@@ -38,8 +38,53 @@ function initSimplifiedExtension() {
     header.appendChild(collapseBtn);
     panel.appendChild(header);
 
+    // Drag from the header while preserving its click-to-collapse behavior.
+    let dragState = null;
+    let suppressHeaderClick = false;
+    header.addEventListener('pointerdown', event => {
+        if (event.button !== 0 || event.target.closest('.panel-collapse-btn')) return;
+        const rect = panel.getBoundingClientRect();
+        dragState = {
+            pointerId: event.pointerId,
+            startX: event.clientX,
+            startY: event.clientY,
+            left: rect.left,
+            top: rect.top,
+            moved: false
+        };
+        header.setPointerCapture(event.pointerId);
+    });
+    header.addEventListener('pointermove', event => {
+        if (!dragState || event.pointerId !== dragState.pointerId) return;
+        const dx = event.clientX - dragState.startX;
+        const dy = event.clientY - dragState.startY;
+        if (!dragState.moved && Math.hypot(dx, dy) < 4) return;
+        dragState.moved = true;
+        suppressHeaderClick = true;
+
+        const maxLeft = Math.max(0, window.innerWidth - panel.offsetWidth);
+        const maxTop = Math.max(0, window.innerHeight - header.offsetHeight);
+        panel.style.left = `${Math.min(maxLeft, Math.max(0, dragState.left + dx))}px`;
+        panel.style.top = `${Math.min(maxTop, Math.max(0, dragState.top + dy))}px`;
+        panel.style.right = 'auto';
+    });
+    const finishDrag = event => {
+        if (!dragState || event.pointerId !== dragState.pointerId) return;
+        if (dragState.moved) {
+            // Keep the header click handler from interpreting the drag as a toggle.
+            setTimeout(() => { suppressHeaderClick = false; }, 0);
+        }
+        dragState = null;
+    };
+    header.addEventListener('pointerup', finishDrag);
+    header.addEventListener('pointercancel', finishDrag);
+
     // Load map stations only the first time the panel is expanded.
     header.addEventListener('click', () => {
+        if (suppressHeaderClick) {
+            suppressHeaderClick = false;
+            return;
+        }
         const collapsed = panel.classList.toggle('collapsed');
         collapseBtn.setAttribute('aria-expanded', String(!collapsed));
         if (!collapsed && !mapStationListInitialized) {
