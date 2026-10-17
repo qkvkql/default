@@ -19,6 +19,7 @@
       .dates{display:flex;gap:8px}.dates>div{flex:1;min-width:0}button.run{width:100%;margin-top:12px;padding:9px;border:0;border-radius:5px;background:#0878bd;color:white;font-weight:700;font-size:14px;cursor:pointer}button:disabled{opacity:.6;cursor:wait}
       button.copy{margin-top:8px;padding:6px 10px;border:1px solid #9ab1c5;border-radius:4px;background:#fff;color:#07599a;font-weight:600;cursor:pointer}.status{margin-top:10px;white-space:pre-line;color:#27374a}.result{margin-top:9px;padding:9px;background:#f0f7fc;border-radius:5px;font-size:15px;font-weight:600;white-space:pre-line}.result.error{background:#fff0ed;color:#9b2c1f}.result .avg-count.incomplete{color:#c62828}.points{max-height:220px;overflow:auto;margin:8px 0 0;padding:8px;background:#f7f8fa;border:1px solid #d9e0e7;border-radius:5px;font:12px/1.5 Consolas,monospace;white-space:pre;tab-size:4}.hint{margin-top:6px;color:#617286;font-size:12px}
       .panel.collapsed{width:max-content;max-width:calc(100vw - 16px);max-height:none;overflow:visible;padding:7px 10px}.panel.collapsed .head{margin:0}.panel.collapsed>:not(.head){display:none}
+      .archive-tool{margin-top:14px;padding-top:10px;border-top:1px solid #d9e0e7}.archive-tool-head{display:flex;align-items:center;justify-content:space-between;gap:8px;font-weight:700;color:#07599a}.archive-tool-head button{border:0;background:none;color:#07599a;font-size:18px;cursor:pointer}.archive-tool-body[hidden]{display:none}.archive-tool-body button{width:100%;margin-top:8px;padding:8px;border:1px solid #9ab1c5;border-radius:4px;background:#fff;color:#07599a;font-weight:600;cursor:pointer}.archive-tool-body button.primary{border:0;background:#0878bd;color:#fff}.archive-tool-body button:disabled{opacity:.55;cursor:wait}.archive-status{margin-top:7px;color:#617286;font-size:12px;white-space:pre-line}
     </style>
     <section class="panel">
       <div class="head"><span>RP5 temperature stats · v1.0.5</span><span class="head-actions"><button class="collapse" title="Collapse panel" aria-label="Collapse panel" aria-expanded="true">−</button><button class="close" title="Close panel" aria-label="Close panel">×</button></span></div>
@@ -29,6 +30,7 @@
       <button class="run">Get min/max/avg</button>
       <div class="status" role="status">Open an RP5 weather archive page to calculate temperatures.</div>
       <div class="result" hidden></div><button class="copy" hidden>Copy detailed temperatures</button><pre class="points" hidden></pre><div class="hint">Date range includes both endpoints (maximum 30 days).</div>
+      <section class="archive-tool"><div class="archive-tool-head"><span>Generate formatted Excel file from RP5 downloaded archive</span><button class="archive-collapse" aria-expanded="false" title="Expand section">+</button></div><div class="archive-tool-body" hidden><input class="archive-file" type="file" accept=".xlsx,.xls,.csv,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden><button class="upload-archive">Upload source file (.xlsx, .xls, or .csv)</button><button class="generate-archive primary" disabled>Generate target file</button><div class="archive-status" role="status">Upload an RP5 weather archive file to begin.</div></div></section>
     </section>`;
 
   const $ = (s) => shadow.querySelector(s);
@@ -45,6 +47,20 @@
   });
   $('.copy').addEventListener('click', copyPointDetails);
   $('.run').addEventListener('click', startCalculation);
+  $('.archive-collapse').addEventListener('click', () => {
+    const body = $('.archive-tool-body');
+    body.hidden = !body.hidden;
+    $('.archive-collapse').textContent = body.hidden ? '+' : '−';
+    $('.archive-collapse').title = body.hidden ? 'Expand section' : 'Collapse section';
+    $('.archive-collapse').setAttribute('aria-expanded', String(!body.hidden));
+  });
+  $('.upload-archive').addEventListener('click', () => $('.archive-file').click());
+  $('.archive-file').addEventListener('change', () => {
+    const file = $('.archive-file').files[0];
+    $('.generate-archive').disabled = !file;
+    $('.archive-status').textContent = file ? `Ready: ${file.name}` : 'Upload an RP5 weather archive file to begin.';
+  });
+  $('.generate-archive').addEventListener('click', generateArchiveWorkbook);
 
   const existingJob = readJob();
   if (existingJob) {
@@ -251,6 +267,308 @@
       grid.push(row);
     }
     return grid;
+  }
+
+  async function generateArchiveWorkbook() {
+    const button = $('.generate-archive');
+    const file = $('.archive-file').files[0];
+    if (!file) return;
+    button.disabled = true;
+    $('.archive-status').textContent = 'Reading source archive…';
+    try {
+      const source = await readArchiveFile(file);
+      const endTime = $('#endTime').value;
+      if (!/^\d{2}$/.test(endTime) || Number(endTime) > 24) {
+        throw new Error('Set Statistical end time to two digits from 00 to 24 before generating the file.');
+      }
+      const { rows, stationName, stationNumber } = source;
+      if (!rows.length) throw new Error('No hourly weather rows were found in the source file.');
+      $('.archive-status').textContent = `Calculating ${rows.length.toLocaleString()} observations…`;
+      let firstTime = Infinity;
+      let lastTime = -Infinity;
+      const byDate = new Map();
+      for (const row of rows) {
+        firstTime = Math.min(firstTime, row.date.getTime());
+        lastTime = Math.max(lastTime, row.date.getTime());
+        const key = dateKey(row.date);
+        if (!byDate.has(key)) byDate.set(key, []);
+        byDate.get(key).push(row);
+      }
+      const first = new Date(firstTime);
+      const last = new Date(lastTime);
+      const startISO = dateKey(first);
+      const endISO = dateKey(last);
+      const days = dayDiff(startISO, endISO) + 1;
+      const output = [['Station number', 'Station name', 'Date', 'Year', 'Month', 'Day', 'min', 'max', 'avg', 'If Tx', 'Tx', 'If perfect avg']];
+      for (let offset = 0; offset < days; offset += 1) {
+        const day = dateAtHour(startISO, 12);
+        day.setDate(day.getDate() + offset);
+        const iso = dateKey(day);
+        const end = dateAtHour(iso, Number(endTime));
+        const start = new Date(end);
+        start.setDate(start.getDate() - 1);
+        const dailyRows = [...new Set([dateKey(start), dateKey(end)])].flatMap((key) => byDate.get(key) || []);
+        const stats = calculate(dailyRows, { startDate: iso, targetEnd: iso, endTime });
+        const txAtEndTime = dailyRows.find((row) => row.date.getTime() === end.getTime() && row.tx !== null)?.tx ?? null;
+        output.push([stationNumber, stationName, iso, iso.slice(0, 4), iso.slice(5, 7), iso.slice(8, 10),
+          stats.min === null ? '' : stats.min, stats.max === null ? '' : stats.max, stats.avg === null ? '' : Number(stats.avg),
+          txAtEndTime !== null ? 1 : 0, txAtEndTime ?? '', stats.count === stats.required ? 1 : 0]);
+        if (offset % 200 === 0) await new Promise((resolve) => setTimeout(resolve, 0));
+      }
+      const blob = createXlsxBlob(output);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${file.name.replace(/\.(xlsx|csv)$/i, '')}_formatted.xlsx`;
+      document.documentElement.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 30000);
+      $('.archive-status').textContent = `Generated ${output.length - 1} daily rows for ${stationName || 'the source station'}.`;
+    } catch (error) {
+      $('.archive-status').textContent = `Could not generate target file: ${error.message}`;
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  async function readArchiveFile(file) {
+    const name = file.name.toLowerCase();
+    let grid;
+    if (!/\.(xlsx|xls|csv)$/i.test(name)) throw new Error('Choose an .xlsx, .xls, or .csv weather archive.');
+    const buffer = await file.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    const isZip = bytes[0] === 0x50 && bytes[1] === 0x4b;
+    const isLegacyBinaryXls = bytes[0] === 0xd0 && bytes[1] === 0xcf && bytes[2] === 0x11 && bytes[3] === 0xe0;
+    if (isZip) {
+      grid = await parseXlsx(buffer);
+    } else if (isLegacyBinaryXls) {
+      grid = parseBinaryXls(buffer);
+    } else {
+      const text = new TextDecoder('utf-8').decode(buffer).replace(/^\uFEFF/, '').trimStart();
+      grid = /^<(?:!doctype\s+html|html|table)\b/i.test(text) ? parseHtmlTable(text) : parseDelimited(text);
+    }
+    const headerIndex = grid.findIndex((row) => /^\s*Local time in\b/i.test(String(row[0] ?? '').trim()));
+    if (headerIndex < 0) throw new Error('Could not find a header row beginning with “Local time in …”.');
+    const headers = grid[headerIndex].map((v) => String(v ?? '').trim());
+    const findColumn = (name) => headers.findIndex((h) => h.toLowerCase() === name.toLowerCase());
+    const dateIndex = 0;
+    const tIndex = findColumn('T');
+    const tnIndex = findColumn('Tn');
+    const txIndex = findColumn('Tx');
+    if ([tIndex, tnIndex, txIndex].some((i) => i < 0)) throw new Error('The archive header must contain T, Tn, and Tx columns.');
+    const rows = [];
+    for (const sourceRow of grid.slice(headerIndex + 1)) {
+      const date = parseArchiveDateTime(sourceRow[dateIndex]);
+      if (!date) continue;
+      rows.push({ date, t: archiveTemperature(sourceRow[tIndex]), tn: archiveTemperature(sourceRow[tnIndex]), tx: archiveTemperature(sourceRow[txIndex]) });
+    }
+    if (!rows.length) throw new Error('No rows with recognizable local date and time values were found.');
+    const stationName = headers[0].replace(/^\s*Local time in\s*/i, '').trim();
+    const metadata = grid.slice(0, headerIndex).flat().map((v) => String(v ?? '')).join('\n');
+    const numberMatch = metadata.match(/(?:station\s*(?:number|no\.?|index|id)|WMO[_\s-]*(?:ID|index|number|no\.?))\s*[:=#№-]?\s*(\d{4,8})/i);
+    return { rows, stationName, stationNumber: numberMatch?.[1] || '' };
+  }
+
+  function parseDelimited(text) {
+    const sample = text.split(/\r?\n/).filter((line) => line.trim()).slice(0, 12).join('\n');
+    const delimiters = ['\t', ';', ','];
+    const delimiter = delimiters.sort((a, b) => {
+      const count = (char) => (sample.match(new RegExp(char === '\t' ? '\\t' : char, 'g')) || []).length;
+      return count(b) - count(a);
+    })[0];
+    const rows = [];
+    let row = [];
+    let value = '';
+    let quoted = false;
+    for (let i = 0; i < text.length; i += 1) {
+      const char = text[i];
+      if (quoted) {
+        if (char === '"' && text[i + 1] === '"') { value += '"'; i += 1; }
+        else if (char === '"') quoted = false;
+        else value += char;
+      } else if (char === '"') quoted = true;
+      else if (char === delimiter) { row.push(value); value = ''; }
+      else if (char === '\n' || char === '\r') {
+        if (char === '\r' && text[i + 1] === '\n') i += 1;
+        row.push(value); value = '';
+        if (row.some((cell) => cell.trim())) rows.push(row);
+        row = [];
+      } else value += char;
+    }
+    row.push(value);
+    if (row.some((cell) => cell.trim())) rows.push(row);
+    return rows;
+  }
+
+  function parseHtmlTable(text) {
+    const doc = new DOMParser().parseFromString(text, 'text/html');
+    const table = doc.querySelector('table');
+    if (!table) throw new Error('The .xls file contains HTML but no worksheet table.');
+    return [...table.querySelectorAll('tr')].map((tr) => [...tr.querySelectorAll('th,td')].map((cell) => cell.textContent.trim()));
+  }
+
+  function parseBinaryXls(buffer) {
+    if (!globalThis.XLSX) throw new Error('The Excel file reader did not load. Reload the RP5 page and try again.');
+    const workbook = globalThis.XLSX.read(buffer, { type: 'array', cellDates: false });
+    const sheetName = workbook.SheetNames[0];
+    if (!sheetName) throw new Error('The .xls workbook does not contain a worksheet.');
+    return globalThis.XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, raw: true, defval: '' });
+  }
+
+  function archiveTemperature(value) {
+    if (value === null || value === undefined || String(value).trim() === '') return null;
+    const match = String(value).replace(/\u2212/g, '-').match(/[-+]?\d+(?:[.,]\d+)?/);
+    if (!match) return null;
+    const number = Number(match[0].replace(',', '.'));
+    return Number.isFinite(number) && number > MIN_VALID_TEMP && number < MAX_VALID_TEMP ? number : null;
+  }
+
+  function parseArchiveDateTime(value) {
+    if (typeof value === 'number' && Number.isFinite(value)) return excelSerialDate(value);
+    const text = String(value ?? '').trim().replace(/\u00a0/g, ' ');
+    if (/^\d{5}(?:\.\d+)?$/.test(text) && Number(text) >= 20000 && Number(text) <= 80000) {
+      return excelSerialDate(Number(text));
+    }
+    let match = text.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})(?:[ T]+(\d{1,2})(?::(\d{1,2}))?)?/);
+    if (match) return makeLocalDate(+match[1], +match[2], +match[3], +(match[4] || 0), +(match[5] || 0));
+    match = text.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})(?:[ T]+(\d{1,2})(?::(\d{1,2}))?)?/);
+    if (match) return makeLocalDate(+match[3], +match[2], +match[1], +(match[4] || 0), +(match[5] || 0));
+    match = text.match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})(?:[ ,]+(\d{1,2})(?::(\d{1,2}))?)?/);
+    if (match) {
+      const month = new Date(`${match[2]} 1, 2000`).getMonth();
+      if (Number.isFinite(month)) return makeLocalDate(+match[3], month + 1, +match[1], +(match[4] || 0), +(match[5] || 0));
+    }
+    return null;
+  }
+
+  function excelSerialDate(serial) {
+    const date = new Date(1899, 11, 30);
+    date.setDate(date.getDate() + Math.floor(serial));
+    const minutes = Math.round((serial - Math.floor(serial)) * 1440);
+    date.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0);
+    return date;
+  }
+
+  function makeLocalDate(year, month, day, hour, minute) {
+    const result = new Date(0);
+    result.setFullYear(year, month - 1, day);
+    result.setHours(hour, minute, 0, 0);
+    return Number.isNaN(result.getTime()) ? null : result;
+  }
+
+  async function parseXlsx(buffer) {
+    const files = await unzipEntries(buffer);
+    const readXml = (path) => {
+      const content = files.get(path);
+      if (!content) throw new Error(`The workbook is missing ${path}.`);
+      return new DOMParser().parseFromString(new TextDecoder().decode(content), 'application/xml');
+    };
+    const workbook = readXml('xl/workbook.xml');
+    const relationId = workbook.getElementsByTagName('sheet')[0]?.getAttribute('r:id');
+    if (!relationId) throw new Error('Could not locate a worksheet in the Excel file.');
+    const rels = readXml('xl/_rels/workbook.xml.rels');
+    const relation = [...rels.getElementsByTagName('Relationship')].find((item) => item.getAttribute('Id') === relationId);
+    if (!relation) throw new Error('Could not locate the first worksheet in the Excel file.');
+    const target = relation.getAttribute('Target').replace(/^\//, '');
+    const sheetPath = target.startsWith('xl/') ? target : `xl/${target.replace(/^\.\//, '')}`;
+    const shared = files.has('xl/sharedStrings.xml') ? readXml('xl/sharedStrings.xml') : null;
+    const strings = shared ? [...shared.getElementsByTagName('si')].map((si) => [...si.getElementsByTagName('t')].map((t) => t.textContent).join('')) : [];
+    const sheet = readXml(sheetPath);
+    const grid = [];
+    for (const row of [...sheet.getElementsByTagName('row')]) {
+      const values = [];
+      for (const cell of [...row.getElementsByTagName('c')]) {
+        const ref = cell.getAttribute('r') || '';
+        const column = [...ref.match(/[A-Z]+/g) || ['A']][0];
+        const index = column.split('').reduce((n, char) => n * 26 + char.charCodeAt(0) - 64, 0) - 1;
+        const type = cell.getAttribute('t');
+        let value = cell.getElementsByTagName('v')[0]?.textContent ?? '';
+        if (type === 's') value = strings[Number(value)] ?? '';
+        else if (type === 'inlineStr') value = [...cell.getElementsByTagName('t')].map((item) => item.textContent).join('');
+        values[index] = value;
+      }
+      grid.push(values);
+    }
+    return grid;
+  }
+
+  async function unzipEntries(buffer) {
+    const bytes = new Uint8Array(buffer);
+    const view = new DataView(buffer);
+    let eocd = -1;
+    for (let i = bytes.length - 22; i >= Math.max(0, bytes.length - 65557); i -= 1) {
+      if (view.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+    }
+    if (eocd < 0) throw new Error('The .xlsx file is not a valid ZIP workbook.');
+    const count = view.getUint16(eocd + 10, true);
+    let cursor = view.getUint32(eocd + 16, true);
+    const files = new Map();
+    for (let i = 0; i < count; i += 1) {
+      if (view.getUint32(cursor, true) !== 0x02014b50) throw new Error('Could not read the Excel workbook directory.');
+      const method = view.getUint16(cursor + 10, true);
+      const compressedSize = view.getUint32(cursor + 20, true);
+      const nameLength = view.getUint16(cursor + 28, true);
+      const extraLength = view.getUint16(cursor + 30, true);
+      const commentLength = view.getUint16(cursor + 32, true);
+      const localOffset = view.getUint32(cursor + 42, true);
+      const name = new TextDecoder().decode(bytes.slice(cursor + 46, cursor + 46 + nameLength));
+      const localNameLength = view.getUint16(localOffset + 26, true);
+      const localExtraLength = view.getUint16(localOffset + 28, true);
+      const start = localOffset + 30 + localNameLength + localExtraLength;
+      const compressed = bytes.slice(start, start + compressedSize);
+      let content;
+      if (method === 0) content = compressed;
+      else if (method === 8 && typeof DecompressionStream !== 'undefined') {
+        const stream = new Blob([compressed]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+        content = new Uint8Array(await new Response(stream).arrayBuffer());
+      } else throw new Error('This Excel file uses an unsupported compression method. Save it as a standard .xlsx file and retry.');
+      files.set(name, content);
+      cursor += 46 + nameLength + extraLength + commentLength;
+    }
+    return files;
+  }
+
+  function createXlsxBlob(rows) {
+    const xmlEscape = (value) => String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+    const columnName = (number) => { let name = ''; while (number) { number -= 1; name = String.fromCharCode(65 + number % 26) + name; number = Math.floor(number / 26); } return name; };
+    const sheetRows = rows.map((row, r) => `<row r="${r + 1}">${row.map((value, c) => {
+      const ref = `${columnName(c + 1)}${r + 1}`;
+      if (value === '' || value === null || value === undefined) return `<c r="${ref}"/>`;
+      if (typeof value === 'number') return `<c r="${ref}"><v>${value}</v></c>`;
+      return `<c r="${ref}" t="inlineStr"><is><t>${xmlEscape(value)}</t></is></c>`;
+    }).join('')}</row>`).join('');
+    const files = {
+      '[Content_Types].xml': '<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>',
+      '_rels/.rels': '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>',
+      'xl/workbook.xml': '<?xml version="1.0" encoding="UTF-8"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Daily temperatures" sheetId="1" r:id="rId1"/></sheets></workbook>',
+      'xl/_rels/workbook.xml.rels': '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>',
+      'xl/worksheets/sheet1.xml': `<?xml version="1.0" encoding="UTF-8"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${sheetRows}</sheetData></worksheet>`
+    };
+    return new Blob([zipStored(files)], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  }
+
+  function zipStored(files) {
+    const encoder = new TextEncoder();
+    const localParts = [];
+    const centralParts = [];
+    let offset = 0;
+    const crcTable = Array.from({ length: 256 }, (_, n) => { let c = n; for (let k = 0; k < 8; k += 1) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
+    const crc32 = (data) => { let crc = 0xffffffff; for (const byte of data) crc = crcTable[(crc ^ byte) & 0xff] ^ (crc >>> 8); return (crc ^ 0xffffffff) >>> 0; };
+    const u16 = (n) => [n & 255, n >>> 8 & 255];
+    const u32 = (n) => [n & 255, n >>> 8 & 255, n >>> 16 & 255, n >>> 24 & 255];
+    for (const [name, text] of Object.entries(files)) {
+      const filename = encoder.encode(name);
+      const data = encoder.encode(text);
+      const crc = crc32(data);
+      const local = new Uint8Array([...u32(0x04034b50), ...u16(20), ...u16(0), ...u16(0), ...u16(0), ...u16(0), ...u32(crc), ...u32(data.length), ...u32(data.length), ...u16(filename.length), ...u16(0), ...filename, ...data]);
+      localParts.push(local);
+      centralParts.push(new Uint8Array([...u32(0x02014b50), ...u16(20), ...u16(20), ...u16(0), ...u16(0), ...u16(0), ...u16(0), ...u32(crc), ...u32(data.length), ...u32(data.length), ...u16(filename.length), ...u16(0), ...u16(0), ...u16(0), ...u16(0), ...u32(0), ...u32(offset), ...filename]));
+      offset += local.length;
+    }
+    const centralSize = centralParts.reduce((sum, part) => sum + part.length, 0);
+    const end = new Uint8Array([...u32(0x06054b50), ...u16(0), ...u16(0), ...u16(centralParts.length), ...u16(centralParts.length), ...u32(centralSize), ...u32(offset), ...u16(0)]);
+    return new Blob([...localParts, ...centralParts, end]);
   }
 
   function calculate(rows, job) {
