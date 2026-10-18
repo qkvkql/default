@@ -299,7 +299,7 @@
       const startISO = dateKey(first);
       const endISO = dateKey(last);
       const days = dayDiff(startISO, endISO) + 1;
-      const output = [['Station number', 'Station name', 'Date', 'Year', 'Month', 'Day', 'min', 'max', 'avg', 'If Tx', 'Tx', 'If perfect avg']];
+      const output = [['Station number', 'Station name', 'Date', 'Year', 'Month', 'Day', 'min', 'max', 'avg', 'Tx']];
       for (let offset = 0; offset < days; offset += 1) {
         const day = dateAtHour(startISO, 12);
         day.setDate(day.getDate() + offset);
@@ -310,9 +310,10 @@
         const dailyRows = [...new Set([dateKey(start), dateKey(end)])].flatMap((key) => byDate.get(key) || []);
         const stats = calculate(dailyRows, { startDate: iso, targetEnd: iso, endTime });
         const txAtEndTime = dailyRows.find((row) => row.date.getTime() === end.getTime() && row.tx !== null)?.tx ?? null;
+        const perfectAvg = stats.count === stats.required && stats.avg !== null;
         output.push([stationNumber, stationName, iso, iso.slice(0, 4), iso.slice(5, 7), iso.slice(8, 10),
-          stats.min === null ? '' : stats.min, stats.max === null ? '' : stats.max, stats.avg === null ? '' : Number(stats.avg),
-          txAtEndTime !== null ? 1 : 0, txAtEndTime ?? '', stats.count === stats.required ? 1 : 0]);
+          stats.min === null ? '' : stats.min, stats.max === null ? '' : stats.max, perfectAvg ? Number(stats.avg) : '',
+          txAtEndTime ?? '']);
         if (offset % 200 === 0) await new Promise((resolve) => setTimeout(resolve, 0));
       }
       const blob = createXlsxBlob(output);
