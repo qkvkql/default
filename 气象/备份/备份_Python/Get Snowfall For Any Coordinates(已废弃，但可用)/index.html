@@ -1,0 +1,1830 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Global Snowfall Data Explorer — Satellite-Retrieved Snow Water Equivalent</title>
+<meta name="description" content="Retrieve historical snowfall water equivalent for any coordinate using ERA5, ERA5-Ensemble, or ECMWF IFS data.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg-primary:#0a0e1a;--bg-secondary:#111827;--bg-card:#1a2035;--bg-card-hover:#1e2642;
+    --border:#2a3455;--border-glow:rgba(99,149,255,.25);
+    --text-primary:#e8ecf4;--text-secondary:#8b95b0;--text-muted:#5a6380;
+    --accent:#6395ff;--accent-light:#89b4ff;--accent-dark:#3d6fd9;
+    --snow-blue:#4fc3f7;--snow-cyan:#00e5ff;--snow-white:#e0f7fa;
+    --success:#4caf81;--warning:#f5a623;--error:#ef5350;
+    --gradient-snow:linear-gradient(135deg,#4fc3f7 0%,#6395ff 50%,#ab7cff 100%);
+    --gradient-card:linear-gradient(145deg,rgba(26,32,53,.9),rgba(17,24,39,.95));
+    --shadow-lg:0 20px 60px rgba(0,0,0,.4),0 0 40px rgba(99,149,255,.05);
+    --shadow-card:0 4px 24px rgba(0,0,0,.3);
+    --radius:16px;--radius-sm:10px;--radius-xs:6px;
+  }
+  html{font-size:16px;scroll-behavior:smooth}
+  body{
+    font-family:'Inter',system-ui,-apple-system,sans-serif;
+    background:var(--bg-primary);color:var(--text-primary);
+    min-height:100vh;line-height:1.6;
+    background-image:
+      radial-gradient(ellipse 80% 60% at 50% -20%,rgba(99,149,255,.08),transparent),
+      radial-gradient(ellipse 60% 40% at 80% 80%,rgba(79,195,247,.05),transparent);
+  }
+  /* Snowfall particle animation */
+  .snow-bg{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:0}
+  .snowflake{
+    position:absolute;top:-10px;color:rgba(255,255,255,.15);
+    font-size:inherit;animation:snowfall linear infinite;
+  }
+  @keyframes snowfall{
+    0%{transform:translateY(-10px) rotate(0deg);opacity:1}
+    100%{transform:translateY(100vh) rotate(360deg);opacity:0}
+  }
+
+  .container{max-width:1180px;margin:0 auto;padding:2rem 1.5rem;position:relative;z-index:1}
+
+  /* Header */
+  header{text-align:center;margin-bottom:2.5rem}
+  .logo-icon{
+    display:inline-flex;align-items:center;justify-content:center;
+    width:72px;height:72px;border-radius:20px;margin-bottom:1.25rem;
+    background:var(--gradient-snow);box-shadow:0 8px 32px rgba(79,195,247,.3);
+    font-size:2rem;
+  }
+  h1{
+    font-size:2.25rem;font-weight:800;letter-spacing:-.03em;
+    background:var(--gradient-snow);-webkit-background-clip:text;-webkit-text-fill-color:transparent;
+    background-clip:text;margin-bottom:.5rem;
+  }
+  .subtitle{color:var(--text-secondary);font-size:1rem;font-weight:400;max-width:680px;margin:0 auto}
+  .data-badge{
+    display:inline-flex;align-items:center;gap:.4rem;
+    margin-top:1rem;padding:.35rem .9rem;border-radius:99px;
+    background:rgba(99,149,255,.1);border:1px solid rgba(99,149,255,.2);
+    font-size:.78rem;color:var(--accent-light);font-weight:500;
+  }
+  .data-badge .dot{width:6px;height:6px;border-radius:50%;background:var(--success);animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+  /* Cards */
+  .card{
+    background:var(--gradient-card);border:1px solid var(--border);
+    border-radius:var(--radius);padding:1.75rem;
+    box-shadow:var(--shadow-card);backdrop-filter:blur(12px);
+    transition:border-color .3s,box-shadow .3s;
+  }
+  .card:hover{border-color:var(--border-glow)}
+  .card-title{
+    font-size:1.05rem;font-weight:700;color:var(--text-primary);
+    display:flex;align-items:center;gap:.5rem;margin-bottom:1.25rem;
+  }
+  .card-title .icon{
+    width:32px;height:32px;border-radius:var(--radius-xs);
+    display:inline-flex;align-items:center;justify-content:center;
+    background:rgba(99,149,255,.1);font-size:.9rem;
+  }
+
+  /* Form layout */
+  .input-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+  .input-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem}
+  @media(max-width:768px){.input-grid,.input-grid-3{grid-template-columns:1fr}}
+  .field{display:flex;flex-direction:column;gap:.4rem}
+  .resolution-options{display:flex;gap:1.25rem;flex-wrap:wrap;margin-top:.2rem}
+  .resolution-option{display:inline-flex;align-items:center;gap:.5rem;color:var(--text-primary);font-size:.9rem;cursor:pointer}
+  .resolution-option input{width:1rem;height:1rem;margin:0;accent-color:var(--accent)}
+  .field.full{grid-column:1/-1}
+  label{font-size:.8rem;font-weight:500;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.06em}
+  input,select,textarea{
+    background:var(--bg-primary);border:1px solid var(--border);
+    border-radius:var(--radius-sm);padding:.7rem 1rem;
+    color:var(--text-primary);font-family:inherit;font-size:.95rem;
+    transition:border-color .2s,box-shadow .2s;outline:none;
+  }
+  input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(99,149,255,.15)}
+  input::placeholder,textarea::placeholder{color:var(--text-muted)}
+  select{cursor:pointer;-webkit-appearance:none;appearance:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%238b95b0' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-position:right 1rem center;padding-right:2.5rem;
+  }
+  select option{background:var(--bg-secondary);color:var(--text-primary)}
+
+  /* Query mode tabs */
+  .mode-tabs{display:flex;gap:.5rem;margin-bottom:1.25rem}
+  .mode-tab{
+    flex:1;padding:.6rem;border-radius:var(--radius-sm);
+    background:transparent;border:1px solid var(--border);
+    color:var(--text-secondary);font-size:.85rem;font-weight:500;
+    cursor:pointer;transition:all .2s;text-align:center;font-family:inherit;
+  }
+  .mode-tab:hover{border-color:var(--accent);color:var(--text-primary)}
+  .mode-tab.active{background:rgba(99,149,255,.12);border-color:var(--accent);color:var(--accent-light)}
+
+  /* Buttons */
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:.5rem;
+    padding:.8rem 1.6rem;border-radius:var(--radius-sm);
+    font-family:inherit;font-size:.95rem;font-weight:600;
+    cursor:pointer;border:none;transition:all .25s;
+  }
+  .btn-primary{
+    background:var(--gradient-snow);color:#0a0e1a;
+    box-shadow:0 4px 20px rgba(79,195,247,.25);
+  }
+  .btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 28px rgba(79,195,247,.35)}
+  .btn-primary:active{transform:translateY(0)}
+  .btn-primary:disabled{opacity:.5;cursor:not-allowed;transform:none}
+  .btn-secondary{
+    background:rgba(99,149,255,.08);color:var(--accent-light);
+    border:1px solid rgba(99,149,255,.2);
+  }
+  .btn-secondary:hover{background:rgba(99,149,255,.15);border-color:var(--accent)}
+  .btn-danger{
+    background:rgba(239,83,80,.12);color:var(--error);
+    border:1px solid rgba(239,83,80,.3);
+  }
+  .btn-danger:hover{background:rgba(239,83,80,.2)}
+
+  /* Loading spinner */
+  .spinner{width:18px;height:18px;border:2px solid rgba(10,14,26,.2);border-top-color:#0a0e1a;border-radius:50%;animation:spin .7s linear infinite;display:none}
+  .loading .spinner{display:block}
+  .loading .btn-text{display:none}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* Results section */
+  .results-section{margin-top:2rem;display:none}
+  .results-section.visible{display:block;animation:fadeUp .5s ease}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+
+  /* Threshold Control Bar */
+  .threshold-toolbar{
+    background:var(--gradient-card);border:1px solid rgba(79,195,247,.25);
+    border-radius:var(--radius-sm);padding:1.25rem 1.5rem;
+    margin-bottom:1.5rem;display:flex;justify-content:space-between;
+    align-items:center;flex-wrap:wrap;gap:1.25rem;
+    box-shadow:0 8px 32px rgba(0,0,0,.35);
+  }
+  .thresh-header{display:flex;align-items:center;gap:.9rem}
+  .thresh-icon{
+    width:42px;height:42px;border-radius:var(--radius-xs);
+    background:rgba(79,195,247,.12);border:1px solid rgba(79,195,247,.25);
+    display:flex;align-items:center;justify-content:center;font-size:1.3rem;
+  }
+  .thresh-title{font-size:.95rem;font-weight:700;color:var(--text-primary)}
+  .thresh-desc{font-size:.82rem;color:var(--text-secondary);margin-top:2px;line-height:1.5}
+  .highlight-val{color:var(--snow-cyan);font-weight:700;font-family:'JetBrains Mono',monospace}
+  .thresh-controls{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap}
+  .thresh-input-group{
+    display:flex;align-items:center;gap:.4rem;
+    background:var(--bg-primary);border:1px solid var(--border);
+    border-radius:var(--radius-xs);padding:.35rem .65rem;
+  }
+  .thresh-input-group label{font-size:.75rem;color:var(--text-secondary);margin:0;text-transform:none;font-weight:600}
+  .thresh-input-group input{
+    width:72px;padding:.3rem .4rem;font-size:.92rem;
+    font-family:'JetBrains Mono',monospace;text-align:right;
+    background:transparent;border:none;color:var(--snow-cyan);font-weight:700;
+  }
+  .thresh-input-group input:focus{box-shadow:none}
+  .unit-tag{font-size:.78rem;color:var(--text-muted);font-weight:600}
+  .quick-chips{display:flex;gap:.35rem;flex-wrap:wrap}
+  .chip{
+    background:rgba(99,149,255,.08);border:1px solid var(--border);
+    color:var(--text-secondary);border-radius:99px;padding:.35rem .75rem;
+    font-size:.75rem;font-family:'JetBrains Mono',monospace;cursor:pointer;
+    transition:all .2s;
+  }
+  .chip:hover{border-color:var(--accent);color:var(--text-primary)}
+  .chip.active{
+    background:rgba(0,229,255,.15);border-color:var(--snow-cyan);
+    color:var(--snow-cyan);font-weight:700;
+  }
+
+  /* Summary stats */
+  .stats-row{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(170px,1fr));
+    gap:1rem;margin-bottom:1.5rem;
+  }
+  .stat-card{
+    background:var(--bg-card);border:1px solid var(--border);
+    border-radius:var(--radius-sm);padding:1.25rem 1rem;text-align:center;
+    transition:border-color .3s,transform .2s;display:flex;flex-direction:column;justify-content:center;
+  }
+  .stat-card:hover{border-color:var(--border-glow);transform:translateY(-2px)}
+  .stat-card.highlight{border-color:var(--snow-blue);background:rgba(79,195,247,.06)}
+  .stat-card.freq-card{
+    border-color:var(--snow-cyan);
+    background:linear-gradient(145deg,rgba(0,229,255,.08),rgba(17,24,39,.95));
+    box-shadow:0 0 20px rgba(0,229,255,.1);
+  }
+  .stat-value{
+    font-size:1.85rem;font-weight:800;letter-spacing:-.02em;
+    font-family:'JetBrains Mono','Inter',monospace;line-height:1.2;
+  }
+  .stat-value.snow-val{color:var(--snow-cyan)}
+  .stat-value.freq-val{
+    background:linear-gradient(135deg,#00e5ff,#4fc3f7);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  }
+  .stat-value.precip-val{color:var(--accent-light)}
+  .stat-value.rain-val{color:var(--success)}
+  .stat-label{font-size:.75rem;color:var(--text-secondary);margin-top:.4rem;text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+  .stat-subtext{font-size:.72rem;color:var(--text-muted);margin-top:3px;font-family:'JetBrains Mono',monospace}
+  .stat-unit{font-size:.85rem;font-weight:500;color:var(--text-muted)}
+
+  /* Location info */
+  .location-info{
+    display:flex;flex-wrap:wrap;gap:1.25rem;align-items:center;
+    padding:1rem 1.25rem;border-radius:var(--radius-sm);
+    background:rgba(99,149,255,.05);border:1px solid rgba(99,149,255,.12);
+    margin-bottom:1.5rem;font-size:.88rem;color:var(--text-secondary);
+  }
+  .location-info strong{color:var(--text-primary)}
+
+  /* Chart container */
+  .chart-wrap{position:relative;height:300px;margin:1.5rem 0}
+  .chart-bars{
+    display:flex;align-items:flex-end;justify-content:center;
+    gap:6px;height:240px;padding:0 .5rem;
+  }
+  .bar-group{display:flex;flex-direction:column;align-items:center;flex:1;max-width:70px;gap:4px}
+  .bar{
+    width:100%;border-radius:6px 6px 2px 2px;min-height:2px;
+    transition:height .6s cubic-bezier(.22,1,.36,1);position:relative;cursor:pointer;
+  }
+  .bar.snow-bar{background:linear-gradient(180deg,var(--snow-cyan),var(--snow-blue))}
+  .bar.rain-bar{background:linear-gradient(180deg,var(--success),#2e7d52)}
+  .bar:hover{filter:brightness(1.2)}
+  .bar-tooltip{
+    position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);
+    background:var(--bg-secondary);border:1px solid var(--border);
+    border-radius:var(--radius-xs);padding:.4rem .6rem;
+    font-size:.72rem;white-space:nowrap;pointer-events:none;
+    opacity:0;transition:opacity .2s;z-index:10;
+    font-family:'JetBrains Mono',monospace;
+  }
+  .bar:hover .bar-tooltip{opacity:1}
+  .bar-label{font-size:.7rem;color:var(--text-muted);font-weight:500;margin-top:2px}
+  .chart-legend{display:flex;justify-content:center;gap:1.5rem;margin-top:.5rem}
+  .legend-item{display:flex;align-items:center;gap:.4rem;font-size:.78rem;color:var(--text-secondary)}
+  .legend-dot{width:10px;height:10px;border-radius:3px}
+  .legend-dot.snow{background:var(--snow-blue)}
+  .legend-dot.rain{background:var(--success)}
+
+  /* Y-axis */
+  .chart-container{display:flex;gap:.5rem}
+  .y-axis{display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;height:240px;padding-right:.25rem}
+  .y-label{font-size:.65rem;color:var(--text-muted);font-family:'JetBrains Mono',monospace}
+
+  /* Table */
+  .table-wrap{overflow-x:auto;border-radius:var(--radius-sm);border:1px solid var(--border);margin-top:1.5rem}
+  table{width:100%;border-collapse:collapse;font-size:.85rem}
+  thead{background:rgba(99,149,255,.06)}
+  th{
+    padding:.75rem 1rem;text-align:left;font-weight:600;font-size:.75rem;
+    text-transform:uppercase;letter-spacing:.06em;color:var(--text-secondary);
+    border-bottom:1px solid var(--border);white-space:nowrap;
+  }
+  td{
+    padding:.6rem 1rem;border-bottom:1px solid rgba(42,52,85,.4);
+    font-family:'JetBrains Mono',monospace;font-size:.82rem;
+  }
+  tr:hover td{background:rgba(99,149,255,.03)}
+  tr:last-child td{border-bottom:none}
+  .snow-cell{color:var(--snow-cyan);font-weight:600}
+  .rain-cell{color:var(--success)}
+  .precip-cell{color:var(--accent-light)}
+  .freq-cell{color:var(--snow-cyan);font-weight:700}
+  .total-row td{
+    font-weight:700;border-top:2px solid var(--border);
+    background:rgba(99,149,255,.06);
+  }
+  .average-row td{
+    font-weight:600;border-top:1px dashed var(--border);
+    background:rgba(99,149,255,.025);
+  }
+
+  /* Daily detail badges */
+  .snow-badge{
+    display:inline-flex;align-items:center;gap:.3rem;
+    padding:.15rem .45rem;border-radius:4px;
+    background:rgba(0,229,255,.12);border:1px solid rgba(0,229,255,.3);
+    color:var(--snow-cyan);font-size:.72rem;font-weight:600;
+  }
+  .dry-badge{color:var(--text-muted);font-size:.75rem}
+
+  /* Daily detail toggle */
+  .detail-toggle{
+    display:flex;align-items:center;justify-content:space-between;
+    cursor:pointer;padding:1rem 1.25rem;border-radius:var(--radius-sm);
+    background:rgba(99,149,255,.04);border:1px solid var(--border);
+    margin-top:1.5rem;transition:all .2s;
+  }
+  .detail-toggle:hover{border-color:var(--border-glow);background:rgba(99,149,255,.07)}
+  .detail-toggle .arrow{transition:transform .3s;font-size:.8rem;color:var(--accent)}
+  .detail-toggle.open .arrow{transform:rotate(180deg)}
+  .daily-content{max-height:0;overflow:hidden;transition:max-height .4s ease}
+  .daily-content.open{max-height:600px;overflow-y:auto}
+  .daily-content::-webkit-scrollbar{width:6px}
+  .daily-content::-webkit-scrollbar-track{background:var(--bg-primary)}
+  .daily-content::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+  /* Batch Settings Banner */
+  .batch-settings-banner{
+    display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap;
+    padding:.85rem 1.25rem;border-radius:var(--radius-sm);
+    background:rgba(99,149,255,.06);border:1px solid rgba(99,149,255,.18);
+    font-size:.85rem;
+  }
+  .batch-settings-banner .setting-item{display:flex;align-items:center;gap:.4rem}
+  .batch-settings-banner .label{color:var(--text-secondary);font-size:.75rem;text-transform:uppercase;font-weight:600;letter-spacing:.05em}
+  .batch-settings-banner .val{color:var(--snow-cyan);font-family:'JetBrains Mono',monospace;font-weight:700}
+  .batch-settings-banner .setting-tip{color:var(--text-muted);font-size:.75rem;margin-left:auto}
+  @media(max-width:768px){.batch-settings-banner .setting-tip{margin-left:0;width:100%}}
+
+  /* Error state */
+  .error-msg{
+    padding:1rem 1.25rem;border-radius:var(--radius-sm);
+    background:rgba(239,83,80,.08);border:1px solid rgba(239,83,80,.2);
+    color:var(--error);font-size:.9rem;display:none;margin-top:1rem;
+  }
+  .error-msg.visible{display:flex;align-items:center;gap:.5rem}
+
+  /* Note */
+  .note{
+    margin-top:2rem;padding:1rem 1.25rem;border-radius:var(--radius-sm);
+    background:rgba(79,195,247,.04);border:1px solid rgba(79,195,247,.1);
+    font-size:.8rem;color:var(--text-secondary);line-height:1.7;
+  }
+  .note strong{color:var(--snow-blue)}
+
+  /* Footer */
+  footer{text-align:center;margin-top:3rem;padding:1.5rem 0;border-top:1px solid var(--border);font-size:.78rem;color:var(--text-muted)}
+  footer a{color:var(--accent);text-decoration:none}
+  footer a:hover{text-decoration:underline}
+
+  /* Animations */
+  .fade-in{animation:fadeUp .5s ease}
+  @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+  /* Month filter for Custom Range */
+  .month-filter-wrap{
+    margin-top:1rem;padding:1rem 1.25rem;border-radius:var(--radius-sm);
+    background:rgba(99,149,255,.04);border:1px solid rgba(99,149,255,.12);
+  }
+  .month-filter-label{font-size:.8rem;font-weight:600;color:var(--text-secondary);margin-bottom:.6rem;display:flex;align-items:center;gap:.4rem}
+  .month-pills{display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.6rem}
+  .month-pill{
+    padding:.35rem .7rem;border-radius:99px;font-size:.78rem;font-weight:500;
+    cursor:pointer;border:1px solid var(--border);background:transparent;
+    color:var(--text-secondary);transition:all .2s;font-family:inherit;
+  }
+  .month-pill:hover{border-color:var(--accent);color:var(--text-primary)}
+  .month-pill.active{background:rgba(0,229,255,.12);border-color:var(--snow-cyan);color:var(--snow-cyan);font-weight:700}
+  .fast-select-row{display:flex;gap:.4rem;flex-wrap:wrap;align-items:center}
+  .fast-select-row .lbl{font-size:.72rem;color:var(--text-muted);font-weight:600;margin-right:.2rem}
+  .fast-chip{
+    padding:.25rem .6rem;border-radius:99px;font-size:.72rem;font-weight:600;
+    cursor:pointer;border:1px solid var(--border);background:rgba(99,149,255,.06);
+    color:var(--accent-light);transition:all .2s;font-family:inherit;
+  }
+  .fast-chip:hover{background:rgba(99,149,255,.15);border-color:var(--accent)}
+  .fast-chip.active{background:rgba(0,229,255,.15);border-color:var(--snow-cyan);color:var(--snow-cyan)}
+
+  /* Hierarchical yearly/monthly/daily drill-down */
+  .hierarchy-section{margin-top:1.5rem}
+  .drill-breadcrumb{
+    display:flex;align-items:center;gap:.5rem;margin-bottom:1rem;
+    font-size:.88rem;color:var(--text-secondary);
+  }
+  .drill-breadcrumb .bc-link{
+    cursor:pointer;color:var(--accent-light);font-weight:500;
+    transition:color .2s;background:none;border:none;font-family:inherit;font-size:inherit;
+    padding:0;text-decoration:underline;text-underline-offset:2px;
+  }
+  .drill-breadcrumb .bc-link:hover{color:var(--snow-cyan)}
+  .drill-breadcrumb .bc-sep{color:var(--text-muted)}
+  .drill-breadcrumb .bc-current{color:var(--text-primary);font-weight:700}
+  .clickable-row{cursor:pointer;transition:background .2s}
+  .clickable-row:hover td{background:rgba(99,149,255,.08)!important}
+  .clickable-row td:first-child{color:var(--accent-light);font-weight:700;text-decoration:underline;text-underline-offset:2px}
+  .expand-icon{display:inline-block;transition:transform .3s;margin-right:.3rem;font-size:.7rem}
+  .expand-icon.open{transform:rotate(90deg)}
+  .sub-daily-row td{background:rgba(10,14,26,.4)!important;font-size:.8rem}
+  .sub-daily-row:hover td{background:rgba(99,149,255,.06)!important}
+</style>
+</head>
+<body>
+
+<div class="snow-bg" id="snowBg"></div>
+
+<div class="container">
+  <header>
+    <div class="logo-icon">❄️</div>
+    <h1>Global Snowfall Explorer</h1>
+    <p class="subtitle">Compare modeled fresh snowfall depth and snow frequency for coordinates around the world</p>
+    <div class="data-badge"><span class="dot"></span> <span id="dataBadgeText">ERA5 Reanalysis · 0.25° Resolution · 1940–Present</span></div>
+  </header>
+
+  <!-- Input Card -->
+  <div class="card" id="inputCard">
+    <div class="card-title"><span class="icon">📍</span> Single Query Parameters</div>
+
+    <!-- Single Coordinate Input Element -->
+    <div class="field" style="margin-bottom:1.25rem">
+      <label for="coords">Coordinates (Latitude [Tab] Longitude)</label>
+      <input type="text" id="coords" placeholder="e.g. 48.62946667&#9;87.55294722" value="48.62946667&#9;87.55294722" autocomplete="off" spellcheck="false" style="font-family:'JetBrains Mono',monospace;font-size:1rem;letter-spacing:0.02em;">
+      <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;">Paste in format: <code>latitude + \t + longitude</code> (e.g. <code>48.62946667&#9;87.55294722</code>)</div>
+    </div>
+
+    <div>
+      <label style="margin-bottom:.5rem;display:block">Query Mode (Shared with Batch)</label>
+      <div class="mode-tabs">
+        <button class="mode-tab active" data-mode="year" onclick="setMode('year')">📅 Full Year</button>
+        <button class="mode-tab" data-mode="custom" onclick="setMode('custom')">⚙️ Custom Range</button>
+      </div>
+    </div>
+
+    <div class="input-grid-3" id="dateInputs">
+      <div class="field" id="yearField">
+        <label for="year">Year</label>
+        <select id="year" onchange="syncSharedBatchSettings()"></select>
+      </div>
+
+      <!-- Year inputs for Custom Range -->
+      <div class="field" id="startField" style="display:none">
+        <label for="startYear">Start Year</label>
+        <input type="number" id="startYear" placeholder="e.g. 2010" min="1940" max="2100" step="1" oninput="syncSharedBatchSettings()" style="font-family:'JetBrains Mono',monospace;">
+      </div>
+      <div class="field" id="endField" style="display:none">
+        <label for="endYear">End Year</label>
+        <input type="number" id="endYear" placeholder="e.g. 2023" min="1940" max="2100" step="1" oninput="syncSharedBatchSettings()" style="font-family:'JetBrains Mono',monospace;">
+      </div>
+      <div class="field" id="thresholdField">
+        <label for="snowThreshold">Snow Day Threshold (cm)</label>
+        <input type="number" id="snowThreshold" placeholder="1.0" step="0.1" min="0" value="1.0" oninput="syncThresholdInputs(this.value)" title="Days with fresh snowfall depth >= this value are counted as Snow Days (Days 1)">
+      </div>
+    </div>
+
+    <div class="field" style="margin-top:1rem">
+      <label>Data Model & Grid Resolution</label>
+      <div class="resolution-options" role="radiogroup" aria-label="Data model and native grid resolution">
+        <label class="resolution-option"><input type="radio" name="weatherModel" value="era5" checked onchange="syncSharedBatchSettings()"> ERA5 (0.25° × 0.25°)</label>
+        <label class="resolution-option"><input type="radio" name="weatherModel" value="era5_ensemble" onchange="syncSharedBatchSettings()"> ERA5-Ensemble (0.5° × 0.5°)</label>
+        <label class="resolution-option"><input type="radio" name="weatherModel" value="ecmwf_ifs" onchange="syncSharedBatchSettings()"> ECMWF IFS (~9 km)</label>
+      </div>
+      <div style="font-size:0.75rem;color:var(--text-muted)">ERA5-Ensemble is a separate 3-hourly product. ECMWF IFS historical data starts in 2017.</div>
+    </div>
+
+    <!-- Calendar Month Filter (Custom Range only) -->
+    <div id="monthFilterWrap" style="display:none;margin-top:1rem">
+      <div class="month-filter-wrap">
+        <div class="month-filter-label">📆 Calendar Month Restriction <span style="font-size:.72rem;color:var(--text-muted);font-weight:400">(only include days falling in selected months)</span></div>
+        <div class="month-pills" id="monthPills"></div>
+        <div class="fast-select-row">
+          <span class="lbl">Quick:</span>
+          <button class="fast-chip" onclick="fastSelectMonths('all')">All Months</button>
+          <button class="fast-chip" onclick="fastSelectMonths('12-2')">12-2 (Dec–Feb)</button>
+          <button class="fast-chip" onclick="fastSelectMonths('11-3')">11-3 (Nov–Mar)</button>
+          <button class="fast-chip" onclick="fastSelectMonths('none')">Clear All</button>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:1.5rem;display:flex;gap:1rem;flex-wrap:wrap">
+      <button class="btn btn-primary" id="queryBtn" onclick="querySnowfall()">
+        <span class="spinner"></span>
+        <span class="btn-text">🔍 Retrieve Snowfall Data</span>
+      </button>
+      <button class="btn btn-secondary" id="exampleBtn" onclick="fillExample()">📌 Load Example (Altai Mountains 2023)</button>
+
+    </div>
+
+    <div class="error-msg" id="errorMsg"><span>⚠️</span> <span id="errorText"></span></div>
+  </div>
+
+  <!-- Results -->
+  <div class="results-section" id="results">
+    <!-- Location -->
+    <div class="location-info" id="locationInfo"></div>
+
+    <!-- Threshold Control Bar -->
+    <div class="threshold-toolbar">
+      <div class="thresh-header">
+        <div class="thresh-icon">❄️</div>
+        <div>
+          <div class="thresh-title">Snow Frequency Definition & Threshold</div>
+          <div class="thresh-desc">
+            <strong>Days 1</strong> = Days with snowfall depth ≥ <span class="highlight-val" id="activeThreshVal">1.0</span> cm &nbsp;·&nbsp;
+            <strong>Days 2</strong> = <span id="days2Definition">Total period days</span> (<span class="highlight-val" id="totalPeriodDaysVal">--</span> days) &nbsp;·&nbsp;
+            <strong>Snow Frequency</strong> = Days 1 ÷ Days 2 &nbsp;·&nbsp;
+            <strong>Snowfall SWE Frequency</strong> = Days with SWE ≥ 1 mm ÷ Days 2
+          </div>
+        </div>
+      </div>
+      <div class="thresh-controls">
+        <div class="thresh-input-group">
+          <label for="inlineThreshold">Threshold:</label>
+          <input type="number" id="inlineThreshold" value="1.0" min="0" max="500" step="0.1" oninput="onThresholdInput(this.value)">
+          <span class="unit-tag">cm</span>
+        </div>
+        <div class="quick-chips">
+          <button class="chip" onclick="setThreshold(0.1)">0.1 cm</button>
+          <button class="chip" onclick="setThreshold(0.5)">0.5 cm</button>
+          <button class="chip active" id="chip-1.0" onclick="setThreshold(1.0)">1.0 cm</button>
+          <button class="chip" id="chip-2.0" onclick="setThreshold(2.0)">2.0 cm</button>
+          <button class="chip" id="chip-5.0" onclick="setThreshold(5.0)">5.0 cm</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Summary Stats -->
+    <div class="stats-row" id="statsRow"></div>
+
+    <!-- Monthly Chart -->
+  <div class="card" id="chartCard">
+      <div class="card-title"><span class="icon">📊</span> Monthly Snowfall Depth</div>
+      <div class="chart-container">
+        <div class="y-axis" id="yAxis"></div>
+        <div class="chart-bars" id="chartBars" style="flex:1"></div>
+      </div>
+      <div class="chart-legend">
+        <div class="legend-item"><div class="legend-dot snow"></div> Fresh snowfall depth (cm)</div>
+      </div>
+    </div>
+
+    <!-- Monthly Table -->
+    <div class="card" style="margin-top:1.5rem">
+      <div class="card-title"><span class="icon">📋</span> Monthly Statistical Table</div>
+      <div class="table-wrap" id="monthlyTable"></div>
+    </div>
+
+    <!-- Daily Detail (Full Year mode) -->
+    <div id="dailyDetailSection">
+      <div class="detail-toggle" id="dailyToggle" onclick="toggleDaily()">
+        <span style="font-size:.9rem;font-weight:500">📅 Daily Detail Data (<span id="dailyCountLabel">--</span> records)</span>
+        <span class="arrow">▼</span>
+      </div>
+      <div class="daily-content" id="dailyContent">
+        <div class="table-wrap" id="dailyTable" style="border-top:none;border-radius:0 0 var(--radius-sm) var(--radius-sm)"></div>
+      </div>
+    </div>
+
+    <!-- Hierarchical Yearly/Monthly/Daily Drill-down (Custom Range mode) -->
+    <div class="hierarchy-section" id="hierarchySection" style="display:none">
+      <div class="card">
+        <div class="card-title"><span class="icon">📊</span> <span id="hierarchyTitle">Yearly Detail</span></div>
+        <div id="hierarchyBreadcrumb" class="drill-breadcrumb" style="display:none"></div>
+        <div class="table-wrap" id="hierarchyTable"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!-- BATCH PROCESSING CARD -->
+  <!-- ══════════════════════════════════════════════ -->
+  <div class="card" id="batchCard" style="margin-top:2.5rem">
+    <div class="card-title">
+      <span class="icon">📦</span> Batch Coordinate Processing
+    </div>
+    <p style="font-size:0.88rem;color:var(--text-secondary);margin-bottom:1.25rem">
+      Batch retrieve snowfall metrics for multiple coordinates using the selected date range, Calendar Month Restriction, and shared threshold. Custom ranges report annual averages; Snow Frequency uses the full filtered period.
+    </p>
+
+    <!-- Shared Settings Banner -->
+    <div class="batch-settings-banner">
+      <div class="setting-item">
+        <span class="label">Date Range:</span>
+        <span class="val" id="batchDateRangeLabel">2023-01-01 → 2023-12-31</span>
+      </div>
+      <div class="setting-item">
+        <span class="label">Threshold:</span>
+        <span class="val" id="batchThreshLabel">≥ 1.0 cm</span>
+      </div>
+      <div class="setting-item" id="batchMonthFilterItem" style="display:none">
+        <span class="label">Months:</span>
+        <span class="val" id="batchMonthFilterLabel">All</span>
+      </div>
+      <div class="setting-item">
+        <span class="label">Grid:</span>
+        <span class="val" id="batchGridLabel">0.25° × 0.25° (ERA5)</span>
+      </div>
+      <div class="setting-tip">
+        (Configured via the Query Mode & Threshold controls above)
+      </div>
+    </div>
+
+    <div class="field full" style="margin-top:1.25rem">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem">
+        <label for="batchTextarea">Paste Coordinates (Line-separated: latitude + \t + longitude)</label>
+        <span id="batchCountBadge" style="font-size:0.75rem;color:var(--accent-light);font-family:'JetBrains Mono',monospace">0 coordinates detected</span>
+      </div>
+      <textarea id="batchTextarea" rows="7" placeholder="48.62946667&#9;87.55294722&#10;47.84472222&#9;88.13083333&#10;43.825592&#9;87.616848&#10;... paste directly from Excel or text file" style="width:100%;font-family:'JetBrains Mono',monospace;font-size:.88rem;line-height:1.5;resize:vertical;" oninput="updateBatchCount()"></textarea>
+      <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px">
+        Tip: In Excel, select rows of Latitude and Longitude columns, copy (Ctrl+C), and paste directly here. Each row will be automatically tab-delimited.
+      </div>
+    </div>
+
+    <div style="margin-top:1.25rem;display:flex;gap:1rem;flex-wrap:wrap;align-items:center">
+      <button class="btn btn-primary" id="batchRunBtn" onclick="runBatchQuery()">
+        <span class="spinner" id="batchSpinner"></span>
+        <span class="btn-text" id="batchBtnText">🚀 Run Batch Query</span>
+      </button>
+      <button class="btn btn-secondary" onclick="loadSampleBatch()">📌 Load Sample Coordinates</button>
+      <button class="btn btn-secondary" onclick="clearBatch()">🗑️ Clear</button>
+      <button class="btn btn-danger" id="batchStopBtn" style="display:none" onclick="stopBatchQuery()">⏹️ Stop</button>
+    </div>
+
+    <!-- Batch Progress Bar -->
+    <div id="batchProgressWrap" style="display:none;margin-top:1.5rem">
+      <div style="display:flex;justify-content:space-between;font-size:0.82rem;margin-bottom:6px">
+        <span id="batchProgressLabel" style="color:var(--text-secondary)">Processing coordinates...</span>
+        <span id="batchProgressPercent" style="color:var(--snow-cyan);font-family:'JetBrains Mono',monospace;font-weight:700">0%</span>
+      </div>
+      <div style="width:100%;height:8px;background:var(--bg-primary);border-radius:99px;overflow:hidden;border:1px solid var(--border)">
+        <div id="batchProgressBar" style="width:0%;height:100%;background:var(--gradient-snow);border-radius:99px;transition:width .2s"></div>
+      </div>
+    </div>
+
+    <!-- Batch Results Table -->
+    <div id="batchResultsWrap" style="display:none;margin-top:1.75rem">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.75rem;margin-bottom:1rem">
+        <div style="font-size:0.95rem;font-weight:700;color:var(--text-primary);display:flex;align-items:center;gap:.5rem">
+          <span>📊</span> Batch Results (<span id="batchSuccessCount">0</span> completed)
+        </div>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+          <button class="btn btn-secondary" style="padding:.45rem .85rem;font-size:.8rem" onclick="copyBatchToClipboard()">📋 Copy Table for Excel</button>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table id="batchTable">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Latitude</th>
+              <th>Longitude</th>
+              <th style="color:var(--snow-cyan)">Snowfall Depth (cm)</th>
+              <th style="color:var(--snow-cyan)">Snow Frequency</th>
+              <th style="color:var(--snow-cyan)">Snowfall SWE Frequency</th>
+              <th>Days 1 (≥ T)</th>
+              <th>Days 2 (Total)</th>
+              <th>Rainfall (mm)</th>
+              <th>Total Precip (mm)</th>
+              <th>Snowfall SWE (mm)</th>
+              <th>Status</th>
+              <th>Elevation (m)</th>
+            </tr>
+          </thead>
+          <tbody id="batchTableBody">
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Note -->
+  <div class="note">
+    <strong>ℹ️ Data Source & Methodology:</strong><br>
+    • Data from the selected <strong>ERA5, ERA5-Ensemble, or ECMWF IFS</strong> model via Open-Meteo Historical Weather API. Their native grids are 0.25° (~25 km), 0.5° (~55 km), and ~9 km, respectively.<br>
+    • <strong>Snowfall depth:</strong> Open-Meteo daily snowfall sum in centimeters; this is fresh-snow depth, not snow water equivalent.<br>
+    • <strong>Days 1:</strong> Count of days where fresh snowfall depth is greater than or equal to the configurable threshold (default: 1.0 cm)<br>
+    • <strong>Days 2:</strong> Total calendar days in the queried range<br>
+    • <strong>Snow Frequency:</strong> Days 1 ÷ Days 2 (displayed as a percentage and fraction)<br>
+    • <strong>Snowfall SWE Frequency:</strong> Days with daily snowfall SWE ≥ 1 mm ÷ total days (displayed as a percentage and fraction)<br>
+    • ERA5-Ensemble is a separate, 3-hourly ensemble product; ERA5 at 0.25° remains the default
+  </div>
+
+  <footer>
+    Powered by <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> &
+    <a href="https://www.ecmwf.int/en/forecasts/dataset/ecmwf-reanalysis-v5" target="_blank" rel="noopener">ECMWF ERA5</a>
+    · Free for non-commercial use · No API key required
+  </footer>
+
+</div>
+
+<script>
+// ─── Snowflake Background ───
+(function createSnow(){
+  const bg=document.getElementById('snowBg');
+  const chars=['❄','❅','❆','•'];
+  for(let i=0;i<35;i++){
+    const s=document.createElement('span');
+    s.className='snowflake';
+    s.textContent=chars[Math.floor(Math.random()*chars.length)];
+    s.style.left=Math.random()*100+'%';
+    s.style.fontSize=(Math.random()*10+6)+'px';
+    s.style.animationDuration=(Math.random()*12+8)+'s';
+    s.style.animationDelay=(Math.random()*15)+'s';
+    s.style.opacity=Math.random()*0.3+0.05;
+    bg.appendChild(s);
+  }
+})();
+
+// ─── Populate Year Select ───
+const yearSel=document.getElementById('year');
+const currentYear=new Date().getFullYear();
+for(let y=currentYear;y>=1940;y--){
+  const o=document.createElement('option');
+  o.value=y; o.textContent=y;
+  yearSel.appendChild(o);
+}
+yearSel.value=2023;
+
+// ─── Mode Switching ───
+let queryMode='year';
+function setMode(mode){
+  queryMode=mode;
+  document.querySelectorAll('.mode-tab').forEach(t=>t.classList.toggle('active',t.dataset.mode===mode));
+  document.getElementById('yearField').style.display=(mode==='custom')?'none':'';
+  document.getElementById('startField').style.display=(mode==='custom')?'':'none';
+  document.getElementById('endField').style.display=(mode==='custom')?'':'none';
+  document.getElementById('monthFilterWrap').style.display=(mode==='custom')?'':'none';
+
+  if(mode === 'custom'){
+    const sInput = document.getElementById('startYear');
+    const eInput = document.getElementById('endYear');
+    if(!sInput.value) sInput.value = yearSel.value || '2023';
+    if(!eInput.value) eInput.value = yearSel.value || '2023';
+  }
+  syncSharedBatchSettings();
+}
+
+// ─── Coordinate Parser (supports latitude + \t + longitude) ───
+function parseCoordinates(str){
+  if(!str || !str.trim()) return null;
+  const trimmed = str.trim();
+  let parts;
+  if(trimmed.includes('\t')){
+    parts = trimmed.split('\t').map(s=>s.trim()).filter(Boolean);
+  } else if(trimmed.includes(',')){
+    parts = trimmed.split(',').map(s=>s.trim()).filter(Boolean);
+  } else {
+    parts = trimmed.split(/\s+/).filter(Boolean);
+  }
+  if(parts.length < 2) return null;
+  const lat = parseFloat(parts[0]);
+  const lon = parseFloat(parts[1]);
+  if(isNaN(lat) || isNaN(lon)) return null;
+  if(lat < -90 || lat > 90 || lon < -180 || lon > 180) return null;
+  return { lat, lon };
+}
+
+// ─── Strict four-digit year validator ───
+function isValidYear(str){
+  return /^\d{4}$/.test(String(str || '').trim()) && Number(str) >= 1940 && Number(str) <= 2100;
+}
+
+// ─── Helper to get active Date Range ───
+function getActiveDateRange(){
+  let startDate, endDate;
+  if(queryMode==='year'){
+    const y=yearSel.value;
+    startDate=`${y}-01-01`; endDate=`${y}-12-31`;
+  }else{
+    const startYear = (document.getElementById('startYear').value || '').trim();
+    const endYear = (document.getElementById('endYear').value || '').trim();
+    if(!isValidYear(startYear) || !isValidYear(endYear) || Number(startYear) > Number(endYear)){
+      return null;
+    }
+    startDate = `${startYear}-01-01`;
+    endDate = `${endYear}-12-31`;
+  }
+  return { startDate, endDate };
+}
+
+// ─── Sync Shared Batch Settings Banner ───
+function syncSharedBatchSettings(){
+  const gridLabel = getGridLabel();
+  const dataBadge = document.getElementById('dataBadgeText');
+  const batchGridLabel = document.getElementById('batchGridLabel');
+  if(dataBadge) dataBadge.textContent = `${gridLabel} · ${getSelectedWeatherModel() === 'ecmwf_ifs' ? '2017–Present' : '1940–Present'}`;
+  if(batchGridLabel) batchGridLabel.textContent = gridLabel;
+  const range = getActiveDateRange();
+  const rangeLabel = document.getElementById('batchDateRangeLabel');
+  if(rangeLabel){
+  rangeLabel.textContent = range ? `${range.startDate} → ${range.endDate}` : 'Invalid Custom Years';
+  }
+  const threshLabel = document.getElementById('batchThreshLabel');
+  if(threshLabel){
+    threshLabel.textContent = `≥ ${currentThreshold.toFixed(1)} cm`;
+  }
+  const mfItem = document.getElementById('batchMonthFilterItem');
+  const mfLabel = document.getElementById('batchMonthFilterLabel');
+  if(mfItem && mfLabel){
+    if(queryMode === 'custom' && selectedMonths.size < 12 && selectedMonths.size > 0){
+      mfItem.style.display = '';
+      mfLabel.textContent = [...selectedMonths].sort((a,b)=>a-b).map(m=>MONTHS[m-1]).join(', ');
+    } else {
+      mfItem.style.display = 'none';
+    }
+  }
+}
+
+function getSelectedWeatherModel(){
+  return document.querySelector('input[name="weatherModel"]:checked')?.value || 'era5';
+}
+
+function getGridLabel(){
+  const model = getSelectedWeatherModel();
+  if(model === 'era5_ensemble') return 'ERA5-Ensemble · 0.5° × 0.5°';
+  if(model === 'ecmwf_ifs') return 'ECMWF IFS · ~9 km';
+  return 'ERA5 · 0.25° × 0.25°';
+}
+
+function getOpenMeteoModelParam(){
+  return getSelectedWeatherModel();
+}
+
+function modelDateRangeError(startDate){
+  if(getSelectedWeatherModel() === 'ecmwf_ifs' && startDate < '2017-01-01'){
+    return 'ECMWF IFS historical data starts in 2017. Choose ERA5 or ERA5-Ensemble for earlier dates.';
+  }
+  return '';
+}
+
+// ─── Example ───
+async function fillExample(){
+  hideError();
+  document.getElementById('coords').value = "48.62946667\t87.55294722";
+  syncThresholdInputs(1.0);
+  const sInput = document.getElementById('startYear');
+  const eInput = document.getElementById('endYear');
+  if(sInput) sInput.value = '2023';
+  if(eInput) eInput.value = '2023';
+  if(yearSel) yearSel.value = '2023';
+  setMode('year');
+
+  const exBtn = document.getElementById('exampleBtn');
+  const originalHtml = exBtn ? exBtn.innerHTML : '';
+  if(exBtn) exBtn.innerHTML = '⏳ Loading Example...';
+
+  try{
+    // Immediately execute query and display the results on screen!
+    await querySnowfall();
+  }finally{
+    if(exBtn) exBtn.innerHTML = originalHtml;
+  }
+}
+
+
+
+// ─── Error Handling ───
+function showError(msg){
+  const e=document.getElementById('errorMsg');
+  document.getElementById('errorText').textContent=msg;
+  e.classList.add('visible');
+}
+function hideError(){document.getElementById('errorMsg').classList.remove('visible')}
+
+// ─── Month Names ───
+const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MONTH_FULL=['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+// ─── Cache current query result for live threshold changes ───
+let currentQueryResult = null;
+let currentThreshold = 1.0;
+
+function syncThresholdInputs(val){
+  currentThreshold = Math.max(0, parseFloat(val) || 0);
+  document.getElementById('snowThreshold').value = currentThreshold;
+  document.getElementById('inlineThreshold').value = currentThreshold;
+  const disp = document.getElementById('activeThreshVal');
+  if(disp) disp.textContent = currentThreshold.toFixed(1);
+
+  // Update chip styles
+  document.querySelectorAll('.quick-chips .chip').forEach(btn => {
+    const textVal = parseFloat(btn.textContent);
+    btn.classList.toggle('active', Math.abs(textVal - currentThreshold) < 0.001);
+  });
+
+  syncSharedBatchSettings();
+}
+
+function setThreshold(val){
+  syncThresholdInputs(val);
+  if(currentQueryResult){
+    renderWithThreshold();
+  }
+}
+
+function onThresholdInput(val){
+  syncThresholdInputs(val);
+  if(currentQueryResult){
+    renderWithThreshold();
+  }
+}
+
+// ─── Main Single Query ───
+async function querySnowfall(){
+  hideError();
+
+  const coordsInput = document.getElementById('coords').value;
+  const parsedCoords = parseCoordinates(coordsInput);
+
+  if(!parsedCoords){
+    showError('Invalid coordinate format. Please paste coordinate as "latitude + \\t + longitude" (e.g. 48.62946667\\t87.55294722), with latitude between -90 and 90, and longitude between -180 and 180.');
+    return;
+  }
+  const { lat, lon } = parsedCoords;
+
+  const initThresh = parseFloat(document.getElementById('snowThreshold').value);
+  syncThresholdInputs(isNaN(initThresh) ? 1.0 : initThresh);
+
+  let startDate, endDate;
+  if(queryMode==='year'){
+    const y=yearSel.value;
+    startDate=`${y}-01-01`; endDate=`${y}-12-31`;
+  }else{
+    const startYear = (document.getElementById('startYear').value || '').trim();
+    const endYear = (document.getElementById('endYear').value || '').trim();
+
+    if(!startYear || !endYear){
+      showError('Please enter both a Start Year and End Year.');
+      return;
+    }
+    if(!isValidYear(startYear)){
+      showError(`Start Year "${startYear}" must be a four-digit year from 1940 to 2100.`);
+      return;
+    }
+    if(!isValidYear(endYear)){
+      showError(`End Year "${endYear}" must be a four-digit year from 1940 to 2100.`);
+      return;
+    }
+    if(Number(startYear) > Number(endYear)){
+      showError(`Start Year (${startYear}) cannot be after End Year (${endYear}).`);
+      return;
+    }
+    startDate = `${startYear}-01-01`;
+    endDate = `${endYear}-12-31`;
+  }
+
+  const modelRangeError = modelDateRangeError(startDate);
+  if(modelRangeError){showError(modelRangeError);return}
+
+  const btn=document.getElementById('queryBtn');
+  btn.disabled=true; btn.classList.add('loading');
+
+  try{
+    const model = getOpenMeteoModelParam();
+    const url=`https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${startDate}&end_date=${endDate}&daily=precipitation_sum,rain_sum,snowfall_sum&models=${model}&timezone=auto`;
+    const resp=await fetch(url);
+    if(!resp.ok){
+      const errData=await resp.json().catch(()=>({}));
+      throw new Error(errData.reason||`API error: ${resp.status}`);
+    }
+    const data=await resp.json();
+    currentQueryResult = { data, lat, lon, startDate, endDate };
+    renderWithThreshold(true);
+  }catch(err){
+    showError(err.message||'Failed to fetch data. Please try again.');
+  }finally{
+    btn.disabled=false; btn.classList.remove('loading');
+  }
+}
+
+// ─── Month Filter State ───
+let selectedMonths = new Set([1,2,3,4,5,6,7,8,9,10,11,12]);
+let hierarchyData = null;
+
+function initMonthPills(){
+  const container = document.getElementById('monthPills');
+  if(!container) return;
+  container.innerHTML = '';
+  for(let m = 1; m <= 12; m++){
+    const btn = document.createElement('button');
+    btn.className = 'month-pill' + (selectedMonths.has(m) ? ' active' : '');
+    btn.textContent = MONTHS[m-1];
+    btn.dataset.month = m;
+    btn.onclick = () => toggleMonth(m);
+    container.appendChild(btn);
+  }
+  updateFastChipActive();
+}
+
+function toggleMonth(m){
+  if(selectedMonths.has(m)) selectedMonths.delete(m);
+  else selectedMonths.add(m);
+  document.querySelectorAll('.month-pill').forEach(btn => {
+    btn.classList.toggle('active', selectedMonths.has(parseInt(btn.dataset.month)));
+  });
+  updateFastChipActive();
+  syncSharedBatchSettings();
+  if(currentQueryResult) renderWithThreshold();
+}
+
+function fastSelectMonths(preset){
+  selectedMonths.clear();
+  if(preset === 'all'){
+    for(let i=1;i<=12;i++) selectedMonths.add(i);
+  } else if(preset === '12-2'){
+    [12,1,2].forEach(m => selectedMonths.add(m));
+  } else if(preset === '11-3'){
+    [11,12,1,2,3].forEach(m => selectedMonths.add(m));
+  }
+  document.querySelectorAll('.month-pill').forEach(btn => {
+    btn.classList.toggle('active', selectedMonths.has(parseInt(btn.dataset.month)));
+  });
+  updateFastChipActive();
+  syncSharedBatchSettings();
+  if(currentQueryResult) renderWithThreshold();
+}
+
+function updateFastChipActive(){
+  const allSet = selectedMonths.size === 12;
+  const set122 = selectedMonths.size === 3 && [12,1,2].every(m => selectedMonths.has(m));
+  const set113 = selectedMonths.size === 5 && [11,12,1,2,3].every(m => selectedMonths.has(m));
+  const noneSet = selectedMonths.size === 0;
+  document.querySelectorAll('.fast-chip').forEach(btn => {
+    const t = btn.textContent.toLowerCase();
+    if(t.includes('all m')) btn.classList.toggle('active', allSet);
+    else if(t.includes('12-2')) btn.classList.toggle('active', set122);
+    else if(t.includes('11-3')) btn.classList.toggle('active', set113);
+    else if(t.includes('clear')) btn.classList.toggle('active', noneSet);
+  });
+}
+
+// ─── Render with Current Threshold ───
+function renderWithThreshold(isNewFetch = false){
+  if(!currentQueryResult) return;
+  const { data, lat, lon, startDate, endDate } = currentQueryResult;
+  const daily=data.daily;
+  const times=daily.time;
+  const precip=daily.precipitation_sum;
+  const rain=daily.rain_sum;
+  const snowCm=daily.snowfall_sum;
+  const thresh=currentThreshold;
+
+  const snowfallCm=snowCm||[];
+
+  // Apply calendar month filter (custom range mode only)
+  const activeMonths = (queryMode === 'custom') ? selectedMonths : new Set([1,2,3,4,5,6,7,8,9,10,11,12]);
+  const fIdx = [];
+  times.forEach((t, i) => {
+    const m = parseInt(t.split('-')[1]);
+    if(activeMonths.has(m)) fIdx.push(i);
+  });
+
+  const totalDays = fIdx.length;
+  const totalPrecip = fIdx.reduce((s, i) => s + (precip[i]||0), 0);
+  const totalRain = fIdx.reduce((s, i) => s + (rain[i]||0), 0);
+  const totalSWE = totalPrecip - totalRain;
+  const sweDays = fIdx.filter(i => ((precip[i]||0) - (rain[i]||0)) >= 1).length;
+  const sweFrequency = totalDays > 0 ? (sweDays / totalDays) : 0;
+  const sweFreqPercent = Math.round(sweFrequency * 100);
+  const totalSnow = fIdx.reduce((s, i) => s + (snowfallCm[i]||0), 0);
+  const days1 = fIdx.filter(i => (snowfallCm[i]||0) >= thresh).length;
+  const snowFrequency = totalDays > 0 ? (days1 / totalDays) : 0;
+  const snowFreqPercent = Math.round(snowFrequency * 100);
+  const yearCount = queryMode === 'custom'
+    ? new Set(fIdx.map(i => Number(times[i].slice(0, 4)))).size
+    : 1;
+  const averageDivisor = Math.max(yearCount, 1);
+  const activeThreshEl = document.getElementById('activeThreshVal');
+  if(activeThreshEl) activeThreshEl.textContent = thresh.toFixed(1);
+  const totalPeriodEl = document.getElementById('totalPeriodDaysVal');
+  if(totalPeriodEl) totalPeriodEl.textContent = queryMode === 'custom' ? (totalDays / averageDivisor).toFixed(1) : totalDays;
+  const days2DefinitionEl = document.getElementById('days2Definition');
+  if(days2DefinitionEl) days2DefinitionEl.textContent = queryMode === 'custom' ? 'Annual average days' : 'Total period days';
+
+  const locDiv=document.getElementById('locationInfo');
+  const monthFilterNote = (queryMode === 'custom' && activeMonths.size < 12)
+    ? ` · <strong>Month Filter:</strong> ${[...activeMonths].sort((a,b)=>a-b).map(m=>MONTHS[m-1]).join(', ')}`
+    : '';
+  locDiv.innerHTML=`
+    <span>📍 <strong>Grid Point:</strong> ${data.latitude.toFixed(4)}°N, ${data.longitude.toFixed(4)}°E</span>
+    <span>⛰️ <strong>Elevation:</strong> ${data.elevation} m</span>
+    <span>🕐 <strong>Timezone:</strong> ${data.timezone}</span>
+    <span>📅 <strong>Period:</strong> ${startDate} → ${endDate} (<strong>${queryMode === 'custom' ? `${(totalDays / averageDivisor).toFixed(1)} days/year average` : `${totalDays} filtered days`}</strong>${monthFilterNote})</span>
+  `;
+
+  const statsRow=document.getElementById('statsRow');
+  statsRow.innerHTML=`
+    <div class="stat-card highlight">
+      <div class="stat-value snow-val">${(totalSnow / averageDivisor).toFixed(1)} <span class="stat-unit">cm</span></div>
+      <div class="stat-label">${queryMode === 'custom' ? 'Annual Average Snowfall Depth' : 'Fresh Snowfall Depth'}</div>
+      <div class="stat-subtext">${queryMode === 'custom' ? `Average per year across ${yearCount} years` : 'Sum of daily snowfall depth'}</div>
+    </div>
+    <div class="stat-card freq-card">
+      <div class="stat-value freq-val">${snowFreqPercent}<span class="stat-unit">%</span></div>
+      <div class="stat-label">Snow Frequency</div>
+      <div class="stat-subtext">Whole selected period: ${days1} / ${totalDays} days (${snowFrequency.toFixed(3)})</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" style="color:var(--text-primary)">${queryMode === 'custom' ? (totalDays / averageDivisor).toFixed(1) : totalDays} <span class="stat-unit">days</span></div>
+      <div class="stat-label">${queryMode === 'custom' ? 'Avg Days 2 per Year' : 'Days 2 (Filtered Days)'}</div>
+      <div class="stat-subtext">${queryMode === 'custom' ? `Average across ${yearCount} years` : 'Days matching month filter'}</div>
+    </div>
+    <div class="stat-card highlight">
+      <div class="stat-value" style="color:var(--snow-cyan)">${queryMode === 'custom' ? (days1 / averageDivisor).toFixed(1) : days1} <span class="stat-unit">days</span></div>
+      <div class="stat-label">${queryMode === 'custom' ? 'Avg Days 1 per Year' : `Days 1 (Snowfall ≥ ${thresh.toFixed(1)} cm)`}</div>
+      <div class="stat-subtext">Snowfall days above threshold</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value precip-val">${(totalSWE / averageDivisor).toFixed(1)} <span class="stat-unit">mm</span></div>
+      <div class="stat-label">Snowfall SWE</div>
+      <div class="stat-subtext">${queryMode === 'custom' ? `Annual average across ${yearCount} years` : 'Total precipitation minus rainfall'}</div>
+    </div>
+    <div class="stat-card freq-card">
+      <div class="stat-value freq-val">${sweFreqPercent}<span class="stat-unit">%</span></div>
+      <div class="stat-label">Snowfall SWE Frequency</div>
+      <div class="stat-subtext">SWE ≥ 1 mm: ${sweDays} / ${totalDays} days (${sweFrequency.toFixed(3)})</div>
+    </div>
+  `;
+
+  // Monthly aggregation from filtered data
+  const monthlyData={};
+  fIdx.forEach(i=>{
+    const m=parseInt(times[i].split('-')[1]);
+    if(!monthlyData[m]) monthlyData[m]={precip:0, rain:0, snow:0, swe:0, totalDays:0, days1:0, sweDays:0};
+    monthlyData[m].precip += (precip[i]||0);
+    monthlyData[m].rain += (rain[i]||0);
+    monthlyData[m].snow += snowfallCm[i] || 0;
+    const dailySWE = (precip[i]||0) - (rain[i]||0);
+    monthlyData[m].swe += dailySWE;
+    monthlyData[m].totalDays++;
+    if((snowfallCm[i] || 0) >= thresh) monthlyData[m].days1++;
+    if(dailySWE >= 1) monthlyData[m].sweDays++;
+  });
+
+  const monthKeys=Object.keys(monthlyData).map(Number).sort((a,b)=>a-b);
+
+  // Chart
+  const maxVal=Math.max(...monthKeys.map(m=>monthlyData[m].snow / averageDivisor),0.1);
+  const chartBars=document.getElementById('chartBars');
+  chartBars.innerHTML='';
+  document.querySelector('#chartCard .card-title').innerHTML = `<span class="icon">📊</span> ${queryMode === 'custom' ? 'Average Monthly Snowfall Depth (per year)' : 'Monthly Snowfall Depth'}`;
+
+  monthKeys.forEach(m=>{
+    const d=monthlyData[m];
+    const averageSnow = d.snow / averageDivisor;
+    const snowH=Math.max((averageSnow/maxVal)*220,averageSnow>0?3:0);
+    const mFreq = d.totalDays > 0 ? Math.round(d.days1 / d.totalDays * 100) : 0;
+    const mSWEFreq = d.totalDays > 0 ? Math.round(d.sweDays / d.totalDays * 100) : 0;
+    chartBars.innerHTML+=`
+      <div class="bar-group">
+        <div style="display:flex;gap:3px;align-items:flex-end;width:100%;height:240px">
+          <div class="bar snow-bar" style="height:${snowH}px;flex:1">
+            <div class="bar-tooltip">❄ ${averageSnow.toFixed(1)} cm average (${(d.days1/averageDivisor).toFixed(1)} depth snow days/year, ${mFreq}%; ${(d.sweDays/averageDivisor).toFixed(1)} SWE days/year, ${mSWEFreq}% SWE frequency)</div>
+          </div>
+        </div>
+        <div class="bar-label">${MONTHS[m-1]}</div>
+      </div>
+    `;
+  });
+
+  const yAxis=document.getElementById('yAxis');
+  yAxis.innerHTML='';
+  const steps=5;
+  for(let i=steps;i>=0;i--){
+    const v=(maxVal*i/steps).toFixed(1);
+    yAxis.innerHTML+=`<div class="y-label">${v}</div>`;
+  }
+
+  // Monthly table
+  const monthlyTable=document.getElementById('monthlyTable');
+  monthlyTable.parentElement.querySelector('.card-title').innerHTML = `<span class="icon">📋</span> ${queryMode === 'custom' ? 'Monthly Statistical Table — Annual Averages' : 'Monthly Statistical Table'}`;
+  let thtml=`<table><thead><tr>
+    <th>Month</th>
+    <th>Snowfall Depth (cm)</th>
+    <th>Days 1${queryMode === 'custom' ? ' (avg/year)' : ` (≥ ${thresh.toFixed(1)} cm)`}</th>
+    <th>Days 2${queryMode === 'custom' ? ' (avg/year)' : ' (Total Days)'}</th>
+    <th style="color:var(--snow-cyan)">Snow Frequency</th>
+    <th style="color:var(--snow-cyan)">Snowfall SWE Frequency</th>
+    <th>Rainfall (mm)</th>
+    <th>Total Precip (mm)</th>
+    <th>Snowfall SWE (mm)</th>
+  </tr></thead><tbody>`;
+
+  monthKeys.forEach(m=>{
+    const d=monthlyData[m];
+    const averageDays = d.totalDays / averageDivisor;
+    const averageSnowDays = d.days1 / averageDivisor;
+    const mFreq = averageDays > 0 ? Math.round((averageSnowDays / averageDays) * 100) + '%' : '0%';
+    const averageSWEDays = d.sweDays / averageDivisor;
+    const mSWEFreq = d.totalDays > 0 ? Math.round((d.sweDays / d.totalDays) * 100) : 0;
+    thtml+=`<tr>
+      <td>${MONTH_FULL[m-1]}</td>
+      <td class="snow-cell">${(d.snow / averageDivisor).toFixed(1)}</td>
+      <td style="font-weight:600;color:var(--snow-cyan)">${averageSnowDays.toFixed(queryMode === 'custom' ? 1 : 0)}</td>
+      <td>${averageDays.toFixed(queryMode === 'custom' ? 1 : 0)}</td>
+      <td class="freq-cell">${mFreq} <span style="font-size:.72rem;color:var(--text-muted);font-weight:400">(${averageSnowDays.toFixed(1)}/${averageDays.toFixed(1)})</span></td>
+      <td class="freq-cell">${mSWEFreq}% <span style="font-size:.72rem;color:var(--text-muted);font-weight:400">(${averageSWEDays.toFixed(1)}/${averageDays.toFixed(1)})</span></td>
+      <td class="rain-cell">${(d.rain / averageDivisor).toFixed(1)}</td>
+      <td class="precip-cell">${(d.precip / averageDivisor).toFixed(1)}</td>
+      <td class="precip-cell">${(d.swe / averageDivisor).toFixed(1)}</td>
+    </tr>`;
+  });
+
+  if(queryMode !== 'custom') thtml+=`<tr class="total-row">
+    <td>TOTAL</td>
+    <td class="snow-cell">${totalSnow.toFixed(1)}</td>
+    <td style="font-weight:700;color:var(--snow-cyan)">${days1}</td>
+    <td>${totalDays}</td>
+    <td class="freq-cell">${snowFreqPercent}% <span style="font-size:.72rem;color:var(--text-muted);font-weight:400">(${days1}/${totalDays})</span></td>
+    <td class="freq-cell">${sweFreqPercent}% <span style="font-size:.72rem;color:var(--text-muted);font-weight:400">(${sweDays}/${totalDays})</span></td>
+    <td class="rain-cell">${totalRain.toFixed(1)}</td>
+    <td class="precip-cell">${totalPrecip.toFixed(1)}</td>
+    <td class="precip-cell">${totalSWE.toFixed(1)}</td>
+  </tr>`;
+  thtml+='</tbody></table>';
+  monthlyTable.innerHTML=thtml;
+
+  // Conditional: hierarchy for custom mode, daily detail for year mode
+  if(queryMode === 'custom'){
+    document.getElementById('dailyDetailSection').style.display = 'none';
+    hierarchyData = buildHierarchyData(times, precip, rain, snowfallCm, thresh, activeMonths);
+    renderYearlySummary();
+  } else {
+    document.getElementById('dailyDetailSection').style.display = '';
+    document.getElementById('hierarchySection').style.display = 'none';
+
+    // Daily table for non-custom modes
+    const dailyTable=document.getElementById('dailyTable');
+    let dhtml=`<table><thead><tr>
+      <th>Date</th>
+      <th>Snowfall Depth (cm)</th>
+      <th>Snow Day Status (≥ ${thresh.toFixed(1)} cm)</th>
+      <th>Snowfall SWE Status (≥ 1 mm)</th>
+      <th>Rainfall (mm)</th>
+      <th>Total Precip (mm)</th>
+      <th>Snowfall SWE (mm)</th>
+    </tr></thead><tbody>`;
+
+    let visibleDailyCount = 0;
+    times.forEach((t,i)=>{
+      const sw=snowfallCm[i] || 0;
+      const r=rain[i]||0;
+      const p=precip[i]||0;
+      if(p < 0.05 && sw < 0.1) return;
+      visibleDailyCount++;
+      const isSnowDay = sw >= thresh;
+      dhtml+=`<tr>
+        <td>${t}</td>
+        <td class="snow-cell">${sw.toFixed(1)}</td>
+        <td>${isSnowDay ? `<span class="snow-badge">❄️ Snow Day (${sw.toFixed(1)} cm)</span>` : `<span class="dry-badge">—</span>`}</td>
+        <td>${(p-r) >= 1 ? `<span class="snow-badge">❄️ SWE Day (${(p-r).toFixed(1)} mm)</span>` : `<span class="dry-badge">—</span>`}</td>
+        <td class="rain-cell">${r.toFixed(1)}</td>
+        <td class="precip-cell">${p.toFixed(1)}</td>
+        <td class="precip-cell">${(p-r).toFixed(1)}</td>
+      </tr>`;
+    });
+    dhtml+='</tbody></table>';
+    dailyTable.innerHTML=dhtml;
+    document.getElementById('dailyCountLabel').textContent = `${visibleDailyCount} precip days`;
+  }
+
+  const rs=document.getElementById('results');
+  rs.classList.add('visible');
+  if(isNewFetch){
+    rs.scrollIntoView({behavior:'smooth',block:'start'});
+    const dc = document.getElementById('dailyContent');
+    const dt = document.getElementById('dailyToggle');
+    if(dc) dc.classList.remove('open');
+    if(dt) dt.classList.remove('open');
+  }
+}
+
+// ─── Toggle Daily Detail ───
+function toggleDaily(){
+  const c=document.getElementById('dailyContent');
+  const t=document.getElementById('dailyToggle');
+  c.classList.toggle('open');
+  t.classList.toggle('open');
+}
+
+// ═══════════════════════════════════════════════
+// HIERARCHICAL YEARLY / MONTHLY / DAILY DRILL-DOWN
+// ═══════════════════════════════════════════════
+
+function buildHierarchyData(times, precip, rain, snowfallCm, thresh, activeMonths){
+  const years = {};
+  times.forEach((t, i) => {
+    const parts = t.split('-');
+    const y = parseInt(parts[0]);
+    const m = parseInt(parts[1]);
+    if(!activeMonths.has(m)) return;
+
+    if(!years[y]) years[y] = { months: {}, snow: 0, rain: 0, precip: 0, swe: 0, days1: 0, sweDays: 0, totalDays: 0 };
+    if(!years[y].months[m]) years[y].months[m] = { days: [], snow: 0, rain: 0, precip: 0, swe: 0, days1: 0, sweDays: 0, totalDays: 0 };
+
+    const sw = snowfallCm[i] || 0;
+    const r = rain[i] || 0;
+    const p = precip[i] || 0;
+    const swe = p - r;
+    const isSnowDay = sw >= thresh;
+    const isSWEDay = swe >= 1;
+
+    years[y].months[m].days.push({ date: t, snow: sw, rain: r, precip: p, swe, isSnowDay, isSWEDay });
+    years[y].months[m].snow += sw;
+    years[y].months[m].rain += r;
+    years[y].months[m].precip += p;
+    years[y].months[m].swe += swe;
+    years[y].months[m].totalDays++;
+    if(isSnowDay) years[y].months[m].days1++;
+    if(isSWEDay) years[y].months[m].sweDays++;
+
+    years[y].snow += sw;
+    years[y].rain += r;
+    years[y].precip += p;
+    years[y].swe += swe;
+    years[y].totalDays++;
+    if(isSnowDay) years[y].days1++;
+    if(isSWEDay) years[y].sweDays++;
+  });
+  return years;
+}
+
+function renderYearlySummary(){
+  if(!hierarchyData) return;
+  const section = document.getElementById('hierarchySection');
+  const title = document.getElementById('hierarchyTitle');
+  const bc = document.getElementById('hierarchyBreadcrumb');
+  const tableWrap = document.getElementById('hierarchyTable');
+  const thresh = currentThreshold;
+
+  title.textContent = 'Yearly Detail';
+  bc.style.display = 'none';
+
+  const yearKeys = Object.keys(hierarchyData).map(Number).sort((a,b) => a - b);
+  const yearCount = yearKeys.length;
+  const yearTotals = yearKeys.reduce((acc, y) => {
+    const d = hierarchyData[y];
+    acc.snow += d.snow; acc.rain += d.rain; acc.precip += d.precip; acc.swe += d.swe;
+    acc.days1 += d.days1; acc.sweDays += d.sweDays; acc.days += d.totalDays;
+    return acc;
+  }, { snow: 0, rain: 0, precip: 0, swe: 0, days1: 0, sweDays: 0, days: 0 });
+
+  let html = `<table><thead><tr>
+    <th>Year</th>
+    <th>Snowfall Depth (cm)</th>
+    <th>Snow Days (≥ ${thresh.toFixed(1)} cm)</th>
+    <th>Total Days</th>
+    <th style="color:var(--snow-cyan)">Snow Frequency</th>
+    <th style="color:var(--snow-cyan)">Snowfall SWE Frequency</th>
+    <th>Rainfall (mm)</th>
+    <th>Total Precip (mm)</th>
+    <th>Snowfall SWE (mm)</th>
+  </tr></thead><tbody>`;
+
+  if(yearCount > 0){
+    html += `<tr class="average-row">
+      <td>ANNUAL AVERAGE</td>
+      <td class="snow-cell">${(yearTotals.snow / yearCount).toFixed(1)}</td>
+      <td style="color:var(--snow-cyan);font-weight:600">${(yearTotals.days1 / yearCount).toFixed(1)}</td>
+      <td>${(yearTotals.days / yearCount).toFixed(1)}</td>
+      <td class="freq-cell">${yearTotals.days > 0 ? Math.round((yearTotals.days1 / yearTotals.days) * 100) : 0}%</td>
+      <td class="freq-cell">${yearTotals.days > 0 ? Math.round((yearTotals.sweDays / yearTotals.days) * 100) : 0}%</td>
+      <td class="rain-cell">${(yearTotals.rain / yearCount).toFixed(1)}</td>
+      <td class="precip-cell">${(yearTotals.precip / yearCount).toFixed(1)}</td>
+      <td class="precip-cell">${(yearTotals.swe / yearCount).toFixed(1)}</td>
+    </tr>`;
+  }
+
+  let tSnow=0, tRain=0, tPrecip=0, tSWE=0, tDays1=0, tSWEDays=0, tDays=0, tFreq=0;
+  yearKeys.forEach(y => {
+    const d = hierarchyData[y];
+    const freqValue = d.totalDays > 0 ? (d.days1 / d.totalDays) * 100 : 0;
+    const freq = Math.round(freqValue);
+    const sweFreqValue = d.totalDays > 0 ? (d.sweDays / d.totalDays) * 100 : 0;
+    const sweFreq = Math.round(sweFreqValue);
+    tSnow+=d.snow; tRain+=d.rain; tPrecip+=d.precip; tSWE+=d.swe; tDays1+=d.days1; tSWEDays+=d.sweDays; tDays+=d.totalDays; tFreq+=freqValue;
+    html += `<tr class="clickable-row" onclick="drillToYear(${y})">
+      <td>📅 ${y}</td>
+      <td class="snow-cell">${d.snow.toFixed(1)}</td>
+      <td style="color:var(--snow-cyan);font-weight:600">${d.days1}</td>
+      <td>${d.totalDays}</td>
+      <td class="freq-cell">${freq}% <span style="font-size:.72rem;color:var(--text-muted);font-weight:400">(${d.days1}/${d.totalDays})</span></td>
+      <td class="freq-cell">${sweFreq}% <span style="font-size:.72rem;color:var(--text-muted);font-weight:400">(${d.sweDays}/${d.totalDays})</span></td>
+      <td class="rain-cell">${d.rain.toFixed(1)}</td>
+      <td class="precip-cell">${d.precip.toFixed(1)}</td>
+      <td class="precip-cell">${d.swe.toFixed(1)}</td>
+    </tr>`;
+  });
+
+    const totalFreq = tDays > 0 ? Math.round((tDays1 / tDays) * 100) : 0;
+  html += `<tr class="total-row">
+    <td>TOTAL</td>
+    <td class="snow-cell">${tSnow.toFixed(1)}</td>
+    <td style="font-weight:700;color:var(--snow-cyan)">${tDays1}</td>
+    <td>${tDays}</td>
+    <td class="freq-cell">${totalFreq}% <span style="font-size:.72rem;color:var(--text-muted);font-weight:400">(${tDays1}/${tDays})</span></td>
+    <td class="freq-cell">${tDays > 0 ? Math.round((tSWEDays/tDays)*100) : 0}% <span style="font-size:.72rem;color:var(--text-muted);font-weight:400">(${tSWEDays}/${tDays})</span></td>
+    <td class="rain-cell">${tRain.toFixed(1)}</td>
+    <td class="precip-cell">${tPrecip.toFixed(1)}</td>
+    <td class="precip-cell">${tSWE.toFixed(1)}</td>
+  </tr>`;
+
+  html += '</tbody></table>';
+  tableWrap.innerHTML = html;
+  section.style.display = '';
+}
+
+function drillToYear(year){
+  if(!hierarchyData || !hierarchyData[year]) return;
+  const yearData = hierarchyData[year];
+  const title = document.getElementById('hierarchyTitle');
+  const bc = document.getElementById('hierarchyBreadcrumb');
+  const tableWrap = document.getElementById('hierarchyTable');
+  const thresh = currentThreshold;
+
+  title.textContent = `Monthly Detail — ${year}`;
+  bc.style.display = 'flex';
+  bc.innerHTML = `<button class="bc-link" onclick="renderYearlySummary()">← Yearly Summary</button>
+    <span class="bc-sep">›</span>
+    <span class="bc-current">${year}</span>`;
+
+  const monthKeys = Object.keys(yearData.months).map(Number).sort((a,b) => a - b);
+
+  let html = `<table id="monthDrillTable"><thead><tr>
+    <th>Month</th>
+    <th>Snowfall Depth (cm)</th>
+    <th>Snow Days (≥ ${thresh.toFixed(1)} cm)</th>
+    <th>Total Days</th>
+    <th style="color:var(--snow-cyan)">Snow Frequency</th>
+    <th style="color:var(--snow-cyan)">Snowfall SWE Frequency</th>
+    <th>Rainfall (mm)</th>
+    <th>Total Precip (mm)</th>
+    <th>Snowfall SWE (mm)</th>
+  </tr></thead><tbody>`;
+
+  monthKeys.forEach(m => {
+    const d = yearData.months[m];
+    const freq = d.totalDays > 0 ? Math.round((d.days1 / d.totalDays) * 100) : 0;
+    const sweFreq = d.totalDays > 0 ? Math.round((d.sweDays / d.totalDays) * 100) : 0;
+    html += `<tr class="clickable-row" onclick="toggleMonthDays(this, ${year}, ${m})">
+      <td><span class="expand-icon" id="expandIcon-${year}-${m}">▶</span> ${MONTH_FULL[m-1]}</td>
+      <td class="snow-cell">${d.snow.toFixed(1)}</td>
+      <td style="color:var(--snow-cyan);font-weight:600">${d.days1}</td>
+      <td>${d.totalDays}</td>
+      <td class="freq-cell">${freq}% <span style="font-size:.72rem;color:var(--text-muted);font-weight:400">(${d.days1}/${d.totalDays})</span></td>
+      <td class="freq-cell">${sweFreq}% <span style="font-size:.72rem;color:var(--text-muted);font-weight:400">(${d.sweDays}/${d.totalDays})</span></td>
+      <td class="rain-cell">${d.rain.toFixed(1)}</td>
+      <td class="precip-cell">${d.precip.toFixed(1)}</td>
+      <td class="precip-cell">${d.swe.toFixed(1)}</td>
+    </tr>`;
+  });
+
+  const tFreq = yearData.totalDays > 0 ? ((yearData.days1 / yearData.totalDays) * 100).toFixed(1) : '0.0';
+  const tSWEFreq = yearData.totalDays > 0 ? ((yearData.sweDays / yearData.totalDays) * 100).toFixed(1) : '0.0';
+  html += `<tr class="total-row">
+    <td>TOTAL (${year})</td>
+    <td class="snow-cell">${yearData.snow.toFixed(1)}</td>
+    <td style="font-weight:700;color:var(--snow-cyan)">${yearData.days1}</td>
+    <td>${yearData.totalDays}</td>
+    <td class="freq-cell">${tFreq}% <span style="font-size:.72rem;color:var(--text-muted);font-weight:400">(${yearData.days1}/${yearData.totalDays})</span></td>
+    <td class="freq-cell">${tSWEFreq}% <span style="font-size:.72rem;color:var(--text-muted);font-weight:400">(${yearData.sweDays}/${yearData.totalDays})</span></td>
+    <td class="rain-cell">${yearData.rain.toFixed(1)}</td>
+    <td class="precip-cell">${yearData.precip.toFixed(1)}</td>
+    <td class="precip-cell">${yearData.swe.toFixed(1)}</td>
+  </tr>`;
+
+  html += '</tbody></table>';
+  tableWrap.innerHTML = html;
+}
+
+function toggleMonthDays(rowEl, year, month){
+  const yearData = hierarchyData[year];
+  if(!yearData || !yearData.months[month]) return;
+
+  const icon = document.getElementById(`expandIcon-${year}-${month}`);
+  const existingRows = document.querySelectorAll(`.sub-daily-row[data-parent="${year}-${month}"]`);
+
+  if(existingRows.length > 0){
+    existingRows.forEach(r => r.remove());
+    if(icon) icon.classList.remove('open');
+    return;
+  }
+
+  if(icon) icon.classList.add('open');
+  const days = yearData.months[month].days;
+  const thresh = currentThreshold;
+  let insertAfter = rowEl;
+
+  days.forEach(day => {
+    const tr = document.createElement('tr');
+    tr.className = 'sub-daily-row';
+    tr.dataset.parent = `${year}-${month}`;
+    tr.innerHTML = `
+      <td style="padding-left:2.5rem;color:var(--text-muted)">${day.date}</td>
+      <td class="snow-cell">${day.snow.toFixed(1)}</td>
+      <td>${day.isSnowDay ? `<span class="snow-badge">❄️ Snow Day (${day.snow.toFixed(1)} cm)</span>` : `<span class="dry-badge">—</span>`}</td>
+      <td>${day.isSWEDay ? `<span class="snow-badge">❄️ SWE Day (${day.swe.toFixed(1)} mm)</span>` : `<span class="dry-badge">—</span>`}</td>
+      <td class="rain-cell">${day.rain.toFixed(1)}</td>
+      <td class="precip-cell">${day.precip.toFixed(1)}</td>
+      <td class="precip-cell">${day.swe.toFixed(1)}</td>
+    `;
+    insertAfter.after(tr);
+    insertAfter = tr;
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════
+// BATCH PROCESSING LOGIC
+// ══════════════════════════════════════════════════════════════════
+let batchDataResults = [];
+let isBatchRunning = false;
+let shouldStopBatch = false;
+let batchOutputIsAnnualAverage = false;
+
+function updateBatchCount(){
+  const text = document.getElementById('batchTextarea').value;
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  let count = 0;
+  lines.forEach(line => {
+    if(parseCoordinates(line)) count++;
+  });
+  document.getElementById('batchCountBadge').textContent = `${count} valid coordinates detected (${lines.length} lines)`;
+}
+
+function clearBatch(){
+  document.getElementById('batchTextarea').value = '';
+  document.getElementById('batchCountBadge').textContent = '0 coordinates detected';
+  document.getElementById('batchProgressWrap').style.display = 'none';
+  document.getElementById('batchResultsWrap').style.display = 'none';
+  document.getElementById('batchTableBody').innerHTML = '';
+  batchDataResults = [];
+}
+
+function loadSampleBatch(){
+  const samples = [
+    "48.62946667\t87.55294722",
+    "47.84472222\t88.13083333",
+    "43.825592\t87.616848",
+    "45.7423\t126.6617",
+    "43.8868\t125.3245",
+    "40.7128\t-74.0060",
+    "45.4215\t-75.6972",
+    "46.5000\t9.8000"
+  ];
+  document.getElementById('batchTextarea').value = samples.join('\n');
+  updateBatchCount();
+}
+
+function stopBatchQuery(){
+  shouldStopBatch = true;
+  document.getElementById('batchProgressLabel').textContent = 'Stopping batch query...';
+}
+
+async function runBatchQuery(){
+  hideError();
+  const range = getActiveDateRange();
+  if(!range){
+    showError('Please configure a valid Date Range in Query Parameters above first.');
+    return;
+  }
+  const { startDate, endDate } = range;
+  const batchUsesCustomRange = queryMode === 'custom';
+  batchOutputIsAnnualAverage = batchUsesCustomRange;
+  const batchMonths = batchUsesCustomRange ? new Set(selectedMonths) : new Set([1,2,3,4,5,6,7,8,9,10,11,12]);
+  if(batchUsesCustomRange && batchMonths.size === 0){
+    showError('Select at least one month in Calendar Month Restriction before running the batch.');
+    return;
+  }
+  const batchYearCount = batchUsesCustomRange
+    ? Number(endDate.slice(0, 4)) - Number(startDate.slice(0, 4)) + 1
+    : 1;
+  const model = getOpenMeteoModelParam();
+  const modelRangeError = modelDateRangeError(startDate);
+  if(modelRangeError){showError(modelRangeError);return}
+  const thresh = currentThreshold;
+
+  const text = document.getElementById('batchTextarea').value;
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const coordsList = [];
+  lines.forEach((line, idx) => {
+    const parsed = parseCoordinates(line);
+    if(parsed){
+      coordsList.push({ idx: coordsList.length + 1, lineIdx: idx + 1, lat: parsed.lat, lon: parsed.lon, raw: line });
+    }
+  });
+
+  if(coordsList.length === 0){
+    showError('No valid coordinates found in the text area. Please paste lines with "latitude + \\t + longitude".');
+    return;
+  }
+
+  isBatchRunning = true;
+  shouldStopBatch = false;
+  batchDataResults = [];
+
+  const runBtn = document.getElementById('batchRunBtn');
+  const stopBtn = document.getElementById('batchStopBtn');
+  const spinner = document.getElementById('batchSpinner');
+  const btnText = document.getElementById('batchBtnText');
+  const progressWrap = document.getElementById('batchProgressWrap');
+  const progressBar = document.getElementById('batchProgressBar');
+  const progressPercent = document.getElementById('batchProgressPercent');
+  const progressLabel = document.getElementById('batchProgressLabel');
+  const resultsWrap = document.getElementById('batchResultsWrap');
+  const tableBody = document.getElementById('batchTableBody');
+  const batchHeaders = document.querySelectorAll('#batchTable thead th');
+  batchHeaders[3].textContent = batchUsesCustomRange ? 'Annual Avg Snowfall Depth (cm)' : 'Snowfall Depth (cm)';
+  batchHeaders[6].textContent = batchUsesCustomRange ? 'Avg Days 1 / Year' : 'Days 1 (≥ T)';
+  batchHeaders[7].textContent = batchUsesCustomRange ? 'Avg Days 2 / Year' : 'Days 2 (Total)';
+  batchHeaders[8].textContent = batchUsesCustomRange ? 'Annual Avg Rainfall (mm)' : 'Rainfall (mm)';
+  batchHeaders[9].textContent = batchUsesCustomRange ? 'Annual Avg Total Precip (mm)' : 'Total Precip (mm)';
+  batchHeaders[10].textContent = batchUsesCustomRange ? 'Annual Avg Snowfall SWE (mm)' : 'Snowfall SWE (mm)';
+
+  runBtn.disabled = true;
+  runBtn.classList.add('loading');
+  stopBtn.style.display = 'inline-flex';
+  progressWrap.style.display = 'block';
+  resultsWrap.style.display = 'block';
+  tableBody.innerHTML = '';
+
+  const total = coordsList.length;
+
+  for(let i = 0; i < total; i++){
+    if(shouldStopBatch){
+      progressLabel.textContent = `Batch stopped by user (${i}/${total} processed).`;
+      break;
+    }
+
+    const c = coordsList[i];
+    const pct = Math.round(((i + 1) / total) * 100);
+    progressBar.style.width = `${pct}%`;
+    progressPercent.textContent = `${pct}%`;
+    progressLabel.textContent = `Processing coordinate ${i + 1} of ${total}: (${c.lat.toFixed(4)}, ${c.lon.toFixed(4)})...`;
+
+    try{
+      const url = `https://archive-api.open-meteo.com/v1/archive?latitude=${c.lat}&longitude=${c.lon}&start_date=${startDate}&end_date=${endDate}&daily=precipitation_sum,rain_sum,snowfall_sum&models=${model}&timezone=auto`;
+      const resp = await fetch(url);
+      if(!resp.ok){
+        throw new Error(`HTTP ${resp.status}`);
+      }
+      const data = await resp.json();
+      const daily = data.daily;
+      const precip = daily.precipitation_sum || [];
+      const rain = daily.rain_sum || [];
+      const snowCm = daily.snowfall_sum || [];
+      const times = daily.time || [];
+
+      const snowfallCm = snowCm;
+
+      const bfIdx = [];
+      times.forEach((t, idx) => {
+        const m = parseInt(t.split('-')[1]);
+        if(batchMonths.has(m)) bfIdx.push(idx);
+      });
+      const totalDays = bfIdx.length;
+      const totalPrecip = bfIdx.reduce((s, idx) => s + (precip[idx] || 0), 0);
+      const totalRain = bfIdx.reduce((s, idx) => s + (rain[idx] || 0), 0);
+      const totalSWE = totalPrecip - totalRain;
+      const sweDays = bfIdx.filter(idx => ((precip[idx] || 0) - (rain[idx] || 0)) >= 1).length;
+      const totalSnow = bfIdx.reduce((s, idx) => s + (snowfallCm[idx] || 0), 0);
+      const days1 = bfIdx.filter(idx => (snowfallCm[idx] || 0) >= thresh).length;
+      const snowFreq = totalDays > 0 ? (days1 / totalDays) : 0;
+      const snowFreqPct = Math.round(snowFreq * 100);
+      const sweFreq = totalDays > 0 ? (sweDays / totalDays) : 0;
+      const sweFreqPct = Math.round(sweFreq * 100);
+
+      const record = {
+        id: c.idx,
+        lat: c.lat,
+        lon: c.lon,
+        elevation: data.elevation != null ? data.elevation : '—',
+        snowfallDepthCm: (totalSnow / batchYearCount).toFixed(1),
+        snowFreqPct: `${snowFreqPct}%`,
+        snowFreqFraction: `${days1}/${totalDays}`,
+        snowFreqDec: snowFreq.toFixed(3),
+        sweFreqPct: `${sweFreqPct}%`,
+        sweFreqFraction: `${sweDays}/${totalDays}`,
+        sweFreqDec: sweFreq.toFixed(3),
+        days1: batchUsesCustomRange ? (days1 / batchYearCount).toFixed(1) : days1,
+        days2: batchUsesCustomRange ? (totalDays / batchYearCount).toFixed(1) : totalDays,
+        rain: (totalRain / batchYearCount).toFixed(1),
+        precip: (totalPrecip / batchYearCount).toFixed(1),
+        snowfallSWE: (totalSWE / batchYearCount).toFixed(1),
+        status: 'Success'
+      };
+      batchDataResults.push(record);
+
+      // Append row to table in real-time
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${record.id}</td>
+        <td>${c.lat.toFixed(5)}</td>
+        <td>${c.lon.toFixed(5)}</td>
+        <td class="snow-cell">${record.snowfallDepthCm}</td>
+        <td class="freq-cell">${record.snowFreqPct} <span style="font-size:0.72rem;color:var(--text-muted);font-weight:400">(${record.snowFreqFraction})</span></td>
+        <td class="freq-cell">${record.sweFreqPct} <span style="font-size:0.72rem;color:var(--text-muted);font-weight:400">(${record.sweFreqFraction})</span></td>
+        <td style="color:var(--snow-cyan);font-weight:600">${record.days1}</td>
+        <td>${record.days2}</td>
+        <td class="rain-cell">${record.rain}</td>
+        <td class="precip-cell">${record.precip}</td>
+        <td class="precip-cell">${record.snowfallSWE}</td>
+        <td><span class="snow-badge" style="background:rgba(76,175,129,.15);border-color:rgba(76,175,129,.3);color:var(--success)">✓ OK</span></td>
+        <td>${record.elevation} m</td>
+      `;
+      tableBody.appendChild(tr);
+      document.getElementById('batchSuccessCount').textContent = batchDataResults.length;
+
+    }catch(err){
+      const errRecord = {
+        id: c.idx,
+        lat: c.lat,
+        lon: c.lon,
+        elevation: '—',
+        snowfallDepthCm: '—',
+        snowFreqPct: '—',
+        snowFreqFraction: '—',
+        snowFreqDec: '—',
+        sweFreqPct: '—',
+        sweFreqFraction: '—',
+        sweFreqDec: '—',
+        days1: '—',
+        days2: '—',
+        rain: '—',
+        precip: '—',
+        snowfallSWE: '—',
+        status: `Error: ${err.message}`
+      };
+      batchDataResults.push(errRecord);
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${errRecord.id}</td>
+        <td>${c.lat.toFixed(5)}</td>
+        <td>${c.lon.toFixed(5)}</td>
+        <td>—</td>
+        <td>—</td>
+        <td>—</td>
+        <td>—</td>
+        <td>—</td>
+        <td>—</td>
+        <td>—</td>
+        <td>—</td>
+        <td><span style="color:var(--error);font-size:0.75rem">⚠️ ${err.message}</span></td>
+        <td>—</td>
+      `;
+      tableBody.appendChild(tr);
+    }
+
+    // Rate-limiting delay (120ms) to ensure smooth reliable requests
+    await new Promise(r => setTimeout(r, 120));
+  }
+
+  runBtn.disabled = false;
+  runBtn.classList.remove('loading');
+  stopBtn.style.display = 'none';
+  isBatchRunning = false;
+
+  if(!shouldStopBatch){
+    progressLabel.textContent = `Completed batch processing of ${batchDataResults.length} coordinates!`;
+  }
+}
+
+// ─── Copy Batch Results for Excel ───
+function copyBatchToClipboard(){
+  if(batchDataResults.length === 0){
+    alert('No batch results to copy.');
+    return;
+  }
+  const headers = ['#', 'Latitude', 'Longitude', batchOutputIsAnnualAverage ? 'Annual Avg Snowfall Depth (cm)' : 'Snowfall Depth (cm)', 'Snow Frequency', 'Snowfall SWE Frequency', batchOutputIsAnnualAverage ? 'Avg Days 1 / Year' : 'Days 1 (Snow Days)', batchOutputIsAnnualAverage ? 'Avg Days 2 / Year' : 'Days 2 (Total Days)', batchOutputIsAnnualAverage ? 'Annual Avg Rainfall (mm)' : 'Rainfall (mm)', batchOutputIsAnnualAverage ? 'Annual Avg Total Precip (mm)' : 'Total Precip (mm)', batchOutputIsAnnualAverage ? 'Annual Avg Snowfall SWE (mm)' : 'Snowfall SWE (mm)', 'Status', 'Elevation (m)'];
+  const rows = batchDataResults.map(r => [
+    r.id,
+    r.lat,
+    r.lon,
+    r.snowfallDepthCm,
+    r.snowFreqPct,
+    r.sweFreqPct,
+    r.days1,
+    r.days2,
+    r.rain,
+    r.precip,
+    r.snowfallSWE,
+    r.status,
+    r.elevation
+  ]);
+
+  const tsv = [headers.join('\t'), ...rows.map(r => r.join('\t'))].join('\n');
+  navigator.clipboard.writeText(tsv).then(() => {
+    alert('Batch results copied to clipboard in Tab-delimited format! You can now paste directly into Excel.');
+  }).catch(() => {
+    // Fallback
+    const ta = document.createElement('textarea');
+    ta.value = tsv;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    alert('Batch results copied to clipboard!');
+  });
+}
+
+// ─── Keyboard shortcut ───
+document.addEventListener('keydown', e => {
+  if(e.key === 'Enter' && e.ctrlKey && !document.getElementById('batchRunBtn').disabled){
+    runBatchQuery();
+  }
+});
+
+// Initialize shared batch labels and month pills on page load
+syncSharedBatchSettings();
+initMonthPills();
+</script>
+</body>
+</html>
