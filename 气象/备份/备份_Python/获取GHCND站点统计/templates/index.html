@@ -80,6 +80,8 @@
                         <br>
                         <a href="https://www.ncei.noaa.gov/pub/data/noaa/isd-history.txt" target="_blank"
                             rel="noopener">{{ t('links.gsod_stations_list') }} ({{ gsod_count }})</a>
+                        <br>
+                        <a href="https://www.ncei.noaa.gov/oa/global-historical-climatology-network/hourly/doc/ghcnh-station-list.csv" target="_blank" rel="noopener">{{ t('links.ssod_stations_list') }} ({{ ssod_count }})</a>
                     </div>
 
                     <div class="popup-item valid-temperature-range-menu">
@@ -115,12 +117,21 @@
 
             <div class="param-row">
                 <label>{{ t('params.data_source') }}</label>
-                <select id="dataSource" style="width: auto; max-width: 160px;">
+                <select id="dataSource" style="width: auto; max-width: 220px;">
                     <option value="GHCND" selected>GHCND</option>
                     <option value="GSOD">GSOD</option>
+                    <option value="SSODv2">SSODv2</option>
+                    <option value="chinese">Chinese Stations</option>
                     <option value="xlsx">{{ t('params.read_xlsx') }}</option>
                 </select>
                 <!-- Note removed from here -->
+            </div>
+
+            <div class="param-row" id="chineseStationsPathRow" style="display:none;">
+                <label for="chineseStationsPath">Chinese Stations data folder</label>
+                <input type="text" id="chineseStationsPath" value="{{ chinese_station_data_path }}" style="width:min(520px, 70vw);">
+                <button type="button" id="chineseStationsLoadButton" onclick="loadChineseStationsPath()">Load</button>
+                <span id="chineseStationsPathStatus" role="status" aria-live="polite">{{ chinese_station_count }} stations loaded</span>
             </div>
 
             <div class="param-row" id="xlsxUploadRow" style="display:none;">
@@ -779,6 +790,12 @@
                                     <option value="avg_tmin">{{ t('statistics.average_tmin') }}</option>
                                     <option value="avg_tavg">{{ t('statistics.average_tavg') }}</option>
                                     <option value="avg_tmax">{{ t('statistics.average_tmax') }}</option>
+                                    <option value="period_avg_tmin"
+                                        data-winter-label="{{ t('statistics.average_min_tmin_per_period') }}"
+                                        data-summer-label="{{ t('statistics.average_max_tmin_per_period') }}">{{ t('statistics.average_min_tmin_per_period') }}</option>
+                                    <option value="period_avg_tmax"
+                                        data-winter-label="{{ t('statistics.average_min_tmax_per_period') }}"
+                                        data-summer-label="{{ t('statistics.average_max_tmax_per_period') }}">{{ t('statistics.average_min_tmax_per_period') }}</option>
                                     <option value="max_days_tmin">{{ t('statistics.max_days_tmin') }}</option>
                                     <option value="max_days_tavg">{{ t('statistics.max_days_tavg') }}</option>
                                     <option value="max_days_tmax">{{ t('statistics.max_days_tmax') }}</option>

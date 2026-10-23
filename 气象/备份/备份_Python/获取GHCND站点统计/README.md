@@ -1,10 +1,10 @@
 # NOAA Global Daily Statistics
 
-A comprehensive Flask-based web application for analyzing global daily weather data from NOAA's GHCND (Global Historical Climatology Network Daily) and GSOD (Global Summary of the Day) datasets.
+A comprehensive Flask-based web application for analyzing global daily weather data from NOAA's GHCND (Global Historical Climatology Network Daily), GSOD (Global Summary of the Day), and SSODv2 (Synoptic Summary of the Day) datasets.
 
 ## Features
 
-*   **Dual Data Source Support**: seamlessly switch between GHCND (better for North America) and GSOD (better global coverage) datasets.
+*   **Multiple Data Sources**: switch between GHCND, legacy GSOD, successor SSODv2, or an uploaded spreadsheet.
 *   **Advanced Statistics**: Calculate Min/Avg/Max temperatures, threshold counts (days above/below specific temperatures), and "Explosive Power" (temperature variance).
 *   **Period Analysis**: Compare weather patterns across different years, seasons (Winter/Summer), and custom date ranges.
 *   **Multi-Station Analysis**: Search and compare multiple stations based on distance, coordinates, or country.
@@ -19,6 +19,7 @@ A comprehensive Flask-based web application for analyzing global daily weather d
 ├── app.py                 # Main Flask application entry point
 ├── ghcnd-stations.txt     # GHCND station metadata file
 ├── isd-history.txt        # GSOD station metadata file
+├── ghcnh-station-list.csv # GHCNh/SSODv2 station metadata file
 ├── requirements.txt       # Python dependencies
 ├── translations.json      # Localization strings (en/zh)
 ├── visitors.db            # SQLite database for users and tracking
@@ -49,7 +50,8 @@ A comprehensive Flask-based web application for analyzing global daily weather d
 *   **Data Fetching**: 
     *   **GHCND**: Fetches CSV data directly from NOAA S3 buckets.
     *   **GSOD**: Uses the NCEI API to fetch JSON data.
-*   **Data Processing**: Cleans raw data, handles unit conversions (Fahrenheit to Celsius for GSOD), and filters based on user criteria (date ranges, elements).
+    *   **SSODv2**: Uses NCEI station/year CSVs for bounded date ranges and station-period files for broad ranges.
+*   **Data Processing**: Cleans raw data, converts GSOD temperatures from Fahrenheit to Celsius, and filters records by date and element.
 *   **Statistics Engine**: Calculates complex metrics like "Explosive Power" (standard deviation of temperature anomalies) and consecutive day streaks matching specific criteria.
 
 ### Frontend

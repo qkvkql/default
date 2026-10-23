@@ -18,6 +18,7 @@ import json
 import re
 import calendar
 import uuid
+from pathlib import Path
 import shapely
 from shapely.geometry import Polygon, Point
 from shapely.ops import unary_union
@@ -177,8 +178,14 @@ with app.app_context():
 # --- CACHE & STATION LOADING ---
 GHCND_FILE = 'ghcnd-stations.txt'
 GSOD_FILE = 'isd-history.txt'
+SSOD_FILE = 'ghcnh-station-list.csv'
+CHINESE_STATION_DATA_PATH = r'D:\文档\国家站气温记录'
 GHCND_DF = None
 GSOD_DF = None
+SSOD_DF = None
+CHINESE_STATIONS_DF = None
+CHINESE_STATION_FILES = {}
+CHINESE_STATION_DATA_CACHE = {}
 XLSX_DATASETS = {}
 XLSX_STATION_INFO = {}
 _USE_REQUEST_CONTEXT = object()
@@ -231,8 +238,81 @@ def load_gsod_stations():
             print(f"Successfully loaded {len(df)} GSOD stations.")
         except Exception: pass
 
+def load_ssod_stations():
+    """Load the GHCNh station catalog used by SSODv2."""
+    global SSOD_DF
+    if not os.path.exists(SSOD_FILE):
+        return
+    try:
+        df = pd.read_csv(SSOD_FILE, dtype={'GHCN_ID': str, 'ISO_CODE': str, 'STATE': str})
+        df = df.rename(columns={
+            'GHCN_ID': 'ID', 'LATITUDE': 'LAT', 'LONGITUDE': 'LON',
+            'ELEVATION': 'ELEV', 'ISO_CODE': 'CTRY'
+        })
+        df['ID'] = df['ID'].astype(str).str.strip()
+        df['NAME'] = df['NAME'].fillna('').astype(str).str.strip()
+        for column in ('LAT', 'LON', 'ELEV'):
+            df[column] = pd.to_numeric(df[column], errors='coerce')
+        df['CTRY'] = df['CTRY'].fillna('').astype(str).str.strip()
+        df['STATE'] = df['STATE'].fillna('').astype(str).str.strip()
+        SSOD_DF = df[['ID', 'NAME', 'LAT', 'LON', 'ELEV', 'CTRY', 'STATE']]
+        print(f"Successfully loaded {len(df)} SSODv2 stations.")
+    except Exception as exc:
+        print(f"Could not load SSODv2 station list: {exc}")
+
+def load_chinese_stations(data_path=None):
+    """Load the Chinese station catalog and index each station workbook."""
+    global CHINESE_STATIONS_DF, CHINESE_STATION_FILES, CHINESE_STATION_DATA_CACHE, CHINESE_STATION_DATA_PATH
+    candidate_path = str(data_path).strip() if data_path is not None else CHINESE_STATION_DATA_PATH
+    root = Path(candidate_path).expanduser()
+    metadata_path = root / 'stations metadata.xlsx'
+    station_folder = root / 'Data by Station'
+    if not metadata_path.is_file():
+        return False, f"Metadata workbook not found: {metadata_path}"
+    try:
+        metadata = pd.read_excel(metadata_path, dtype={'Station number': str})
+        required = ['Station number', 'Station name', 'Latitude', 'Longitude', 'Elevation']
+        if not all(column in metadata.columns for column in required):
+            return False, 'Metadata workbook must contain Station number, Station name, Latitude, Longitude, and Elevation columns.'
+        df = metadata[required].copy()
+        df['ID'] = df['Station number'].fillna('').astype(str).str.strip().str.replace(r'\.0$', '', regex=True)
+        df['NAME'] = df['Station name'].fillna('').astype(str).str.strip()
+        df['LAT'] = pd.to_numeric(df['Latitude'], errors='coerce')
+        df['LON'] = pd.to_numeric(df['Longitude'], errors='coerce')
+        df['ELEV'] = pd.to_numeric(df['Elevation'], errors='coerce')
+        df['CTRY'] = 'CN'
+        df['STATE'] = df['NAME'].str.split('-', n=1).str[0].str.strip()
+        df = df[df['ID'] != ''].drop_duplicates('ID').reset_index(drop=True)
+        if not station_folder.is_dir():
+            return False, f"Station data folder not found: {station_folder}"
+        files = {}
+        for file_path in station_folder.glob('*.csv'):
+            match = re.match(r'^(\d+)_', file_path.name)
+            if match:
+                files[match.group(1)] = str(file_path)
+        CHINESE_STATIONS_DF = df[['ID', 'NAME', 'LAT', 'LON', 'ELEV', 'CTRY', 'STATE']]
+        CHINESE_STATION_FILES = files
+        CHINESE_STATION_DATA_CACHE = {}
+        CHINESE_STATION_DATA_PATH = candidate_path
+        return True, f"Loaded {len(df)} stations; found data files for {len(files)} stations."
+    except Exception as exc:
+        return False, f"Could not load Chinese station metadata: {exc}"
+
 load_ghcnd_stations()
 load_gsod_stations()
+load_ssod_stations()
+load_chinese_stations()
+
+def get_station_catalog(source):
+    if source == 'GHCND':
+        return GHCND_DF
+    if source == 'GSOD':
+        return GSOD_DF
+    if source == 'SSODv2':
+        return SSOD_DF
+    if source == 'chinese':
+        return CHINESE_STATIONS_DF
+    return None
 
 # --- HELPER FUNCTIONS ---
 def clean_nan_for_json(obj):
@@ -313,6 +393,36 @@ def fetch_and_clean_data(source, station_id, start_date, end_date,
         if end_date:
             df = df[df['DATE'] <= pd.to_datetime(end_date)]
         return filter_valid_temperature_records(df, valid_temperature_range)
+    if source == 'chinese':
+        file_path = CHINESE_STATION_FILES.get(str(station_id))
+        if not file_path:
+            return df
+        try:
+            if file_path not in CHINESE_STATION_DATA_CACHE:
+                required = ['Year', 'Month', 'Day', 'min', 'max', 'avg']
+                frame = pd.read_csv(file_path, encoding='utf-8', usecols=required)
+                if not all(column in frame.columns for column in required):
+                    return df
+                frame = frame[required].copy()
+                for column in ('Year', 'Month', 'Day', 'min', 'max', 'avg'):
+                    frame[column] = pd.to_numeric(frame[column], errors='coerce')
+                frame = frame.dropna(subset=['Year', 'Month', 'Day'])
+                frame['DATE'] = pd.to_datetime(dict(year=frame['Year'], month=frame['Month'], day=frame['Day']), errors='coerce')
+                frame = frame.dropna(subset=['DATE'])
+                frame['ID'] = str(station_id)
+                frame = frame[['ID', 'DATE', 'min', 'avg', 'max']]
+                CHINESE_STATION_DATA_CACHE[file_path] = frame
+            df = CHINESE_STATION_DATA_CACHE[file_path]
+            df = df.copy()
+            if start_date: df = df[df['DATE'] >= pd.to_datetime(start_date)]
+            if end_date: df = df[df['DATE'] <= pd.to_datetime(end_date)]
+            df = df.melt(id_vars=['ID', 'DATE'], value_vars=['min', 'avg', 'max'], var_name='SOURCE_ELEMENT', value_name='DATA_VALUE')
+            df['ELEMENT'] = df['SOURCE_ELEMENT'].map({'min': 'TMIN', 'avg': 'TAVG', 'max': 'TMAX'})
+            df = df.drop(columns=['SOURCE_ELEMENT']).dropna(subset=['DATA_VALUE'])
+            return filter_valid_temperature_records(df, valid_temperature_range)
+        except Exception as exc:
+            print(f"Chinese station retrieval failed for {station_id}: {exc}")
+            return pd.DataFrame()
     if source == 'GHCND':
         url = f'https://noaa-ghcn-pds.s3.amazonaws.com/csv/by_station/{station_id}.csv'
         try:
@@ -327,7 +437,7 @@ def fetch_and_clean_data(source, station_id, start_date, end_date,
             df['DATA_VALUE'] = df['DATA_VALUE'] / 10.0
         except Exception:
             return pd.DataFrame()
-    else:
+    elif source == 'GSOD':
         api_url = "https://www.ncei.noaa.gov/access/services/data/v1"
         # GSOD API requires startDate and endDate
         s_date = start_date if start_date else '1800-01-01'
@@ -357,6 +467,80 @@ def fetch_and_clean_data(source, station_id, start_date, end_date,
                     df = df.rename(columns={'STATION': 'ID'})
                     df = df.dropna(subset=['DATA_VALUE'])
         except Exception: pass
+    elif source == 'SSODv2':
+        # SSODv2 bulk CSVs are keyed by GHCN station ID. Prefer the smaller
+        # station/year files for short bounded queries, and the station POR
+        # file for wide or unbounded queries.
+        root_url = 'https://www.ncei.noaa.gov/oa/synoptic-summary-of-the-day/v2/access'
+        try:
+            frames = []
+            start_ts = pd.to_datetime(start_date, errors='coerce') if start_date else pd.NaT
+            end_ts = pd.to_datetime(end_date, errors='coerce') if end_date else pd.NaT
+            if pd.notna(start_ts) and pd.notna(end_ts) and (end_ts.year - start_ts.year) <= 10:
+                url_groups = [
+                    [
+                        f"{root_url}/by-year/{year}/SSOD_{station_id}_{year}.csv",
+                        f"{root_url}/by-year/{year}/ssod_{station_id}_{year}.csv"
+                    ]
+                    for year in range(start_ts.year, end_ts.year + 1)
+                ]
+            else:
+                url_groups = [[
+                    f"{root_url}/by-station/SSOD_{station_id}.csv",
+                    f"{root_url}/by-station/ssod_{station_id}.csv"
+                ]
+                ]
+
+            for url_group in url_groups:
+                for url in url_group:
+                    resp = requests.get(url, timeout=30)
+                    if resp.status_code == 404:
+                        continue
+                    resp.raise_for_status()
+                    if resp.text.strip():
+                        frames.append(pd.read_csv(io.StringIO(resp.text), low_memory=False))
+                    break
+
+            if frames:
+                temp_df = pd.concat(frames, ignore_index=True)
+                temp_df.columns = [str(column).strip().upper() for column in temp_df.columns]
+                id_col = 'STATION' if 'STATION' in temp_df.columns else ('GHCN_ID' if 'GHCN_ID' in temp_df.columns else None)
+                date_col = 'DATE' if 'DATE' in temp_df.columns else None
+                value_columns = {
+                    'MEAN_TEMPERATURE': 'TAVG',
+                    'MIN_TEMPERATURE': 'TMIN',
+                    'MAX_TEMPERATURE': 'TMAX'
+                }
+                available_values = [column for column in value_columns if column in temp_df.columns]
+                if id_col and date_col and available_values:
+                    date_text = temp_df[date_col].astype(str).str.strip()
+                    compact_dates = date_text.str.fullmatch(r'\d{8}', na=False)
+                    parsed_dates = pd.Series(pd.NaT, index=temp_df.index, dtype='datetime64[ns]')
+                    parsed_dates.loc[compact_dates] = pd.to_datetime(
+                        date_text.loc[compact_dates], format='%Y%m%d', errors='coerce'
+                    )
+                    parsed_dates.loc[~compact_dates] = pd.to_datetime(
+                        date_text.loc[~compact_dates], errors='coerce'
+                    )
+                    temp_df['DATE'] = parsed_dates
+                    for column in available_values:
+                        values = temp_df[column].astype(str).str.replace('*', '', regex=False)
+                        temp_df[column] = pd.to_numeric(values, errors='coerce')
+                        temp_df.loc[temp_df[column] <= -9999, column] = np.nan
+                    df = temp_df.melt(
+                        id_vars=[id_col, 'DATE'], value_vars=available_values,
+                        var_name='SOURCE_ELEMENT', value_name='DATA_VALUE'
+                    )
+                    df['ELEMENT'] = df['SOURCE_ELEMENT'].map(value_columns)
+                    df = df.rename(columns={id_col: 'ID'}).drop(columns=['SOURCE_ELEMENT'])
+                    df = df.dropna(subset=['DATE', 'DATA_VALUE'])
+                    # SSODv2 CSV temperatures are in Celsius, matching GHCNh.
+                    if start_date:
+                        df = df[df['DATE'] >= pd.to_datetime(start_date)]
+                    if end_date:
+                        df = df[df['DATE'] <= pd.to_datetime(end_date)]
+        except Exception as exc:
+            print(f"SSODv2 retrieval failed for {station_id}: {exc}")
     return filter_valid_temperature_records(df, valid_temperature_range)
 
 def get_xlsx_dataset():
@@ -365,6 +549,19 @@ def get_xlsx_dataset():
 def get_xlsx_station_metadata(station_id):
     name = XLSX_STATION_INFO.get(session.get('xlsx_dataset_id'), {}).get(str(station_id), '')
     return (f"{station_id} - {name}" if name else str(station_id), {'lat': '', 'lon': '', 'elev': ''})
+
+@app.route('/set_chinese_station_path', methods=['POST'])
+@auth_or_visitor_required
+@csrf.exempt
+def set_chinese_station_path():
+    payload = request.get_json(silent=True) or {}
+    path = str(payload.get('path', '')).strip()
+    if not path:
+        return jsonify({'status': 'error', 'message': 'Enter a data folder path.'}), 400
+    ok, message = load_chinese_stations(path)
+    if not ok:
+        return jsonify({'status': 'error', 'message': message}), 400
+    return jsonify({'status': 'ok', 'message': message, 'path': CHINESE_STATION_DATA_PATH})
 
 @app.route('/upload_xlsx', methods=['POST'])
 @auth_or_visitor_required
@@ -622,7 +819,10 @@ def delete_invitation(id):
 def home():
     ghcnd_count = len(GHCND_DF) if GHCND_DF is not None else 0
     gsod_count = len(GSOD_DF) if GSOD_DF is not None else 0
-    return render_template('index.html', ghcnd_count=ghcnd_count, gsod_count=gsod_count)
+    ssod_count = len(SSOD_DF) if SSOD_DF is not None else 0
+    chinese_station_count = len(CHINESE_STATIONS_DF) if CHINESE_STATIONS_DF is not None else 0
+    return render_template('index.html', ghcnd_count=ghcnd_count, gsod_count=gsod_count, ssod_count=ssod_count,
+                           chinese_station_count=chinese_station_count, chinese_station_data_path=CHINESE_STATION_DATA_PATH)
 
 @app.route('/nearby-places')
 def nearby_places_page():
@@ -749,7 +949,7 @@ def search_stations():
             if len(results) >= 20:
                 break
         return jsonify(results)
-    df = GHCND_DF if source == 'GHCND' else GSOD_DF
+    df = get_station_catalog(source)
     if df is None: return jsonify([])
     if source == 'GSOD': mask = (df['USAF'].str.contains(query, case=False)) | (df['NAME'].str.contains(query, case=False))
     else: mask = (df['ID'].str.contains(query, case=False)) | (df['NAME'].str.contains(query, case=False))
@@ -758,7 +958,7 @@ def search_stations():
     for _, row in results_df.iterrows():
         label_text = row['NAME']
         state = str(row['STATE']).strip()
-        if state and state.lower() != 'nan': label_text += f" ({state})"
+        if state and state.lower() != 'nan' and not (source == 'chinese' and state in label_text): label_text += f" ({state})"
         lat = row['LAT'] if pd.notna(row['LAT']) else '-'
         lon = row['LON'] if pd.notna(row['LON']) else '-'
         elev = row['ELEV'] if pd.notna(row['ELEV']) else '-'
@@ -969,7 +1169,7 @@ def get_data():
             multi_sort_dir = req.get('multi_sort_dir', 'asc')
             multi_limit = int(req.get('multi_limit', 5))
 
-            st_df = GHCND_DF if source == 'GHCND' else GSOD_DF
+            st_df = get_station_catalog(source)
             if center_mode == 'coords':
                 try: center_lat, center_lon = float(center_lat_input), float(center_lon_input)
                 except: center_lat, center_lon = 0, 0
@@ -1088,7 +1288,7 @@ def get_data():
                     s_clean = temp_st_df[sort_key].astype(str).str.strip()
                     is_valid &= (s_clean != '') & (s_clean.str.lower() != 'none') & (s_clean != '-')
                     # For NAME column, must contain at least one English alphabet
-                    if sort_key == 'NAME':
+                    if sort_key == 'NAME' and source != 'chinese':
                         is_valid &= s_clean.str.contains(r'[a-zA-Z]', regex=True)
 
                 valid_df = temp_st_df[is_valid].sort_values(by=sort_key, ascending=ms_sort_asc)
@@ -1097,7 +1297,7 @@ def get_data():
                 temp_st_df = pd.concat([valid_df, invalid_df]).head(multi_limit)
                 
                 for _, row in temp_st_df.iterrows():
-                    c_name = row['CTRY'] if source == 'GSOD' else row['ID'][:2]
+                    c_name = row['ID'][:2] if source == 'GHCND' else row['CTRY']
                     # Convert NaN values to None (which becomes null in JSON)
                     lat_val = float(row['LAT']) if pd.notna(row['LAT']) else None
                     lon_val = float(row['LON']) if pd.notna(row['LON']) else None
@@ -1170,7 +1370,8 @@ def get_multi_stats():
 
         metrics = [
             'min_tmin', 'min_tavg', 'min_tmax', 'max_tmin', 'max_tavg', 'max_tmax',
-            'avg_tmin', 'avg_tavg', 'avg_tmax', 'max_days_tmin', 'max_days_tavg', 'max_days_tmax',
+            'avg_tmin', 'avg_tavg', 'avg_tmax', 'period_avg_tmin', 'period_avg_tmax',
+            'max_days_tmin', 'max_days_tavg', 'max_days_tmax',
             'consecutive_days_tmin', 'consecutive_days_tavg', 'consecutive_days_tmax',
             'total_days_tmin', 'total_days_tavg', 'total_days_tmax', 'valid_days_tmin', 'valid_days_tavg', 'valid_days_tmax',
             'min_monthly_avg_tmin', 'min_monthly_avg_tavg', 'min_monthly_avg_tmax',
@@ -1185,6 +1386,8 @@ def get_multi_stats():
         metric_order = ([selected_metric] + [m for m in metrics if m != selected_metric]) if calculate_all_options else [selected_metric]
         source, start_date, end_date = req.get('source', 'GHCND'), req.get('start_date'), req.get('end_date')
         month_filter, day_filter, period_mode = req.get('month_filter'), req.get('day_filter', '0'), req.get('period')
+        hemisphere = req.get('hemisphere', 'north')
+        season_name = get_period_season_name(period_mode, hemisphere)
 
         def threshold(key):
             try:
@@ -1232,7 +1435,29 @@ def get_multi_stats():
 
         def calculate_metric(metric, data, boundary_data=None):
             val, dates = '-', []
-            if metric.startswith(('min_monthly_avg_', 'max_monthly_avg_')):
+            if metric.startswith('period_avg_'):
+                elem = metric.rsplit('_', 1)[1].upper()
+                sub = data[elem]
+                qualifying_extremes = []
+                if not sub.empty:
+                    periods = sub.copy()
+                    periods['Season_Year'] = periods['DATE'].dt.year
+                    if period_mode == 'p1':
+                        mask = (periods['DATE'].dt.month < 7) | ((periods['DATE'].dt.month == 7) & (periods['DATE'].dt.day < 16))
+                    else:
+                        mask = (periods['DATE'].dt.month == 1) & (periods['DATE'].dt.day < 16)
+                    periods.loc[mask, 'Season_Year'] -= 1
+                    core_months = [12, 1, 2] if period_mode == 'p1' else [6, 7, 8]
+                    for season_year, season_df in periods.groupby('Season_Year'):
+                        core_count = int(season_df['DATE'].dt.month.isin(core_months).sum())
+                        if core_count < 60:
+                            continue
+                        target = season_df['DATA_VALUE'].min() if season_name == 'winter' else season_df['DATA_VALUE'].max()
+                        qualifying_extremes.append((float(target), int(season_year)))
+                if qualifying_extremes:
+                    val = float(round(sum(value for value, _ in qualifying_extremes) / len(qualifying_extremes), 2))
+                    dates = [f'{year}-{year + 1}' for _, year in qualifying_extremes]
+            elif metric.startswith(('min_monthly_avg_', 'max_monthly_avg_')):
                 is_min = metric.startswith('min_')
                 elem = metric.split('_')[3].upper()
                 sub = data[elem]
@@ -1338,7 +1563,7 @@ def get_multi_stats():
             name, lat, lon, elev = 'Unknown', '-', '-', '-'
             empty_stats = {m: {'val': '-', 'dates': []} for m in metric_order}
             try:
-                stations = GHCND_DF if source == 'GHCND' else GSOD_DF
+                stations = get_station_catalog(source)
                 row = stations[stations['ID'] == sid]
                 if not row.empty:
                     name = row.iloc[0]['NAME']
@@ -1502,7 +1727,7 @@ def calendar_months_stats():
     station_name = station_id
     station_info = {'lat': '-', 'lon': '-', 'elev': '-'}
     try:
-        st_df = GHCND_DF if source == 'GHCND' else GSOD_DF
+        st_df = get_station_catalog(source)
         if st_df is not None:
              row = st_df[st_df['ID'] == station_id]
              if not row.empty: 
@@ -1626,25 +1851,18 @@ def date_details():
     # Optional: fetch station name for display
     station_name = station_id
     try:
-        if source == 'GHCND':
-            row = GHCND_DF[GHCND_DF['ID'] == station_id]
-            if not row.empty: station_name = f"{station_id} - {row.iloc[0]['NAME']}"
-        else:
-            row = GSOD_DF[GSOD_DF['ID'] == station_id]
+        stations = get_station_catalog(source)
+        if stations is not None:
+            row = stations[stations['ID'] == station_id]
             if not row.empty: station_name = f"{station_id} - {row.iloc[0]['NAME']}"
     except: pass
     
     # NEW: Fetch Station Info (Lat, Lon, Elev)
     station_info = {'lat': '-', 'lon': '-', 'elev': '-'}
     try:
-        if source == 'GHCND':
-            row = GHCND_DF[GHCND_DF['ID'] == station_id]
-            if not row.empty:
-                station_info['lat'] = row.iloc[0]['LAT']
-                station_info['lon'] = row.iloc[0]['LON']
-                station_info['elev'] = row.iloc[0]['ELEV']
-        else:
-            row = GSOD_DF[GSOD_DF['ID'] == station_id]
+        stations = get_station_catalog(source)
+        if stations is not None:
+            row = stations[stations['ID'] == station_id]
             if not row.empty:
                 station_info['lat'] = row.iloc[0]['LAT']
                 station_info['lon'] = row.iloc[0]['LON']
@@ -1866,7 +2084,7 @@ def period_stats():
         # Station Name and Info
         station_name = station_id
         station_info = {'lat': '-', 'lon': '-', 'elev': '-'}
-        st_df = GHCND_DF if source == 'GHCND' else GSOD_DF
+        st_df = get_station_catalog(source)
         if st_df is not None:
             row = st_df[st_df['ID'] == station_id]
             if not row.empty:
@@ -2083,7 +2301,7 @@ def year_by_year():
 
         station_name = station_id
         station_info = {'lat': '-', 'lon': '-', 'elev': '-'}
-        st_df = GHCND_DF if source == 'GHCND' else GSOD_DF
+        st_df = get_station_catalog(source)
         if st_df is not None:
             row = st_df[st_df['ID'] == station_id]
             if not row.empty:
@@ -2146,25 +2364,18 @@ def extreme_temps():
     # Station Name
     station_name = station_id
     try:
-        if source == 'GHCND':
-            row = GHCND_DF[GHCND_DF['ID'] == station_id]
-            if not row.empty: station_name = f"{station_id} - {row.iloc[0]['NAME']}"
-        else:
-            row = GSOD_DF[GSOD_DF['ID'] == station_id]
+        stations = get_station_catalog(source)
+        if stations is not None:
+            row = stations[stations['ID'] == station_id]
             if not row.empty: station_name = f"{station_id} - {row.iloc[0]['NAME']}"
     except: pass
 
     # Fetch Station Info (Lat, Lon, Elev) - Same logic as before to pass to extreme_temps
     station_info = {'lat': '-', 'lon': '-', 'elev': '-'}
     try:
-        if source == 'GHCND':
-            row = GHCND_DF[GHCND_DF['ID'] == station_id]
-            if not row.empty:
-                station_info['lat'] = row.iloc[0]['LAT']
-                station_info['lon'] = row.iloc[0]['LON']
-                station_info['elev'] = row.iloc[0]['ELEV']
-        else:
-            row = GSOD_DF[GSOD_DF['ID'] == station_id]
+        stations = get_station_catalog(source)
+        if stations is not None:
+            row = stations[stations['ID'] == station_id]
             if not row.empty:
                 station_info['lat'] = row.iloc[0]['LAT']
                 station_info['lon'] = row.iloc[0]['LON']

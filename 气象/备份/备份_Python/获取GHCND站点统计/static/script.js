@@ -13,6 +13,7 @@ let lastMultiSubsetSource = null;
 let lastMultiSubsetCriteria = null;
 let rawMultiStatsResults = [];
 let rawMultiStatMetricOrder = [];
+let rawMultiStatSeason = 'winter';
 let multiStatSortCol = 'val';
 let multiStatSortDir = 'desc';
 const MULTI_STAT_ALIASES = {
@@ -179,6 +180,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (wbanRow) wbanRow.style.display = (this.value === 'GSOD') ? 'flex' : 'none';
             const uploadRow = document.getElementById('xlsxUploadRow');
             if (uploadRow) uploadRow.style.display = isXlsx ? 'flex' : 'none';
+            const chinesePathRow = document.getElementById('chineseStationsPathRow');
+            if (chinesePathRow) chinesePathRow.style.display = this.value === 'chinese' ? 'flex' : 'none';
             const stationInput = document.getElementById('stationInput');
             const stationRow = stationInput ? stationInput.closest('.param-row') : null;
             if (stationInput) stationInput.disabled = isXlsx;
@@ -203,7 +206,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     document.querySelectorAll('input[name="hemisphere"], input[name="season"]').forEach(radio => {
-        radio.addEventListener('change', syncPeriodColumns);
+        radio.addEventListener('change', () => {
+            syncPeriodColumns();
+            decorateMultiStatOptions();
+        });
     });
 
     syncPeriodColumns();
@@ -261,6 +267,30 @@ async function uploadXlsxFile() {
         handleStationInput();
     } catch (error) {
         status.textContent = error.message || XLSX_UPLOAD_FAILED;
+    } finally {
+        button.disabled = false;
+    }
+}
+
+async function loadChineseStationsPath() {
+    const pathInput = document.getElementById('chineseStationsPath');
+    const status = document.getElementById('chineseStationsPathStatus');
+    const button = document.getElementById('chineseStationsLoadButton');
+    button.disabled = true;
+    status.textContent = 'Loading station metadata…';
+    try {
+        const response = await fetch('/set_chinese_station_path', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path: pathInput.value })
+        });
+        const result = await response.json();
+        if (!response.ok || result.status !== 'ok') throw new Error(result.message || 'Could not load Chinese Stations.');
+        pathInput.value = result.path;
+        status.textContent = result.message;
+        if (document.getElementById('dataSource').value === 'chinese') searchStations();
+    } catch (error) {
+        status.textContent = error.message || 'Could not load Chinese Stations.';
     } finally {
         button.disabled = false;
     }
@@ -349,7 +379,7 @@ async function searchStations() {
 
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(async () => {
-        if (query.length < 3) return;
+        if (query.length < (source === 'chinese' ? 1 : 3)) return;
         try {
             const response = await fetch(`/search_stations?q=${encodeURIComponent(query)}&source=${source}`);
             if (response.status === 401) { window.location.href = "/login"; return; }
@@ -727,7 +757,7 @@ function sortMultiStatTable(column) {
         const isValue = column.startsWith('stat-value:');
         const metric = isValue ? column.slice('stat-value:'.length) : '';
         multiStatSortDir = isValue
-            ? (metric.startsWith('min_') ? 'asc' : 'desc')
+            ? (metric.startsWith('min_') || (metric.startsWith('period_avg_') && rawMultiStatSeason === 'winter') ? 'asc' : 'desc')
             : (['dist', 'lat', 'lon', 'elev'].includes(column) ? 'desc' : 'asc');
     }
     renderMultiStatTable();
@@ -736,7 +766,15 @@ function sortMultiStatTable(column) {
 function decorateMultiStatOptions() {
     const select = document.getElementById('multiStatSelect');
     if (!select) return;
+    const seasonMode = document.querySelector('input[name="season"]:checked')?.value || 'winter';
     Array.from(select.options).forEach(option => {
+        if (option.value.startsWith('period_avg_')) {
+            const label = seasonMode === 'summer' ? option.dataset.summerLabel : option.dataset.winterLabel;
+            option.dataset.baseLabel = label || option.textContent.trim();
+            option.dataset.alias = getMultiStatAlias(option.value);
+            option.textContent = `${option.dataset.baseLabel} (${option.dataset.alias})`;
+            return;
+        }
         const alias = MULTI_STAT_ALIASES[option.value];
         if (!alias) return;
         const [type, optionAlias] = alias;
@@ -747,6 +785,18 @@ function decorateMultiStatOptions() {
             option.textContent = `${option.dataset.baseLabel} (${fullAlias})`;
         }
     });
+}
+
+function getMultiStatAlias(metric, seasonMode = null) {
+    seasonMode = seasonMode || document.querySelector('input[name="season"]:checked')?.value || 'winter';
+    if (metric === 'period_avg_tmin') {
+        return seasonMode === 'summer' ? 'SA_SN' : 'SA_WN';
+    }
+    if (metric === 'period_avg_tmax') {
+        return seasonMode === 'summer' ? 'SA_SX' : 'SA_WX';
+    }
+    const alias = MULTI_STAT_ALIASES[metric];
+    return alias ? `${alias[0]}_${alias[1]}` : metric;
 }
 
 function getMultiStatsColumnCount() {
@@ -769,8 +819,7 @@ function renderMultiStatTable() {
     if (groupRow) {
         groupRow.querySelectorAll('.multi-metric-header').forEach(header => header.remove());
         metricOrder.forEach(metric => {
-            const [type, optionAlias] = MULTI_STAT_ALIASES[metric] || ['', metric];
-            const alias = `${type}_${optionAlias}`;
+            const alias = getMultiStatAlias(metric, rawMultiStatSeason);
             const valueHeader = document.createElement('th');
             valueHeader.className = 'multi-metric-header';
             valueHeader.textContent = `V: ${alias}`;
@@ -880,7 +929,7 @@ async function calcMultiStats() {
 
     const selectedMetric = document.getElementById('multiStatSelect').value;
     multiStatSortCol = `stat-value:${selectedMetric}`;
-    multiStatSortDir = selectedMetric.startsWith('min_') ? 'asc' : 'desc';
+    multiStatSortDir = selectedMetric.startsWith('min_') || (selectedMetric.startsWith('period_avg_') && rawMultiStatSeason === 'winter') ? 'asc' : 'desc';
 
     const timerSpan = document.getElementById('multiStatTimer');
     const startTime = Date.now();
@@ -893,6 +942,7 @@ async function calcMultiStats() {
     currentMultiStations.forEach(s => distMap[s.id] = s.dist);
 
     const seasonMode = document.querySelector('input[name="season"]:checked').value;
+    rawMultiStatSeason = seasonMode;
     const hemisphere = document.querySelector('input[name="hemisphere"]:checked').value;
     const periodMode = getPeriodModeFromSeason(seasonMode, hemisphere);
 
@@ -905,6 +955,7 @@ async function calcMultiStats() {
         month_filter: document.getElementById('monthFilter').value,
         day_filter: document.getElementById('dayFilter').value || '0',
         period: periodMode,
+        hemisphere,
         tmin_val: document.getElementById('tminVal').value,
         tmin_dir: document.getElementById('tminDir').value,
         tavg_val: document.getElementById('tavgVal').value,
