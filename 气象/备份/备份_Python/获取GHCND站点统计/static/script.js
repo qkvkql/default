@@ -314,6 +314,42 @@ async function fetchDefaultStationDetails(query) {
     } catch (err) { console.error(err); }
 }
 
+function validateDateRange() {
+    const dateInputs = [
+        document.getElementById('startDate'),
+        document.getElementById('endDate')
+    ];
+    const datePattern = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/;
+
+    for (const input of dateInputs) {
+        const value = input.value;
+        if (!value) continue;
+
+        const match = value.match(datePattern);
+        if (match) {
+            const [, yearText, monthText, dayText] = match;
+            const year = Number(yearText);
+            const month = Number(monthText);
+            const day = Number(dayText);
+            const parsed = new Date(0);
+            parsed.setUTCFullYear(year, month - 1, day);
+            parsed.setUTCHours(0, 0, 0, 0);
+            if (parsed.getUTCFullYear() === year &&
+                parsed.getUTCMonth() === month - 1 &&
+                parsed.getUTCDate() === day) continue;
+        }
+
+        const errorMsg = document.getElementById('errorMsg');
+        if (errorMsg) errorMsg.textContent = 'Enter dates in YYYY-MM-DD format (for example, 2020-01-31).';
+        input.focus();
+        return false;
+    }
+
+    const errorMsg = document.getElementById('errorMsg');
+    if (errorMsg) errorMsg.textContent = '';
+    return true;
+}
+
 function applyQuickDateRange() {
     const selector = document.getElementById('quickDateRange');
     const startInput = document.getElementById('startDate');
@@ -922,6 +958,7 @@ function renderMultiStatTable() {
 }
 
 async function calcMultiStats() {
+    if (!validateDateRange()) return;
     if (!validateValidTemperatureRange()) return;
     const loading = document.getElementById('multiStatLoading');
     const tbody = document.querySelector('#multiStatResultTable tbody');
@@ -1138,6 +1175,7 @@ function renderPeriodTable() {
 
 // --- MAIN FETCH ---
 async function fetchData(keepSort = false) {
+    if (!validateDateRange()) return;
     if (!validateValidTemperatureRange()) return;
     const loading = document.getElementById('loading');
     const sortingLoading = document.getElementById('sortingLoading');

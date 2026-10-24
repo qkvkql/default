@@ -183,9 +183,13 @@
                                 <option value="WEA6190">{{ t('params.wea6190') }}</option>
                                 <option value="WEA9120">{{ t('params.wea9120') }}</option>
                             </select>
-                            <input type="date" id="startDate" value="1800-01-01">
+                            <input type="text" id="startDate" value="1800-01-01" placeholder="YYYY-MM-DD"
+                                inputmode="numeric" maxlength="10" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}"
+                                title="Enter a date in YYYY-MM-DD format">
                             <span>{{ t('params.to') }}</span>
-                            <input type="date" id="endDate" value="2100-12-31">
+                            <input type="text" id="endDate" value="2100-12-31" placeholder="YYYY-MM-DD"
+                                inputmode="numeric" maxlength="10" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}"
+                                title="Enter a date in YYYY-MM-DD format">
                         </div>
 
                         <div class="param-row">
@@ -453,6 +457,7 @@
                     window.open(url, '_blank');
                 }
                 function openPeriodStats() {
+                    if (!validateDateRange()) return;
                     if (!validateValidTemperatureRange()) return;
                     const sid = document.getElementById('stationId').value;
                     const ds = document.getElementById('dataSource').value;
@@ -478,6 +483,7 @@
                     window.open(url, '_blank');
                 }
                 function openCalendarMonthsStats() {
+                    if (!validateDateRange()) return;
                     if (!validateValidTemperatureRange()) return;
                     const sid = document.getElementById('stationId').value;
                     const ds = document.getElementById('dataSource').value;
@@ -504,6 +510,7 @@
                 }
                 const openYearStats = openCalendarMonthsStats;
                 function openYearByYear() {
+                    if (!validateDateRange()) return;
                     if (!validateValidTemperatureRange()) return;
                     const sid = document.getElementById('stationId').value;
                     const ds = document.getElementById('dataSource').value;

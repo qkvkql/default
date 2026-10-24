@@ -650,7 +650,8 @@ tr:nth-child(even) {
         width: 350px;
     }
 
-    input[type="date"] {
+    #startDate,
+    #endDate {
         width: auto;
     }
 
