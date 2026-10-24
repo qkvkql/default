@@ -121,6 +121,7 @@ function openDateDetails(type, value, specificStationId = null) {
     const params = new URLSearchParams({
         station_id: stationId,
         source: source,
+        ssod_access_method: getSsodAccessMethod(),
         type: type,
         value: value,
         period_mode: periodMode,
@@ -133,6 +134,10 @@ function openDateDetails(type, value, specificStationId = null) {
 
     const url = `/date_details?${params.toString()}`;
     window.open(url, '_blank');
+}
+
+function getSsodAccessMethod() {
+    return document.querySelector('input[name="ssodAccessMethod"]:checked')?.value || 'api';
 }
 
 function showPeriodModal(ranges, specificStationId = null) {
@@ -178,6 +183,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             const wbanRow = document.getElementById('wbanRow');
             if (wbanRow) wbanRow.style.display = (this.value === 'GSOD') ? 'flex' : 'none';
+            const ssodAccessMethodRow = document.getElementById('ssodAccessMethodRow');
+            if (ssodAccessMethodRow) ssodAccessMethodRow.style.display = this.value === 'SSODv2' ? 'flex' : 'none';
             const uploadRow = document.getElementById('xlsxUploadRow');
             if (uploadRow) uploadRow.style.display = isXlsx ? 'flex' : 'none';
             const chinesePathRow = document.getElementById('chineseStationsPathRow');
@@ -949,6 +956,7 @@ async function calcMultiStats() {
     const payload = {
         station_ids: currentMultiStations.map(s => s.id),
         source: document.getElementById('dataSource').value,
+        ssod_access_method: getSsodAccessMethod(),
         metric: selectedMetric,
         start_date: document.getElementById('startDate').value,
         end_date: document.getElementById('endDate').value,
@@ -1188,6 +1196,7 @@ async function fetchData(keepSort = false) {
     const payload = {
         station_id: finalStationId,
         source: source,
+        ssod_access_method: getSsodAccessMethod(),
         start_date: document.getElementById('startDate').value,
         end_date: document.getElementById('endDate').value,
         month_filter: document.getElementById('monthFilter').value,

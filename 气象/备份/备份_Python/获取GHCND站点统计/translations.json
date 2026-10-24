@@ -55,6 +55,9 @@
     },
     "params": {
       "data_source": "Data Source:",
+      "ssod_access_method": "SSODv2 access method:",
+      "ssod_api_method": "Access Data Service API (default)",
+      "ssod_bulk_method": "Bulk CSV URLs",
       "valid_temperature_range": "Valid temperature value range (°C):",
       "valid_temperature_low": "Low:",
       "valid_temperature_high": "High:",
@@ -408,6 +411,9 @@
     },
     "params": {
       "data_source": "数据源:",
+      "ssod_access_method": "SSODv2 数据访问方式:",
+      "ssod_api_method": "数据访问服务 API（默认）",
+      "ssod_bulk_method": "批量 CSV 链接",
       "valid_temperature_range": "有效温度值范围 (°C):",
       "valid_temperature_low": "下限:",
       "valid_temperature_high": "上限:",

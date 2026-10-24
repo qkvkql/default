@@ -127,6 +127,20 @@
                 <!-- Note removed from here -->
             </div>
 
+            <div class="param-row" id="ssodAccessMethodRow" style="display:none;">
+                <label>{{ t('params.ssod_access_method') }}</label>
+                <div class="radio-group" role="radiogroup" aria-label="{{ t('params.ssod_access_method') }}">
+                    <label style="font-weight: normal; width: auto;">
+                        <input type="radio" name="ssodAccessMethod" value="api" checked>
+                        {{ t('params.ssod_api_method') }}
+                    </label>
+                    <label style="font-weight: normal; width: auto;">
+                        <input type="radio" name="ssodAccessMethod" value="bulk">
+                        {{ t('params.ssod_bulk_method') }}
+                    </label>
+                </div>
+            </div>
+
             <div class="param-row" id="chineseStationsPathRow" style="display:none;">
                 <label for="chineseStationsPath">Chinese Stations data folder</label>
                 <input type="text" id="chineseStationsPath" value="{{ chinese_station_data_path }}" style="width:min(520px, 70vw);">
@@ -435,7 +449,7 @@
                     const seasonEls = document.getElementsByName('season');
                     for (let el of seasonEls) { if (el.checked) season = el.value; }
 
-                    const url = `/extreme_temps?station_id=${sid}&source=${ds}&season=${season}&valid_temp_low=${encodeURIComponent(range.valid_temp_low)}&valid_temp_high=${encodeURIComponent(range.valid_temp_high)}`;
+                    const url = `/extreme_temps?station_id=${sid}&source=${ds}&ssod_access_method=${getSsodAccessMethod()}&season=${season}&valid_temp_low=${encodeURIComponent(range.valid_temp_low)}&valid_temp_high=${encodeURIComponent(range.valid_temp_high)}`;
                     window.open(url, '_blank');
                 }
                 function openPeriodStats() {
@@ -458,7 +472,7 @@
                     const tmax_dir = document.getElementById('tmaxDir').value;
                     const range = getValidTemperatureRangeParams();
 
-                    let url = `/period_stats?station_id=${sid}&source=${ds}&start_date=${start}&end_date=${end}&month_filter=${month}&day_filter=${day}&period=${period}&hemisphere=${hemi}`;
+                    let url = `/period_stats?station_id=${sid}&source=${ds}&ssod_access_method=${getSsodAccessMethod()}&start_date=${start}&end_date=${end}&month_filter=${month}&day_filter=${day}&period=${period}&hemisphere=${hemi}`;
                     url += `&tmin_val=${tmin_val}&tmin_dir=${tmin_dir}&tavg_val=${tavg_val}&tavg_dir=${tavg_dir}&tmax_val=${tmax_val}&tmax_dir=${tmax_dir}&valid_temp_low=${encodeURIComponent(range.valid_temp_low)}&valid_temp_high=${encodeURIComponent(range.valid_temp_high)}`;
 
                     window.open(url, '_blank');
@@ -482,7 +496,7 @@
                     const custom_avg_tavg = document.getElementById('customAvgTavg').value;
                     const custom_avg_tmax = document.getElementById('customAvgTmax').value;
 
-                    let url = `/calendar_months_stats?station_id=${sid}&source=${ds}&start_date=${start}&end_date=${end}`;
+                    let url = `/calendar_months_stats?station_id=${sid}&source=${ds}&ssod_access_method=${getSsodAccessMethod()}&start_date=${start}&end_date=${end}`;
                     url += `&tmin_val=${tmin_val}&tmin_dir=${tmin_dir}&tavg_val=${tavg_val}&tavg_dir=${tavg_dir}&tmax_val=${tmax_val}&tmax_dir=${tmax_dir}`;
                     url += `&custom_avg_tmin=${custom_avg_tmin}&custom_avg_tavg=${custom_avg_tavg}&custom_avg_tmax=${custom_avg_tmax}&valid_temp_low=${encodeURIComponent(range.valid_temp_low)}&valid_temp_high=${encodeURIComponent(range.valid_temp_high)}`;
 
@@ -504,7 +518,7 @@
                     const tmax_dir = document.getElementById('tmaxDir').value;
                     const range = getValidTemperatureRangeParams();
 
-                    let url = `/year_by_year?station_id=${sid}&source=${ds}&start_date=${start}&end_date=${end}`;
+                    let url = `/year_by_year?station_id=${sid}&source=${ds}&ssod_access_method=${getSsodAccessMethod()}&start_date=${start}&end_date=${end}`;
                     url += `&tmin_val=${tmin_val}&tmin_dir=${tmin_dir}&tavg_val=${tavg_val}&tavg_dir=${tavg_dir}&tmax_val=${tmax_val}&tmax_dir=${tmax_dir}&valid_temp_low=${encodeURIComponent(range.valid_temp_low)}&valid_temp_high=${encodeURIComponent(range.valid_temp_high)}`;
                     window.open(url, '_blank');
                 }

@@ -12,6 +12,7 @@ from flask_login import UserMixin, login_user, LoginManager, login_required, log
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 import concurrent.futures
+import threading
 from dotenv import load_dotenv
 from flask_wtf.csrf import CSRFProtect, generate_csrf
 import json
@@ -189,6 +190,7 @@ CHINESE_STATION_DATA_CACHE = {}
 XLSX_DATASETS = {}
 XLSX_STATION_INFO = {}
 _USE_REQUEST_CONTEXT = object()
+SSOD_API_REQUEST_SEMAPHORE = threading.BoundedSemaphore(8)
 
 def load_ghcnd_stations():
     global GHCND_DF
@@ -376,7 +378,8 @@ def get_period_season_name(period_mode, hemisphere='north'):
     return 'winter' if is_winter else 'summer'
 
 def fetch_and_clean_data(source, station_id, start_date, end_date,
-                         valid_temperature_range=None, xlsx_dataset_id=_USE_REQUEST_CONTEXT):
+                         valid_temperature_range=None, xlsx_dataset_id=_USE_REQUEST_CONTEXT,
+                         ssod_access_method='api'):
     # Resolve request-bound settings before entering any worker threads.
     if valid_temperature_range is None:
         valid_temperature_range = get_valid_temperature_range()
@@ -468,38 +471,83 @@ def fetch_and_clean_data(source, station_id, start_date, end_date,
                     df = df.dropna(subset=['DATA_VALUE'])
         except Exception: pass
     elif source == 'SSODv2':
-        # SSODv2 bulk CSVs are keyed by GHCN station ID. Prefer the smaller
-        # station/year files for short bounded queries, and the station POR
-        # file for wide or unbounded queries.
+        # SSODv2 supports both NOAA's Data Service API and bulk station CSVs.
         root_url = 'https://www.ncei.noaa.gov/oa/synoptic-summary-of-the-day/v2/access'
         try:
             frames = []
-            start_ts = pd.to_datetime(start_date, errors='coerce') if start_date else pd.NaT
-            end_ts = pd.to_datetime(end_date, errors='coerce') if end_date else pd.NaT
-            if pd.notna(start_ts) and pd.notna(end_ts) and (end_ts.year - start_ts.year) <= 10:
-                url_groups = [
-                    [
-                        f"{root_url}/by-year/{year}/SSOD_{station_id}_{year}.csv",
-                        f"{root_url}/by-year/{year}/ssod_{station_id}_{year}.csv"
-                    ]
-                    for year in range(start_ts.year, end_ts.year + 1)
-                ]
-            else:
-                url_groups = [[
-                    f"{root_url}/by-station/SSOD_{station_id}.csv",
-                    f"{root_url}/by-station/ssod_{station_id}.csv"
-                ]
-                ]
+            if ssod_access_method != 'bulk':
+                api_url = 'https://www.ncei.noaa.gov/access/services/data/v1'
+                api_end_date = pd.to_datetime(end_date, errors='coerce') if end_date else pd.Timestamp.now()
+                if pd.isna(api_end_date) or api_end_date > pd.Timestamp.now().normalize():
+                    api_end_date = pd.Timestamp.now().normalize()
+                api_start_date = pd.to_datetime(start_date, errors='coerce') if start_date else pd.Timestamp('1800-01-01')
+                if pd.isna(api_start_date):
+                    return df
+                # SSOD records begin in 1900, and NOAA may return an empty
+                # response when a station is queried across an excessively
+                # broad period. Fetch decade-sized windows and combine them.
+                api_start_date = max(api_start_date, pd.Timestamp('1900-01-01'))
+                if api_start_date > api_end_date:
+                    return df
+                api_windows = []
+                window_start = api_start_date
+                while window_start <= api_end_date:
+                    window_end = min(
+                        api_end_date,
+                        window_start + pd.DateOffset(years=10) - pd.Timedelta(days=1)
+                    )
+                    api_windows.append({
+                        'dataset': 'synoptic-summary-of-the-day-v2',
+                        'stations': station_id,
+                        'startDate': window_start.strftime('%Y-%m-%d'),
+                        'endDate': window_end.strftime('%Y-%m-%d'),
+                        'format': 'csv',
+                        'includeStationName': 'false'
+                    })
+                    window_start = window_end + pd.Timedelta(days=1)
 
-            for url_group in url_groups:
-                for url in url_group:
-                    resp = requests.get(url, timeout=30)
-                    if resp.status_code == 404:
-                        continue
+                def fetch_api_window(params):
+                    with SSOD_API_REQUEST_SEMAPHORE:
+                        resp = requests.get(api_url, params=params, timeout=30)
                     resp.raise_for_status()
-                    if resp.text.strip():
-                        frames.append(pd.read_csv(io.StringIO(resp.text), low_memory=False))
-                    break
+                    if not resp.text.strip():
+                        return None
+                    return pd.read_csv(io.StringIO(resp.text), low_memory=False)
+
+                with concurrent.futures.ThreadPoolExecutor(
+                    max_workers=min(4, len(api_windows))
+                ) as executor:
+                    for frame in executor.map(fetch_api_window, api_windows):
+                        if frame is not None:
+                            frames.append(frame)
+            else:
+                # Prefer smaller station/year files for short bounded queries;
+                # use the station period-of-record file otherwise.
+                start_ts = pd.to_datetime(start_date, errors='coerce') if start_date else pd.NaT
+                end_ts = pd.to_datetime(end_date, errors='coerce') if end_date else pd.NaT
+                if pd.notna(start_ts) and pd.notna(end_ts) and (end_ts.year - start_ts.year) <= 10:
+                    url_groups = [
+                        [
+                            f"{root_url}/by-year/{year}/SSOD_{station_id}_{year}.csv",
+                            f"{root_url}/by-year/{year}/ssod_{station_id}_{year}.csv"
+                        ]
+                        for year in range(start_ts.year, end_ts.year + 1)
+                    ]
+                else:
+                    url_groups = [[
+                        f"{root_url}/by-station/SSOD_{station_id}.csv",
+                        f"{root_url}/by-station/ssod_{station_id}.csv"
+                    ]]
+
+                for url_group in url_groups:
+                    for url in url_group:
+                        resp = requests.get(url, timeout=30)
+                        if resp.status_code == 404:
+                            continue
+                        resp.raise_for_status()
+                        if resp.text.strip():
+                            frames.append(pd.read_csv(io.StringIO(resp.text), low_memory=False))
+                        break
 
             if frames:
                 temp_df = pd.concat(frames, ignore_index=True)
@@ -981,6 +1029,9 @@ def get_data():
             has_advanced_access = True
         
         source = req.get('source', 'GHCND')
+        ssod_access_method = req.get('ssod_access_method', 'api')
+        if ssod_access_method not in ('api', 'bulk'):
+            ssod_access_method = 'api'
         station_id = req.get('station_id', '').split(' - ')[0]
         start_date = req.get('start_date')
         end_date = req.get('end_date')
@@ -998,7 +1049,10 @@ def get_data():
 
         thresh_params = {'TMIN': {'val': req.get('tmin_val'), 'dir': req.get('tmin_dir')}, 'TAVG': {'val': req.get('tavg_val'), 'dir': req.get('tavg_dir')}, 'TMAX': {'val': req.get('tmax_val'), 'dir': req.get('tmax_dir')}}
 
-        df = fetch_and_clean_data(source, station_id, start_date, end_date)
+        df = fetch_and_clean_data(
+            source, station_id, start_date, end_date,
+            ssod_access_method=ssod_access_method
+        )
         if df.empty:
             return jsonify({'status': 'error', 'message': get_translation('messages.station_data_error')})
 
@@ -1385,6 +1439,9 @@ def get_multi_stats():
         calculate_all_options = req.get('calculate_all_options') is True
         metric_order = ([selected_metric] + [m for m in metrics if m != selected_metric]) if calculate_all_options else [selected_metric]
         source, start_date, end_date = req.get('source', 'GHCND'), req.get('start_date'), req.get('end_date')
+        ssod_access_method = req.get('ssod_access_method', 'api')
+        if ssod_access_method not in ('api', 'bulk'):
+            ssod_access_method = 'api'
         month_filter, day_filter, period_mode = req.get('month_filter'), req.get('day_filter', '0'), req.get('period')
         hemisphere = req.get('hemisphere', 'north')
         season_name = get_period_season_name(period_mode, hemisphere)
@@ -1578,7 +1635,8 @@ def get_multi_stats():
                 df = fetch_and_clean_data(
                     source, sid, fetch_start, fetch_end,
                     valid_temperature_range=valid_temperature_range,
-                    xlsx_dataset_id=xlsx_dataset_id
+                    xlsx_dataset_id=xlsx_dataset_id,
+                    ssod_access_method=ssod_access_method
                 )
                 df = normalize_station_frame(df)
                 boundary_check_df = df.copy()
@@ -1738,7 +1796,10 @@ def calendar_months_stats():
     except: pass
 
     if source == 'xlsx': station_name, station_info = get_xlsx_station_metadata(station_id)
-    df = fetch_and_clean_data(source, station_id, start_date, end_date)
+    df = fetch_and_clean_data(
+        source, station_id, start_date, end_date,
+        ssod_access_method=request.args.get('ssod_access_method', 'api')
+    )
     
     if df.empty:
         return render_template('calendar_months_stats.html', tables=[], station_name=station_name, station_info=station_info, error_msg=get_translation('messages.station_data_error'))
@@ -1939,7 +2000,10 @@ def date_details():
             fetch_end = (pd.to_datetime(req_end) + pd.Timedelta(days=1)).strftime('%Y-%m-%d')
         except (TypeError, ValueError):
             pass
-        df = fetch_and_clean_data(source, station_id, fetch_start, fetch_end)
+        df = fetch_and_clean_data(
+            source, station_id, fetch_start, fetch_end,
+            ssod_access_method=request.args.get('ssod_access_method', 'api')
+        )
         boundary_check_df = df.copy()
         df = df[(df['DATE'] >= pd.to_datetime(req_start)) & (df['DATE'] <= pd.to_datetime(req_end))]
     
@@ -2102,7 +2166,10 @@ def period_stats():
                 fetch_end_date = (pd.to_datetime(end_date) + pd.Timedelta(days=1)).strftime('%Y-%m-%d')
         except (TypeError, ValueError):
             fetch_start_date, fetch_end_date = start_date, end_date
-        df = fetch_and_clean_data(source, station_id, fetch_start_date, fetch_end_date)
+        df = fetch_and_clean_data(
+            source, station_id, fetch_start_date, fetch_end_date,
+            ssod_access_method=request.args.get('ssod_access_method', 'api')
+        )
         if df.empty:
             return render_template('period_stats.html', station_name=station_name, station_info=station_info, 
                                    period_summary=None, period_stats=[], period_mode=period_mode,
@@ -2311,7 +2378,10 @@ def year_by_year():
                 station_info['elev'] = row.iloc[0]['ELEV']
 
         if source == 'xlsx': station_name, station_info = get_xlsx_station_metadata(station_id)
-        df = fetch_and_clean_data(source, station_id, start_date, end_date)
+        df = fetch_and_clean_data(
+            source, station_id, start_date, end_date,
+            ssod_access_method=request.args.get('ssod_access_method', 'api')
+        )
         if df.empty:
             return render_template('year_by_year.html', station_name=station_name, station_info=station_info,
                                    year_stats=[], error_msg=get_translation('messages.station_data_error'))
@@ -2384,7 +2454,10 @@ def extreme_temps():
 
     # Fetch ALL data (start_date=None, end_date=None)
     if source == 'xlsx': station_name, station_info = get_xlsx_station_metadata(station_id)
-    df = fetch_and_clean_data(source, station_id, None, None)
+    df = fetch_and_clean_data(
+        source, station_id, None, None,
+        ssod_access_method=request.args.get('ssod_access_method', 'api')
+    )
     
     results = []
     if not df.empty:

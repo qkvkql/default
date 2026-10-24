@@ -50,7 +50,7 @@ A comprehensive Flask-based web application for analyzing global daily weather d
 *   **Data Fetching**: 
     *   **GHCND**: Fetches CSV data directly from NOAA S3 buckets.
     *   **GSOD**: Uses the NCEI API to fetch JSON data.
-    *   **SSODv2**: Uses NCEI station/year CSVs for bounded date ranges and station-period files for broad ranges.
+*   **SSODv2**: Uses the NCEI Access Data Service API by default; the station/year and station-period bulk CSV URLs remain selectable for availability checks.
 *   **Data Processing**: Cleans raw data, converts GSOD temperatures from Fahrenheit to Celsius, and filters records by date and element.
 *   **Statistics Engine**: Calculates complex metrics like "Explosive Power" (standard deviation of temperature anomalies) and consecutive day streaks matching specific criteria.
 
