@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "Ogimet Statistical Temperatures",
+  "version": "1.0.0",
+  "description": "Calculate daily minimum, maximum, and scheduled 3-hour average temperatures from Ogimet SYNOP pages.",
+  "permissions": ["storage", "clipboardWrite"],
+  "host_permissions": ["https://ogimet.com/*"],
+  "content_scripts": [{"matches": ["https://ogimet.com/cgi-bin/gsynres*"], "js": ["content.js"], "run_at": "document_idle"}],
+  "action": {"default_title": "Ogimet statistical temperatures"}
+}
