@@ -17,6 +17,7 @@
       .head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;font-size:16px;font-weight:700;color:#07599a}.head-actions{display:flex;gap:3px;flex:none}.head button{width:28px;height:28px;border:0;border-radius:4px;background:none;font-size:20px;line-height:1;cursor:pointer;color:#667}.head button:hover{background:#edf4f9}
       label{display:block;margin:8px 0 3px;font-weight:600}input,select{width:100%;height:34px;padding:5px 8px;border:1px solid #aab7c4;border-radius:4px;font:14px Arial,sans-serif;color:#172033;background:#fff}#endTime{border:2px solid #c62828}
       .dates{display:flex;gap:8px}.dates>div{flex:1;min-width:0}button.run{width:100%;margin-top:12px;padding:9px;border:0;border-radius:5px;background:#0878bd;color:white;font-weight:700;font-size:14px;cursor:pointer}button:disabled{opacity:.6;cursor:wait}
+      .checkbox-row{display:flex;align-items:center;gap:7px;margin:8px 0 3px;font-weight:600}.checkbox-row input{width:16px;height:16px;margin:0;flex:none}
       button.copy{margin-top:8px;padding:6px 10px;border:1px solid #9ab1c5;border-radius:4px;background:#fff;color:#07599a;font-weight:600;cursor:pointer}.status{margin-top:10px;white-space:pre-line;color:#27374a}.result{margin-top:9px;padding:9px;background:#f0f7fc;border-radius:5px;font-size:15px;font-weight:600;white-space:pre-line}.result.error{background:#fff0ed;color:#9b2c1f}.result .avg-count.incomplete{color:#c62828}.points{max-height:220px;overflow:auto;margin:8px 0 0;padding:8px;background:#f7f8fa;border:1px solid #d9e0e7;border-radius:5px;font:12px/1.5 Consolas,monospace;white-space:pre;tab-size:4}.hint{margin-top:6px;color:#617286;font-size:12px}
       .panel.collapsed{width:max-content;max-width:calc(100vw - 16px);max-height:none;overflow:visible;padding:7px 10px}.panel.collapsed .head{margin:0}.panel.collapsed>:not(.head){display:none}
       .archive-tool{margin-top:14px;padding-top:10px;border-top:1px solid #d9e0e7}.archive-tool-head{display:flex;align-items:center;justify-content:space-between;gap:8px;font-weight:700;color:#07599a}.archive-tool-head button{border:0;background:none;color:#07599a;font-size:18px;cursor:pointer}.archive-tool-body[hidden]{display:none}.archive-tool-body button{width:100%;margin-top:8px;padding:8px;border:1px solid #9ab1c5;border-radius:4px;background:#fff;color:#07599a;font-weight:600;cursor:pointer}.archive-tool-body button.primary{border:0;background:#0878bd;color:#fff}.archive-tool-body button:disabled{opacity:.55;cursor:wait}.archive-status{margin-top:7px;color:#617286;font-size:12px;white-space:pre-line}
@@ -26,6 +27,7 @@
       <label for="periodEnd">Period end date</label><input id="periodEnd" type="text" inputmode="numeric" placeholder="YYYY-MM-DD" maxlength="10" pattern="\\d{4}-\\d{2}-\\d{2}" autocomplete="off">
       <label for="selection">Page selection period</label><select id="selection"><option value="7" selected>7 days</option><option value="30">30 days</option></select>
       <label for="endTime">Statistical end time (00–24)</label><input id="endTime" type="text" inputmode="numeric" value="20" placeholder="00–24" maxlength="2" pattern="\\d{2}" autocomplete="off">
+      <label class="checkbox-row"><input id="isChineseStation" type="checkbox">Is Chinese Station</label>
       <div class="dates"><div><label for="startDate">Target start date</label><input id="startDate" type="text" inputmode="numeric" placeholder="YYYY-MM-DD" maxlength="10" pattern="\\d{4}-\\d{2}-\\d{2}" autocomplete="off"></div><div><label for="targetEnd">Target end date</label><input id="targetEnd" type="text" inputmode="numeric" placeholder="YYYY-MM-DD" maxlength="10" pattern="\\d{4}-\\d{2}-\\d{2}" autocomplete="off"></div></div>
       <button class="run">Get min/max/avg</button>
       <div class="status" role="status">Open an RP5 weather archive page to calculate temperatures.</div>
@@ -83,6 +85,7 @@
     $('#selection').value = String(job.selection);
     $('#startDate').value = job.startDate;
     $('#targetEnd').value = job.targetEnd;
+    $('#isChineseStation').checked = Boolean(job.isChineseStation);
   }
 
   function startCalculation() {
@@ -92,6 +95,7 @@
       selection: Number($('#selection').value),
       startDate: $('#startDate').value,
       targetEnd: $('#targetEnd').value,
+      isChineseStation: $('#isChineseStation').checked,
       phase: 'setup',
       startedAt: Date.now()
     };
@@ -308,7 +312,7 @@
         const start = new Date(end);
         start.setDate(start.getDate() - 1);
         const dailyRows = [...new Set([dateKey(start), dateKey(end)])].flatMap((key) => byDate.get(key) || []);
-        const stats = calculate(dailyRows, { startDate: iso, targetEnd: iso, endTime });
+        const stats = calculate(dailyRows, { startDate: iso, targetEnd: iso, endTime, isChineseStation: $('#isChineseStation').checked });
         const txAtEndTime = dailyRows.find((row) => row.date.getTime() === end.getTime() && row.tx !== null)?.tx ?? null;
         const perfectAvg = stats.count === stats.required && stats.avg !== null;
         output.push([stationNumber, stationName, iso, iso.slice(0, 4), iso.slice(5, 7), iso.slice(8, 10),
@@ -601,14 +605,24 @@
         .map((r) => r.t)
         .filter((v) => v !== null);
       const dayReported = rows.filter((r) => r.date >= midpoint && r.date <= dayEnd);
-      const reportedMins = dayReported.map((r) => r.tn).filter((v) => v !== null);
-      const reportedMaxes = dayReported.map((r) => r.tx).filter((v) => v !== null);
+      const endRow = job.isChineseStation ? rows.find((r) => r.date.getTime() === dayEnd.getTime()) : null;
+      const reportedMins = job.isChineseStation
+        ? (endRow?.tn !== null && endRow?.tn !== undefined ? [endRow.tn] : [])
+        : dayReported.map((r) => r.tn).filter((v) => v !== null);
+      const reportedMaxes = job.isChineseStation
+        ? (endRow?.tx !== null && endRow?.tx !== undefined ? [endRow.tx] : [])
+        : dayReported.map((r) => r.tx).filter((v) => v !== null);
       const dayValues = [...dayHourly, ...reportedMins, ...reportedMaxes];
 
       if (dayValues.length) {
         const reportedMin = reportedMins.length ? Math.min(...reportedMins) : null;
         const reportedMax = reportedMaxes.length ? Math.max(...reportedMaxes) : null;
-        if (isSingleTargetDate && reportedMin !== null && dayHourly.length && Math.abs(reportedMin - Math.min(...dayHourly)) >= MAX_FOR_COMPARE) {
+        if (job.isChineseStation) {
+          const dayMin = reportedMin ?? (dayHourly.length ? Math.min(...dayHourly) : null);
+          const dayMax = reportedMax ?? (dayHourly.length ? Math.max(...dayHourly) : null);
+          if (dayMin !== null) min = min === null ? dayMin : Math.min(min, dayMin);
+          if (dayMax !== null) max = max === null ? dayMax : Math.max(max, dayMax);
+        } else if (isSingleTargetDate && reportedMin !== null && dayHourly.length && Math.abs(reportedMin - Math.min(...dayHourly)) >= MAX_FOR_COMPARE) {
           minIsSuspicious = true;
         } else {
           const dayMin = Math.min(...dayValues);
