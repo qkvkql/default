@@ -1450,7 +1450,7 @@
     }
 
     // ── If basic station and has data, fetch the daily mean temperature ────────
-    // Only fetch avg when the toggle is explicitly enabled (default OFF).
+    // Only fetch the auxiliary page when the avg toggle is enabled (default OFF).
     let avg = '';
     let hourlyMax = '';
     let hourlyMin = '';
@@ -1470,43 +1470,46 @@
           (configuredName && configuredName === stationName);
       });
       showHourlyExtrema = !specialStationsOnly || isSpecialStation;
-      // Build full YYYY-MM-DD date from the MM-DD input and current year
-      const now = new Date();
-      const yyyy = String(now.getFullYear());
-      const fullDate = `${yyyy}-${targetMMDD}`;
 
-      console.log(`[Tyarchive] Fetching avg temp: station=${stationNum} date=${fullDate}`);
+      if (fetchAvgEnabled) {
+        // Build full YYYY-MM-DD date from the MM-DD input and current year
+        const now = new Date();
+        const yyyy = String(now.getFullYear());
+        const fullDate = `${yyyy}-${targetMMDD}`;
 
-      // Show a waiting state on the button
-      if (currentBtn.isConnected) {
-        currentBtn.textContent = '⏳avg…';
-        currentBtn.disabled = true;
-      }
+        console.log(`[Tyarchive] Fetching auxiliary temperature data: station=${stationNum} date=${fullDate}`);
 
-      try {
-        const avgResp = await new Promise((resolve, reject) => {
-          chrome.runtime.sendMessage(
-            { action: 'fetchAvgTemp', station: stationNum, date: fullDate, includeExtrema: showHourlyExtrema },
-            (resp) => {
-              if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message));
-              resolve(resp);
-            }
-          );
-        });
-
-        if (avgResp && avgResp.ok) {
-          avg = avgResp.avg || '';
-          if (showHourlyExtrema) {
-            hourlyMax = avgResp.hourlyMax || '';
-            hourlyMin = avgResp.hourlyMin || '';
-            hourlyPointCount = avgResp.hourlyPointCount || '';
-          }
-          console.log(`[Tyarchive] Avg temp received: "${avg}"`);
-        } else {
-          console.warn('[Tyarchive] fetchAvgTemp failed:', avgResp?.error);
+        // Show a waiting state on the button
+        if (currentBtn.isConnected) {
+          currentBtn.textContent = '⏳avg…';
+          currentBtn.disabled = true;
         }
-      } catch (e) {
-        console.warn('[Tyarchive] fetchAvgTemp error:', e.message);
+
+        try {
+          const avgResp = await new Promise((resolve, reject) => {
+            chrome.runtime.sendMessage(
+              { action: 'fetchAvgTemp', station: stationNum, date: fullDate, includeExtrema: showHourlyExtrema },
+              (resp) => {
+                if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message));
+                resolve(resp);
+              }
+            );
+          });
+
+          if (avgResp && avgResp.ok) {
+            if (fetchAvgEnabled) avg = avgResp.avg || '';
+            if (showHourlyExtrema) {
+              hourlyMax = avgResp.hourlyMax || '';
+              hourlyMin = avgResp.hourlyMin || '';
+              hourlyPointCount = avgResp.hourlyPointCount || '';
+            }
+            console.log(`[Tyarchive] Avg temp received: "${avg}"`);
+          } else {
+            console.warn('[Tyarchive] fetchAvgTemp failed:', avgResp?.error);
+          }
+        } catch (e) {
+          console.warn('[Tyarchive] fetchAvgTemp error:', e.message);
+        }
       }
     }
 

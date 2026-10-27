@@ -348,11 +348,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           const val = results && results[0] && results[0].result;
           if (val) lastPageData = val;
 
-          // Wait for the average and both extrema, unless the page reports no data.
+          // The daily average may be unavailable even when hourly observations
+          // exist (for example, the special station's page can show "unable"
+          // above a populated Hourly Extrema section). Keep those results
+          // independent and wait for the hourly fields when they were requested.
           const isReady = value => value && !TRANSIENT.has(value.toLowerCase());
           const extremaReady = !includeExtrema ||
             (isReady(val?.hourlyMax) && isReady(val?.hourlyMin) && isReady(val?.hourlyPointCount));
-          if (val?.unable || (isReady(val?.avg) && extremaReady)) {
+          const averageReady = isReady(val?.avg) || val?.unable;
+          if ((averageReady && extremaReady) || (val?.unable && !includeExtrema)) {
             pageData = val;
             console.log(`[Tyarchive BG] fetchAvgTemp: got page values after ${elapsed} ms`, pageData);
             break;
@@ -366,15 +370,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           console.warn(`[Tyarchive BG] fetchAvgTemp: timed out after ${elapsed} ms; returning available values`, pageData);
         }
 
-        // "unable" → page has no mean temp for that date → return empty string
-        const noData = !pageData || pageData.unable;
+        // "unable" applies to the daily average only; hourly observations may
+        // still be present and must be returned for special stations.
         const usable = value => value && !TRANSIENT.has(value.toLowerCase()) ? value : '';
         sendResponse({
           ok: true,
-          avg: noData ? '' : usable(pageData.avg),
-          hourlyMax: noData ? '' : usable(pageData.hourlyMax),
-          hourlyMin: noData ? '' : usable(pageData.hourlyMin),
-          hourlyPointCount: noData ? '' : usable(pageData.hourlyPointCount)
+          avg: pageData?.unable ? '' : usable(pageData?.avg),
+          hourlyMax: usable(pageData?.hourlyMax),
+          hourlyMin: usable(pageData?.hourlyMin),
+          hourlyPointCount: usable(pageData?.hourlyPointCount)
         });
 
       } catch (err) {

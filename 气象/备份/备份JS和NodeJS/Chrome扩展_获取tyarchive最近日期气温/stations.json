@@ -972,6 +972,12 @@
     "level1": "内蒙古"
   },
   {
+    "USAF": "",
+    "cn_name": "姑娘湖",
+    "domes_id": "C2227",
+    "level1": "内蒙古"
+  },
+  {
     "USAF": "52633",
     "cn_name": "托勒",
     "domes_id": "",
@@ -987,6 +993,18 @@
     "USAF": "56001",
     "cn_name": "沱沱河",
     "domes_id": "",
+    "level1": "青海"
+  },
+  {
+    "USAF": "",
+    "cn_name": "西王母瑶池",
+    "domes_id": "X2068",
+    "level1": "青海"
+  },
+  {
+    "USAF": "",
+    "cn_name": "哈拉湖",
+    "domes_id": "X2081",
     "level1": "青海"
   },
   {
@@ -1030,6 +1048,12 @@
     "cn_name": "石渠",
     "domes_id": "",
     "level1": "四川"
+  },
+  {
+    "USAF": "",
+    "cn_name": "海坨山",
+    "domes_id": "A1490",
+    "level1": "北京"
   },
   {
     "USAF": "58968",
@@ -1117,7 +1141,7 @@
   },
   {
     "USAF": "",
-    "cn_name": "可可托海雪场",
+    "cn_name": "可可托海滑雪场",
     "domes_id": "Y6770",
     "level1": "新疆"
   },
