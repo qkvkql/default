@@ -246,6 +246,9 @@ function loadDataToTable(sourceKey) {
         } else {
             // stereotype column
             let stereotypeTd = tds[5];
+            if (whichSource[i]['is_star'] != null && String(whichSource[i]['is_star']).trim() !== '') {
+                stereotypeTd.classList.add('star-station-comment');
+            }
             stereotypeTd.innerHTML = `
                 <div>${whichSource[i]['stereotype']}</div>
             `;

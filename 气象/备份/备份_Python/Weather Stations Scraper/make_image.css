@@ -587,6 +587,11 @@ td.col-stereotype {
     word-wrap: break-word;
 }
 
+td.col-🪪.star-station-comment,
+td.col-stereotype.star-station-comment {
+    color: #ffffff;
+}
+
 tbody tr:hover {
     background-color: #111;
 }
