@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f6f8">
+  <title>Number Summary</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #202631;
+      background: #f5f6f8;
+      font-synthesis: none;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      padding: clamp(24px, 6vw, 72px) 20px;
+    }
+
+    main {
+      width: min(100%, 860px);
+      margin: 0 auto;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.8rem, 4vw, 2.5rem);
+      letter-spacing: -0.045em;
+    }
+
+    .intro {
+      margin: 10px 0 28px;
+      color: #687180;
+      line-height: 1.55;
+    }
+
+    .input-card, .results {
+      border: 1px solid #e1e5eb;
+      border-radius: 16px;
+      background: #fff;
+      box-shadow: 0 8px 28px rgb(27 39 56 / 5%);
+    }
+
+    .input-card { padding: 20px; }
+
+    .label-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 10px;
+    }
+
+    label { font-size: .95rem; font-weight: 650; }
+
+    .hint { color: #7a8492; font-size: .82rem; }
+
+    textarea {
+      display: block;
+      width: 100%;
+      min-height: 240px;
+      resize: vertical;
+      padding: 14px 15px;
+      border: 1px solid #d9dee6;
+      border-radius: 10px;
+      outline: none;
+      color: inherit;
+      background: #fcfcfd;
+      font: 15px/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      transition: border-color .15s, box-shadow .15s;
+    }
+
+    textarea:focus {
+      border-color: #5579e8;
+      box-shadow: 0 0 0 3px rgb(85 121 232 / 15%);
+    }
+
+    .actions {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 12px;
+    }
+
+    button {
+      padding: 8px 13px;
+      border: 1px solid #dce1e8;
+      border-radius: 8px;
+      color: #3c4654;
+      background: #fff;
+      font: inherit;
+      font-size: .88rem;
+      cursor: pointer;
+    }
+
+    button:hover { background: #f4f6f9; }
+    button:focus-visible { outline: 3px solid rgb(85 121 232 / 30%); outline-offset: 2px; }
+
+    .results {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      margin-top: 18px;
+      overflow: hidden;
+    }
+
+    .result {
+      min-width: 0;
+      padding: 20px;
+      background: #000000;
+      color: #ffffff;
+    }
+
+    .result + .result { border-left: 1px solid #333333; }
+
+    .result:first-child { background: #463f3a; }
+
+    .result-name {
+      display: block;
+      margin-bottom: 10px;
+      color: #ffffff;
+      font-size: .78rem;
+      font-weight: 650;
+      letter-spacing: .045em;
+      text-transform: uppercase;
+    }
+
+    output {
+      display: block;
+      overflow: hidden;
+      color: #ffffff;
+      font-size: clamp(1.2rem, 3vw, 1.65rem);
+      font-variant-numeric: tabular-nums;
+      font-weight: 650;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    #min { color: #f72585; }
+    #max { color: #ffff00; }
+    #avg { color: #4cc9f0; }
+
+    @media (max-width: 620px) {
+      .results { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .result:nth-child(3) { border-left: 0; border-top: 1px solid #333333; }
+      .result:nth-child(4) { border-top: 1px solid #333333; }
+    }
+
+    @media (max-width: 400px) {
+      .input-card { padding: 15px; }
+      .result { padding: 16px 13px; }
+      .hint { max-width: 130px; text-align: right; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Number Summary</h1>
+    <p class="intro">Paste or type text below. The summary updates as you type, counting every number it finds.</p>
+
+    <section class="input-card" aria-label="Text input">
+      <div class="label-row">
+        <label for="source-text">Your text</label>
+        <span class="hint">Numbers can be separated by spaces, letters, or symbols</span>
+      </div>
+      <textarea id="source-text" placeholder="For example: scores: 12, -4.5, and 8"></textarea>
+      <div class="actions">
+        <button id="clear-button" type="button">Clear</button>
+      </div>
+    </section>
+
+    <section class="results" aria-label="Number results" aria-live="polite">
+      <div class="result"><span class="result-name">Total Count</span><output id="count">0</output></div>
+      <div class="result"><span class="result-name">Min</span><output id="min">—</output></div>
+      <div class="result"><span class="result-name">Avg</span><output id="avg">—</output></div>
+      <div class="result"><span class="result-name">Max</span><output id="max">—</output></div>
+    </section>
+  </main>
+
+  <script>
+    const input = document.querySelector("#source-text");
+    const countOutput = document.querySelector("#count");
+    const minOutput = document.querySelector("#min");
+    const maxOutput = document.querySelector("#max");
+    const avgOutput = document.querySelector("#avg");
+
+    // A number is an integer or decimal, optionally with a leading sign.
+    // Letters and other punctuation delimit values; scientific notation is not used.
+    const numberPattern = /[+-]?(?:\d+\.?\d*|\.\d+)/g;
+
+    function formatNumber(value) {
+      if (Object.is(value, -0)) value = 0;
+      return Number(value.toPrecision(12)).toString();
+    }
+
+    function updateSummary() {
+      const values = (input.value.match(numberPattern) || [])
+        .map(Number)
+        .filter(Number.isFinite);
+
+      countOutput.value = String(values.length);
+      countOutput.textContent = String(values.length);
+
+      if (values.length === 0) {
+        for (const output of [minOutput, maxOutput, avgOutput]) {
+          output.value = "—";
+          output.textContent = "—";
+        }
+        return;
+      }
+
+      let min = Infinity;
+      let max = -Infinity;
+      let sum = 0;
+      for (const value of values) {
+        if (value < min) min = value;
+        if (value > max) max = value;
+        sum += value;
+      }
+
+      const results = [
+        [minOutput, formatNumber(min)],
+        [maxOutput, formatNumber(max)],
+        [avgOutput, formatNumber(sum / values.length)]
+      ];
+      for (const [output, value] of results) {
+        output.value = value;
+        output.textContent = value;
+      }
+    }
+
+    input.addEventListener("input", updateSummary);
+    document.querySelector("#clear-button").addEventListener("click", () => {
+      input.value = "";
+      updateSummary();
+      input.focus();
+    });
+
+    updateSummary();
+  </script>
+</body>
+</html>
