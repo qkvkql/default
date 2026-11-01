@@ -9,6 +9,7 @@ from timezonefinder import TimezoneFinder
 from zoneinfo import ZoneInfo # Python 3.9+
 import math
 import re
+from decimal import Decimal, ROUND_HALF_UP
 import json
 import openpyxl
 import random
@@ -286,10 +287,14 @@ def get_min_max(arr):
 def calculate_average(values):
     if not isinstance(values, list) or len(values) == 0:
         return 'error'
-    total = 0
+    total = Decimal('0')
     for v in values:
-        total += float(v)
-    return round(total/len(values), 2)
+        # Temperatures are already normalized to tenths. Convert through str
+        # so binary float representation cannot move an exact half across the
+        # rounding boundary (e.g. -8.525 must become -8.53).
+        total += Decimal(str(v))
+    average = total / Decimal(len(values))
+    return float(average.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP))
 
 def get_ogimet_hourly_url(str_of_USAF):
     return 'https://ogimet.com/cgi-bin/gsynres?ind=' + str_of_USAF + '&decoded=yes&ndays=7&ano=' + dt['YYYY'] + '&mes=' +dt['MM'] + '&day=' + dt['DD'] + '&hora=' + dt['hh']
