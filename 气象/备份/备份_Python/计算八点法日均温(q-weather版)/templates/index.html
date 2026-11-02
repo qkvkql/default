@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>8-point &amp; 4-point daily mean temperature</title>
+  <title>M8 &amp; M4 daily mean temperature</title>
   <style>
     :root {
       font-family: system-ui, "Segoe UI", Roboto, "PingFang SC", sans-serif;
@@ -229,20 +229,20 @@
 <body>
   <main>
     <div>
-    <h1>8-point &amp; 4-point daily mean temperature</h1>
+    <h1>M8 &amp; M4 daily mean temperature</h1>
     <p class="sub">
       Data from <a href="https://q-weather.info/" target="_blank" rel="noopener">q-weather.info</a>.
-      <strong>Daily 8-point:</strong> previous day <code>23:00</code> and selected day
+      <strong>M8 daily mean:</strong> previous day <code>23:00</code> and selected day
       <code>02, 05, 08, 11, 14, 17, 20</code> (all required for that mean).
-      <strong>Daily 4-point:</strong> selected day <code>02, 08, 14, 20</code> only.
-      After a daily result, use <strong>Load monthly averages</strong> to scan the whole calendar month (slow); partial means exclude missing hours from the average and list them.
-      Or use the <strong>Monthly averages</strong> block below with year and month only.
+      <strong>M4 daily mean:</strong> selected day <code>02, 08, 14, 20</code> only.
+      After a daily result, use <strong>Load monthly M8 / M4 averages</strong> to scan the whole calendar month (slow); partial means exclude missing hours from the average and list them.
+      Or use the <strong>Monthly M8 / M4 averages</strong> block below with year and month only.
     </p>
     <form id="f">
       <details id="bulkPanel" class="bulk-panel">
-        <summary>Bulk station averages</summary>
-        <p class="hint">Calculate both daily averages for the named stations in <code>bulk_stations.csv</code>, using the date below.</p>
-        <button type="button" id="btnBulk">Calculate bulk averages</button>
+        <summary>Bulk daily M8 / M4 averages</summary>
+        <p class="hint">Calculate M8 and M4 daily means for the named stations in <code>bulk_stations.csv</code>, using the date below.</p>
+        <button type="button" id="btnBulk">Calculate bulk M8 / M4</button>
         <div id="bulkOut"></div>
       </details>
       <div class="grid">
@@ -280,7 +280,7 @@
     </div>
 
     <section class="monthly-standalone" aria-labelledby="monthlyStandaloneH">
-      <h2 id="monthlyStandaloneH">Monthly averages</h2>
+      <h2 id="monthlyStandaloneH">Monthly M8 / M4 averages</h2>
       <p class="sub-sec">
         Partial means use all available key hourly points for the selected month. Bulk results use the stations in <code>bulk_stations.csv</code> and show available / expected points for each method.
       </p>
@@ -295,11 +295,11 @@
         </div>
       </div>
       <button type="button" id="btnMonthlyStandalone" class="btn-monthly">
-        Calculate monthly averages
+        Calculate M8 / M4 monthly means
       </button>
       <div id="monthlyStandaloneOut"></div>
       <button type="button" id="btnBulkMonthly" class="btn-monthly">
-        Calculate monthly averages for bulk stations
+        Calculate bulk M8 / M4 monthly means
       </button>
       <div id="bulkMonthlyOut"></div>
     </section>
@@ -491,9 +491,9 @@
         }
         bulkResultsForCopy = data.results || [];
         let html = '<p class="hint">Date: ' + esc(data.date) + '</p>' +
-          '<div class="bulk-copy-actions"><button type="button" class="btn-copy-bulk" data-method="eight_point">Copy 8-point averages</button>' +
-          '<button type="button" class="btn-copy-bulk" data-method="four_point">Copy 4-point averages</button></div>' +
-          '<table><thead><tr><th>Station</th><th>8-point avg (°C)</th><th>4-point avg (°C)</th></tr></thead><tbody>';
+          '<div class="bulk-copy-actions"><button type="button" class="btn-copy-bulk" data-method="eight_point">Copy M8 averages</button>' +
+          '<button type="button" class="btn-copy-bulk" data-method="four_point">Copy M4 averages</button></div>' +
+          '<table><thead><tr><th>Station</th><th>M8 daily avg (°C)</th><th>M4 daily avg (°C)</th></tr></thead><tbody>';
         for (const item of data.results || []) {
           html += '<tr><td>' + esc(item.station_name || "Station") + ' (' + esc(item.station) + ')</td><td>';
           html += item.error ? 'error' : item.eight_point_ok ? copyValueHtml(item.eight_point_average) : 'unable';
@@ -507,7 +507,7 @@
         html += '</tbody></table>';
         try {
           await navigator.clipboard.writeText(bulkAverageLines("eight_point").join("\n"));
-          html += '<p class="hint">8-point averages copied to clipboard, one per station.</p>';
+          html += '<p class="hint">M8 averages copied to clipboard, one per station.</p>';
         } catch (clipboardError) {
           html += '<p class="err">Could not copy averages to clipboard: ' + esc(String(clipboardError)) + '</p>';
         }
@@ -603,7 +603,7 @@
       return (
         '<div id="monthlyWrap" class="monthly-actions">' +
         '<p class="hint">Uses the <strong>calendar month</strong> of the selected date (dozens of requests; often ~1 minute).</p>' +
-        '<button type="button" id="btnMonthly" class="btn-monthly">Load monthly averages</button>' +
+        '<button type="button" id="btnMonthly" class="btn-monthly">Load monthly M8 / M4 averages</button>' +
         '<div id="monthlyOut"></div></div>'
       );
     }
@@ -623,7 +623,7 @@
         " — partial means</h2>";
 
       h += '<div class="blk">';
-      h += "<p><strong>8-point window</strong> (all hours used for any daily 8-point mean in this month)</p>";
+      h += "<p><strong>M8 window</strong> (all key hours used for daily M8 means in this month)</p>";
       if (e8.mean != null) {
         h +=
           '<p class="mean-big">' +
@@ -640,7 +640,7 @@
       h += "</div>";
 
       h += '<div class="blk">';
-      h += "<p><strong>4-point window</strong> (02 / 08 / 14 / 20 each day)</p>";
+      h += "<p><strong>M4 window</strong> (02 / 08 / 14 / 20 each day)</p>";
       if (e4.mean != null) {
         h +=
           '<p class="mean-big">' +
@@ -703,11 +703,11 @@
           esc(data.date) +
           "</p>";
 
-        html += '<p class="avg-line"><span class="e8">8-point: ';
+        html += '<p class="avg-line"><span class="e8">M8: ';
         html += data.ok
           ? copyValueHtml(data.average)
           : '<span class="na">unable</span>';
-        html += '</span><span class="sep">·</span><span class="e4">4-point: ';
+        html += '</span><span class="sep">·</span><span class="e4">M4: ';
         html += data.four_point_ok
           ? copyValueHtml(data.four_point_average)
           : '<span class="na">unable</span>';
@@ -732,7 +732,7 @@
           html += tableFromPoints(data.relevant_hours || data.points);
         } else {
           html +=
-            '<p class="empty">Daily 8-point cannot be computed — missing hour(s)</p><ul>';
+            '<p class="empty">Daily M8 cannot be computed — missing hour(s)</p><ul>';
           for (const m of data.missing) {
             html += "<li>" + esc(m) + "</li>";
           }
@@ -741,7 +741,7 @@
 
         if (!data.four_point_ok && (data.four_point_missing || []).length) {
           html +=
-            '<p class="empty" style="margin-top:0.75rem">Daily 4-point cannot be computed — missing: ' +
+            '<p class="empty" style="margin-top:0.75rem">Daily M4 cannot be computed — missing: ' +
             esc((data.four_point_missing || []).join(", ")) +
             "</p>";
         }
@@ -769,13 +769,13 @@
               return;
             }
             monthlyOut.innerHTML = monthlyBlock(dm);
-            btnMonthly.textContent = "Reload monthly averages";
+            btnMonthly.textContent = "Reload monthly M8 / M4 averages";
           } catch (errm) {
             monthlyOut.innerHTML = '<p class="err">' + esc(String(errm)) + "</p>";
           } finally {
             btnMonthly.disabled = false;
             if (btnMonthly.textContent === "Loading…") {
-              btnMonthly.textContent = "Load monthly averages";
+              btnMonthly.textContent = "Load monthly M8 / M4 averages";
             }
           }
         });
@@ -845,8 +845,8 @@
         let html = '<p class="hint">Month: ' + esc(data.month) +
           ' · averages use available key hourly points, even when coverage is incomplete.</p>' +
           '<div style="overflow-x:auto"><table><thead><tr><th>Station</th>' +
-          '<th>8-point monthly avg (°C)</th><th>8-point available / expected</th>' +
-          '<th>4-point monthly avg (°C)</th><th>4-point available / expected</th></tr></thead><tbody>';
+          '<th>M8 monthly avg (°C)</th><th>M8 key hourly points (available / expected)</th>' +
+          '<th>M4 monthly avg (°C)</th><th>M4 key hourly points (available / expected)</th></tr></thead><tbody>';
         for (const item of data.results || []) {
           html += '<tr><td>' + esc(item.station_name || "Station") + ' (' + esc(item.station) + ')</td>';
           if (item.error) {
