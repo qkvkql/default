@@ -241,7 +241,7 @@
     <form id="f">
       <details id="bulkPanel" class="bulk-panel">
         <summary>Bulk station averages</summary>
-        <p class="hint">Calculate both daily averages for the named stations in <code>bulk_stations.json</code>, using the date below.</p>
+        <p class="hint">Calculate both daily averages for the named stations in <code>bulk_stations.csv</code>, using the date below.</p>
         <button type="button" id="btnBulk">Calculate bulk averages</button>
         <div id="bulkOut"></div>
       </details>
@@ -282,7 +282,7 @@
     <section class="monthly-standalone" aria-labelledby="monthlyStandaloneH">
       <h2 id="monthlyStandaloneH">Monthly averages</h2>
       <p class="sub-sec">
-        Same rules as “Load monthly averages”: partial means over all required hours in that calendar month (8-point and 4-point windows). Uses the station number above. Many requests — often about a minute.
+        Partial means use all available key hourly points for the selected month. Bulk results use the stations in <code>bulk_stations.csv</code> and show available / expected points for each method.
       </p>
       <div class="grid">
         <div>
@@ -298,6 +298,10 @@
         Calculate monthly averages
       </button>
       <div id="monthlyStandaloneOut"></div>
+      <button type="button" id="btnBulkMonthly" class="btn-monthly">
+        Calculate monthly averages for bulk stations
+      </button>
+      <div id="bulkMonthlyOut"></div>
     </section>
   </main>
   <script>
@@ -309,6 +313,8 @@
     const monthlyMonthEl = $("monthlyMonth");
     const btnMonthlyStandalone = $("btnMonthlyStandalone");
     const monthlyStandaloneOut = $("monthlyStandaloneOut");
+    const btnBulkMonthly = $("btnBulkMonthly");
+    const bulkMonthlyOut = $("bulkMonthlyOut");
     const stationDropdownEl = $("stationDropdown");
     const btnBulk = $("btnBulk");
     const bulkOut = $("bulkOut");
@@ -816,6 +822,49 @@
       } finally {
         btnMonthlyStandalone.disabled = false;
         btnMonthlyStandalone.textContent = prevLabel;
+      }
+    });
+
+    btnBulkMonthly.addEventListener("click", async () => {
+      btnBulkMonthly.disabled = true;
+      const previousText = btnBulkMonthly.textContent;
+      btnBulkMonthly.textContent = "Calculating…";
+      bulkMonthlyOut.innerHTML = '<p class="hint">Calculating partial monthly means for each CSV station. This may take several minutes…</p>';
+      const query = new URLSearchParams({
+        year: monthlyYearEl.value,
+        month: monthlyMonthEl.value,
+      });
+      try {
+        const response = await fetch("/api/bulk-monthly?" + query.toString());
+        const data = await response.json();
+        if (!response.ok) {
+          bulkMonthlyOut.innerHTML = '<p class="err">' + esc(data.error || "Bulk monthly calculation failed") + "</p>";
+          return;
+        }
+
+        let html = '<p class="hint">Month: ' + esc(data.month) +
+          ' · averages use available key hourly points, even when coverage is incomplete.</p>' +
+          '<div style="overflow-x:auto"><table><thead><tr><th>Station</th>' +
+          '<th>8-point monthly avg (°C)</th><th>8-point available / expected</th>' +
+          '<th>4-point monthly avg (°C)</th><th>4-point available / expected</th></tr></thead><tbody>';
+        for (const item of data.results || []) {
+          html += '<tr><td>' + esc(item.station_name || "Station") + ' (' + esc(item.station) + ')</td>';
+          if (item.error) {
+            html += '<td colspan="4" class="err">' + esc(item.error) + '</td></tr>';
+            continue;
+          }
+          html += '<td>' + (item.eight_point_average == null ? '—' : copyValueHtml(item.eight_point_average)) + '</td>' +
+            '<td>' + esc(item.eight_point_available) + ' / ' + esc(item.eight_point_expected) + '</td>' +
+            '<td>' + (item.four_point_average == null ? '—' : copyValueHtml(item.four_point_average)) + '</td>' +
+            '<td>' + esc(item.four_point_available) + ' / ' + esc(item.four_point_expected) + '</td></tr>';
+        }
+        html += '</tbody></table></div>';
+        bulkMonthlyOut.innerHTML = html;
+      } catch (error) {
+        bulkMonthlyOut.innerHTML = '<p class="err">' + esc(String(error)) + '</p>';
+      } finally {
+        btnBulkMonthly.disabled = false;
+        btnBulkMonthly.textContent = previousText;
       }
     });
 

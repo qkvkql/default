@@ -585,12 +585,18 @@
     return `${formatDate(date)} ${String(date.getHours()).padStart(2, "0")}:00`;
   }
 
-  function roundHalfUp(value, decimals) {
-    return Number(Math.round(Number(value + "e" + decimals)) + "e-" + decimals);
+  function roundHalfAwayFromZero(value, decimals) {
+    const numericValue = Number(value);
+    const factor = 10 ** decimals;
+    const magnitude = Math.abs(numericValue) * factor;
+    const roundedMagnitude = Math.floor(
+      magnitude + 0.5 + Number.EPSILON * Math.max(1, magnitude)
+    );
+    return Math.sign(numericValue) * roundedMagnitude / factor;
   }
 
   function formatAverage(average) {
-    return average == null ? "--" : roundHalfUp(average, 2).toFixed(2);
+    return average == null ? "--" : roundHalfAwayFromZero(average, 2).toFixed(2);
   }
 
   function renderReport(report) {
