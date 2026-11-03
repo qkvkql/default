@@ -278,14 +278,14 @@ select {
 }
 
 .date-range-adjust-btn {
-    width: 38px;
+    min-width: 48px;
     height: 38px;
-    padding: 0;
+    padding: 0 8px;
     border: 1px solid #bbb;
     border-radius: 4px;
     background: #f8f9fa;
     color: #333;
-    font-size: 1.25rem;
+    font-size: 1rem;
     line-height: 1;
     cursor: pointer;
 }
