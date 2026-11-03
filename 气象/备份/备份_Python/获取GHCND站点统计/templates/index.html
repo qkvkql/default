@@ -190,6 +190,12 @@
                             <input type="text" id="endDate" value="2100-12-31" placeholder="YYYY-MM-DD"
                                 inputmode="numeric" maxlength="10" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}"
                                 title="Enter a date in YYYY-MM-DD format">
+                            <div class="date-range-adjusters" aria-label="Adjust date range by 10 years">
+                                <button type="button" class="date-range-adjust-btn" aria-label="Decrease date range by 10 years"
+                                    title="Decrease date range by 10 years" onclick="shiftDateRangeYears(-10)">&#8595;</button>
+                                <button type="button" class="date-range-adjust-btn" aria-label="Increase date range by 10 years"
+                                    title="Increase date range by 10 years" onclick="shiftDateRangeYears(10)">&#8593;</button>
+                            </div>
                         </div>
 
                         <div class="param-row">

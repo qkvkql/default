@@ -314,30 +314,32 @@ async function fetchDefaultStationDetails(query) {
     } catch (err) { console.error(err); }
 }
 
+function isValidDateString(value) {
+    const match = value.match(/^([0-9]{4})-([0-9]{2})-([0-9]{2})$/);
+    if (!match) return false;
+
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const parsed = new Date(0);
+    parsed.setUTCFullYear(year, month - 1, day);
+    parsed.setUTCHours(0, 0, 0, 0);
+    return parsed.getUTCFullYear() === year &&
+        parsed.getUTCMonth() === month - 1 &&
+        parsed.getUTCDate() === day;
+}
+
 function validateDateRange() {
     const dateInputs = [
         document.getElementById('startDate'),
         document.getElementById('endDate')
     ];
-    const datePattern = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/;
 
     for (const input of dateInputs) {
         const value = input.value;
         if (!value) continue;
 
-        const match = value.match(datePattern);
-        if (match) {
-            const [, yearText, monthText, dayText] = match;
-            const year = Number(yearText);
-            const month = Number(monthText);
-            const day = Number(dayText);
-            const parsed = new Date(0);
-            parsed.setUTCFullYear(year, month - 1, day);
-            parsed.setUTCHours(0, 0, 0, 0);
-            if (parsed.getUTCFullYear() === year &&
-                parsed.getUTCMonth() === month - 1 &&
-                parsed.getUTCDate() === day) continue;
-        }
+        if (isValidDateString(value)) continue;
 
         const errorMsg = document.getElementById('errorMsg');
         if (errorMsg) errorMsg.textContent = 'Enter dates in YYYY-MM-DD format (for example, 2020-01-31).';
@@ -348,6 +350,34 @@ function validateDateRange() {
     const errorMsg = document.getElementById('errorMsg');
     if (errorMsg) errorMsg.textContent = '';
     return true;
+}
+
+function shiftDateRangeYears(amount) {
+    if (!validateDateRange()) return;
+
+    const dateInputs = [
+        document.getElementById('startDate'),
+        document.getElementById('endDate')
+    ];
+    const updates = [];
+
+    for (const input of dateInputs) {
+        if (!input.value) {
+            updates.push('');
+            continue;
+        }
+
+        const year = Number(input.value.slice(0, 4)) + amount;
+        const updatedDate = `${String(year).padStart(4, '0')}${input.value.slice(4)}`;
+        if (year < 0 || year > 9999 || !isValidDateString(updatedDate)) {
+            const errorMsg = document.getElementById('errorMsg');
+            if (errorMsg) errorMsg.textContent = 'Cannot shift this date by 10 years while keeping a valid date.';
+            return;
+        }
+        updates.push(updatedDate);
+    }
+
+    dateInputs.forEach((input, index) => { input.value = updates[index]; });
 }
 
 function applyQuickDateRange() {
