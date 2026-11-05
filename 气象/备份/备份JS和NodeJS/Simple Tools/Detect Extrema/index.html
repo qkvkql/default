@@ -16,6 +16,8 @@
 
     * { box-sizing: border-box; }
 
+    [hidden] { display: none !important; }
+
     body {
       min-height: 100vh;
       margin: 0;
@@ -143,6 +145,73 @@
     #max { color: #ffff00; }
     #avg { color: #4cc9f0; }
 
+    .count-filter-card {
+      margin-top: 18px;
+      padding: 20px;
+      border: 1px solid #e1e5eb;
+      border-radius: 16px;
+      background: #fff;
+      box-shadow: 0 8px 28px rgb(27 39 56 / 5%);
+    }
+
+    .count-filter-card h2 {
+      margin: 0 0 14px;
+      font-size: 1rem;
+    }
+
+    .count-filter-controls {
+      display: flex;
+      align-items: end;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .control-field {
+      display: grid;
+      gap: 6px;
+      min-width: 140px;
+    }
+
+    .control-field label {
+      color: #596372;
+      font-size: .82rem;
+      font-weight: 600;
+    }
+
+    .control-field select, .control-field input {
+      width: 100%;
+      min-height: 40px;
+      padding: 8px 10px;
+      border: 1px solid #d9dee6;
+      border-radius: 8px;
+      color: #202631;
+      background: #fff;
+      font: inherit;
+    }
+
+    .control-field select:focus, .control-field input:focus {
+      border-color: #5579e8;
+      outline: 3px solid rgb(85 121 232 / 15%);
+    }
+
+    .threshold-fields { display: contents; }
+
+    .matching-result {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      margin: 18px 0 0;
+      color: #687180;
+      font-size: .9rem;
+    }
+
+    #matching-count {
+      color: #202631;
+      font-size: 1.35rem;
+      font-variant-numeric: tabular-nums;
+      font-weight: 700;
+    }
+
     @media (max-width: 620px) {
       .results { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .result:nth-child(3) { border-left: 0; border-top: 1px solid #333333; }
@@ -178,6 +247,36 @@
       <div class="result"><span class="result-name">Avg</span><output id="avg">—</output></div>
       <div class="result"><span class="result-name">Max</span><output id="max">—</output></div>
     </section>
+
+    <section class="count-filter-card" aria-labelledby="matching-count-title">
+      <h2 id="matching-count-title">Matching Count</h2>
+      <div class="count-filter-controls">
+        <div class="control-field">
+          <label for="count-type">Count type</label>
+          <select id="count-type">
+            <option value="none">Not count</option>
+            <option value="lte">≤ (less than or equal to)</option>
+            <option value="gte">≥ (greater than or equal to)</option>
+            <option value="between">Between (inclusive)</option>
+          </select>
+        </div>
+        <div class="threshold-fields" id="threshold-fields" hidden>
+          <div class="control-field" id="single-threshold-field">
+            <label for="single-threshold">Threshold</label>
+            <input id="single-threshold" type="number" step="any" inputmode="decimal">
+          </div>
+          <div class="control-field" id="min-threshold-field" hidden>
+            <label for="min-threshold">Min boundary</label>
+            <input id="min-threshold" type="number" step="any" inputmode="decimal">
+          </div>
+          <div class="control-field" id="max-threshold-field" hidden>
+            <label for="max-threshold">Max boundary</label>
+            <input id="max-threshold" type="number" step="any" inputmode="decimal">
+          </div>
+        </div>
+      </div>
+      <p class="matching-result">Matching numbers <output id="matching-count">—</output></p>
+    </section>
   </main>
 
   <script>
@@ -186,6 +285,15 @@
     const minOutput = document.querySelector("#min");
     const maxOutput = document.querySelector("#max");
     const avgOutput = document.querySelector("#avg");
+    const countType = document.querySelector("#count-type");
+    const thresholdFields = document.querySelector("#threshold-fields");
+    const singleThresholdField = document.querySelector("#single-threshold-field");
+    const minThresholdField = document.querySelector("#min-threshold-field");
+    const maxThresholdField = document.querySelector("#max-threshold-field");
+    const singleThreshold = document.querySelector("#single-threshold");
+    const minThreshold = document.querySelector("#min-threshold");
+    const maxThreshold = document.querySelector("#max-threshold");
+    const matchingCountOutput = document.querySelector("#matching-count");
 
     // A number is an integer or decimal, optionally with a leading sign.
     // Letters and other punctuation delimit values; scientific notation is not used.
@@ -196,6 +304,36 @@
       return Number(value.toPrecision(12)).toString();
     }
 
+    function updateMatchingCount(values) {
+      const type = countType.value;
+      thresholdFields.hidden = type === "none";
+      singleThresholdField.hidden = type === "none" || type === "between";
+      minThresholdField.hidden = type !== "between";
+      maxThresholdField.hidden = type !== "between";
+
+      if (type === "none") {
+        matchingCountOutput.value = "—";
+        matchingCountOutput.textContent = "—";
+        return;
+      }
+
+      let matches;
+      if (type === "lte" || type === "gte") {
+        const boundary = singleThreshold.valueAsNumber;
+        if (!Number.isFinite(boundary)) matches = null;
+        else matches = values.filter(value => type === "lte" ? value <= boundary : value >= boundary).length;
+      } else {
+        const minimum = minThreshold.valueAsNumber;
+        const maximum = maxThreshold.valueAsNumber;
+        if (!Number.isFinite(minimum) || !Number.isFinite(maximum)) matches = null;
+        else matches = values.filter(value => value >= minimum && value <= maximum).length;
+      }
+
+      const result = matches === null ? "—" : String(matches);
+      matchingCountOutput.value = result;
+      matchingCountOutput.textContent = result;
+    }
+
     function updateSummary() {
       const values = (input.value.match(numberPattern) || [])
         .map(Number)
@@ -203,6 +341,7 @@
 
       countOutput.value = String(values.length);
       countOutput.textContent = String(values.length);
+      updateMatchingCount(values);
 
       if (values.length === 0) {
         for (const output of [minOutput, maxOutput, avgOutput]) {
@@ -233,6 +372,10 @@
     }
 
     input.addEventListener("input", updateSummary);
+    countType.addEventListener("change", updateSummary);
+    for (const threshold of [singleThreshold, minThreshold, maxThreshold]) {
+      threshold.addEventListener("input", updateSummary);
+    }
     document.querySelector("#clear-button").addEventListener("click", () => {
       input.value = "";
       updateSummary();
