@@ -176,6 +176,14 @@ def generate_html(stations, output_file="站点大全.html"):
             border: 1px solid #ccc; border-radius: 5px; 
         }
 
+        .search-sort-row {
+            display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 10px;
+        }
+        .sort-select {
+            padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 5px;
+            background: #fff;
+        }
+
         .checkbox-wrapper {
             display: flex; align-items: center; font-size: 18px; font-weight: bold; color: #333;
             background: #e9ecef; padding: 10px 20px; border-radius: 50px;
@@ -256,6 +264,19 @@ def generate_html(stations, output_file="站点大全.html"):
         <!-- Updated Placeholder to reflect RP5 is searchable -->
         <input type="text" class="search-input" id="searchInput" onkeyup="filterStations()" 
                placeholder="Search by Name, USAF, RP5, or ID...">
+        <div class="search-sort-row">
+            <label for="sortField">Sort by:</label>
+            <select class="sort-select" id="sortField" onchange="sortStations()">
+                <option value="">Default order</option>
+                <option value="elevation">Elevation</option>
+                <option value="latitude">Latitude</option>
+                <option value="longitude">Longitude</option>
+            </select>
+            <select class="sort-select" id="sortDirection" aria-label="Sort direction" onchange="sortStations()">
+                <option value="asc">Ascending</option>
+                <option value="desc">Descending</option>
+            </select>
+        </div>
                
         <div id="timeDisplay" style="color: #666; font-size: 0.9em;"></div>
     </div>
@@ -263,7 +284,7 @@ def generate_html(stations, output_file="站点大全.html"):
     <div class="grid" id="stationGrid">
     """
 
-    for data in stations:
+    for station_order, data in enumerate(stations):
         gen_instance = StationUrlGenerators(data)
         
         # Prepare Data
@@ -288,7 +309,7 @@ def generate_html(stations, output_file="站点大全.html"):
             coord_val = ""
 
         html_content += f"""
-        <div class="card" data-search="{search_terms}">
+        <div class="card" data-search="{search_terms}" data-elevation="{elev}" data-latitude="{lat}" data-longitude="{lon}" data-order="{station_order}">
             <h3>{display_name}</h3>
             <div class="meta">
                 <span class="meta-label">ID:</span> {id_val} <br>
@@ -396,6 +417,27 @@ def generate_html(stations, output_file="站点大全.html"):
                     cards[i].style.display = "none";
                 }
             }
+        }
+
+        function sortStations() {
+            const grid = document.getElementById('stationGrid');
+            const field = document.getElementById('sortField').value;
+            const direction = document.getElementById('sortDirection').value === 'desc' ? -1 : 1;
+            const cards = Array.from(grid.getElementsByClassName('card'));
+
+            cards.sort((a, b) => {
+                if (!field) return Number(a.dataset.order) - Number(b.dataset.order);
+
+                const aValue = Number.parseFloat(a.dataset[field]);
+                const bValue = Number.parseFloat(b.dataset[field]);
+                const aMissing = !Number.isFinite(aValue);
+                const bMissing = !Number.isFinite(bValue);
+                if (aMissing !== bMissing) return aMissing ? 1 : -1;
+                if (aMissing) return Number(a.dataset.order) - Number(b.dataset.order);
+                return (aValue - bValue) * direction;
+            });
+
+            cards.forEach(card => grid.appendChild(card));
         }
 
         window.onload = function() {
