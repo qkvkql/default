@@ -50,7 +50,7 @@
       "record_list": "Record List",
       "single_month_list": "Single Month List",
       "multiple_stations": "Multiple Weather Stations",
-      "multiple_stats": "Multiple Stations Statistics (For Stations in Part 4)",
+      "multiple_stats": "Multiple Stations Statistics",
       "averages_suffix": " Averages (Summary)"
     },
     "params": {
@@ -78,6 +78,7 @@
       "date_restrict": "Date Restrict",
       "temperature_threshold": "Temperature Threshold",
       "explosive_power": "Explosive Power",
+      "boundary_date_settings": "Boundary Date",
       "threshold_explanation": "For calculating the days matching threshold temperature",
       "date_range": "Date Range:",
       "month_focus": "Month Focus:",
@@ -197,7 +198,8 @@
       "boundary_order": "Boundary order:",
       "boundary_element": "Temperature element:",
       "boundary_operator": "Comparison:",
-      "boundary_threshold": "Temperature value:"
+      "boundary_threshold": "Temperature value:",
+      "boundary_date_label": "Boundary Date (BD):"
     },
     "tables": {
       "type": "Type",
@@ -444,6 +446,7 @@
       "date_restrict": "日期限制",
       "temperature_threshold": "气温阈值",
       "explosive_power": "爆发力",
+      "boundary_date_settings": "边界日期",
       "threshold_explanation": "用于统计满足阈值条件的天数",
       "date_range": "范围:",
       "month_focus": "月份日期限制:",
@@ -519,7 +522,8 @@
       "boundary_order": "边界顺序:",
       "boundary_element": "温度类型:",
       "boundary_operator": "比较符:",
-      "boundary_threshold": "温度值:"
+      "boundary_threshold": "温度值:",
+      "boundary_date_label": "边界日期 (BD):"
     },
     "tables": {
       "type": "日温类型",

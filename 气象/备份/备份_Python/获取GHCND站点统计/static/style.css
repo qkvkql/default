@@ -390,6 +390,10 @@ select {
     flex-wrap: wrap;
 }
 
+#multiStationSection .collapsible-header strong {
+    color: #3a0ca3;
+}
+
 #multiStatsSection #boundaryDateControls {
     width: 100%;
     box-sizing: border-box;

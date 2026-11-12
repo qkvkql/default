@@ -167,14 +167,14 @@ function showPeriodModal(ranges, specificStationId = null) {
 
 document.addEventListener('DOMContentLoaded', () => {
     decorateMultiStatOptions();
-    const multiStatSelect = document.getElementById('multiStatSelect');
-    const boundaryDateControls = document.getElementById('boundaryDateControls');
-    if (multiStatSelect && boundaryDateControls) {
-        const syncBoundaryDateControls = () => {
-            boundaryDateControls.style.display = multiStatSelect.value === 'boundary_date' ? 'flex' : 'none';
-        };
-        multiStatSelect.addEventListener('change', syncBoundaryDateControls);
-        syncBoundaryDateControls();
+    const multiStationConditions = document.getElementById('multiStationSection');
+    const multiStationConditionsMount = document.getElementById('multiStationConditionsSection');
+    if (multiStationConditions && multiStationConditionsMount) {
+        const before = multiStationConditions.previousElementSibling;
+        const after = multiStationConditions.nextElementSibling;
+        if (before?.classList.contains('divider')) before.remove();
+        if (after?.classList.contains('divider')) after.remove();
+        multiStationConditionsMount.appendChild(multiStationConditions);
     }
     const hiddenId = document.getElementById('stationId');
     const visualInput = document.getElementById('stationInput');
@@ -1354,6 +1354,10 @@ async function fetchData(keepSort = false) {
         tavg_dir: document.getElementById('tavgDir').value,
         tmax_val: document.getElementById('tmaxVal').value,
         tmax_dir: document.getElementById('tmaxDir').value,
+        boundary_date_order: document.getElementById('boundaryDateOrder').value,
+        boundary_date_element: document.getElementById('boundaryDateElement').value,
+        boundary_date_operator: document.getElementById('boundaryDateOperator').value,
+        boundary_date_threshold: document.getElementById('boundaryDateThreshold').value,
         ...getValidTemperatureRangeParams(),
 
         custom_avg_tmin: document.getElementById('customAvgTmin').value,
@@ -1421,6 +1425,8 @@ async function fetchData(keepSort = false) {
         updateStatRow('tmin', result.stats.TMIN);
         updateStatRow('tavg', result.stats.TAVG);
         updateStatRow('tmax', result.stats.TMAX);
+        document.getElementById('globalBoundaryDateV').textContent = result.boundary_date?.md || '-';
+        document.getElementById('globalBoundaryDateDP').textContent = result.boundary_date?.detail || '-';
 
         const updateSummaryCell = (id, data) => {
             const el = document.getElementById(id);

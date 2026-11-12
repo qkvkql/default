@@ -1098,6 +1098,19 @@ def get_data():
         custom_avg_tmax = req.get('custom_avg_tmax')
 
         thresh_params = {'TMIN': {'val': req.get('tmin_val'), 'dir': req.get('tmin_dir')}, 'TAVG': {'val': req.get('tavg_val'), 'dir': req.get('tavg_dir')}, 'TMAX': {'val': req.get('tmax_val'), 'dir': req.get('tmax_dir')}}
+        boundary_date_order = req.get('boundary_date_order', 'earliest')
+        if boundary_date_order not in ('earliest', 'latest'):
+            boundary_date_order = 'earliest'
+        boundary_date_element = req.get('boundary_date_element', 'TMIN')
+        if boundary_date_element not in ('TMIN', 'TMAX'):
+            boundary_date_element = 'TMIN'
+        boundary_date_operator = req.get('boundary_date_operator', 'lte')
+        if boundary_date_operator not in ('lte', 'gte'):
+            boundary_date_operator = 'lte'
+        try:
+            boundary_date_threshold = float(req.get('boundary_date_threshold', -40.0))
+        except (TypeError, ValueError):
+            boundary_date_threshold = -40.0
 
         df = fetch_and_clean_data(
             source, station_id, start_date, end_date,
@@ -1115,6 +1128,25 @@ def get_data():
                 # Apply day filter if specified and month is a single month (not winter_3 or summer_3)
                 if day_filter and day_filter != "0":
                     df = df[df['DATE'].dt.day == int(day_filter)]
+
+        boundary_date_result = {'md': '-', 'detail': '-'}
+        boundary_sub = df[df['ELEMENT'] == boundary_date_element]
+        if not boundary_sub.empty:
+            if boundary_date_operator == 'lte':
+                boundary_matches = boundary_sub[boundary_sub['DATA_VALUE'] <= boundary_date_threshold]
+            else:
+                boundary_matches = boundary_sub[boundary_sub['DATA_VALUE'] >= boundary_date_threshold]
+            if not boundary_matches.empty:
+                boundary_matches = boundary_matches.assign(_boundary_md=boundary_matches['DATE'].dt.strftime('%m-%d'))
+                cycle_start_md = '07-16' if period_mode == 'p1' else '01-16'
+                boundary_matches = boundary_matches.assign(
+                    _boundary_cycle_group=(boundary_matches['_boundary_md'] < cycle_start_md).astype(int)
+                ).sort_values(['_boundary_cycle_group', '_boundary_md', 'DATE'])
+                boundary_record = boundary_matches.iloc[0] if boundary_date_order == 'earliest' else boundary_matches.iloc[-1]
+                boundary_date_result = {
+                    'md': boundary_record['DATE'].strftime('%m-%d'),
+                    'detail': f"{boundary_record['DATE'].year}, {float(boundary_record['DATA_VALUE']):.1f}"
+                }
 
         def get_val_and_dates(sub_df, method='min'):
             if sub_df.empty: return {'val': '-', 'dates': []}
@@ -1449,7 +1481,8 @@ def get_data():
             'period_summary': period_summary, 
             'records': records_list, 
             'monthly_list': monthly_list,
-            'multi_stations': multi_stations
+            'multi_stations': multi_stations,
+            'boundary_date': boundary_date_result
         }
         # Clean NaN values before JSON serialization
         response_data = clean_nan_for_json(response_data)

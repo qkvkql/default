@@ -345,6 +345,44 @@
                 </div>
             </div>
 
+            <div class="collapsible-wrapper" id="boundaryDateSettingsSection">
+                <div class="collapsible-header" onclick="toggleSection('boundaryDateSettingsSection')">
+                    <strong>{{ t('params.boundary_date_settings') }}</strong>
+                    <span class="collapsible-icon">▼</span>
+                </div>
+                <div class="collapsible-content">
+                    <div class="collapsible-inner">
+                        <div class="param-grid" id="boundaryDateControls">
+                            <div class="thresh-box">
+                                <strong>{{ t('multi_station.boundary_order') }}</strong>
+                                <select id="boundaryDateOrder">
+                                    <option value="earliest">The Earliest</option>
+                                    <option value="latest">The Latest</option>
+                                </select>
+                            </div>
+                            <div class="thresh-box">
+                                <strong>{{ t('multi_station.boundary_element') }}</strong>
+                                <select id="boundaryDateElement">
+                                    <option value="TMIN">TMIN</option>
+                                    <option value="TMAX">TMAX</option>
+                                </select>
+                            </div>
+                            <div class="thresh-box">
+                                <strong>{{ t('multi_station.boundary_operator') }}</strong>
+                                <select id="boundaryDateOperator">
+                                    <option value="lte">&le;</option>
+                                    <option value="gte">&ge;</option>
+                                </select>
+                            </div>
+                            <div class="thresh-box">
+                                <strong>{{ t('multi_station.boundary_threshold') }}</strong>
+                                <input id="boundaryDateThreshold" type="number" step="0.1" value="-40.0">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="divider"></div>
 
             <!-- MULTI STATION PARAMS (Only for Admin or Advanced) -->
@@ -612,6 +650,11 @@
                     </tbody>
                 </table>
             </div>
+            <div id="globalBoundaryDateResult" style="margin-top:10px; padding:10px 12px; background:#f8f9fa; border-radius:5px;">
+                <strong>{{ t('multi_station.boundary_date_label') }}</strong>
+                &nbsp;V: <span id="globalBoundaryDateV">-</span>
+                &nbsp;DP: <span id="globalBoundaryDateDP">-</span>
+            </div>
         </div>
 
 
@@ -723,6 +766,8 @@
         <!-- PART 4 & 5 (Restricted) -->
         {% if (current_user.is_authenticated and (current_user.is_admin or current_user.user_level == 'advanced')) or
         (session.get('is_visitor_access') and session.get('visitor_level') == 'advanced') %}
+
+        <div class="section" id="multiStationConditionsSection"></div>
 
         <!-- PART 4: MULTIPLE STATIONS -->
         <div class="section">
@@ -885,29 +930,6 @@
                                 <label for="calculateAllMultiStats" style="display:inline-flex; align-items:center; gap:6px; margin-left:12px; font-weight:normal;">
                                     <input type="checkbox" id="calculateAllMultiStats">
                                     {{ t('tables.calculate_all_options') }}
-                                </label>
-                            </div>
-                            <div id="boundaryDateControls" style="display:none; flex:1 0 100%; flex-wrap:wrap; gap:12px; align-items:end;">
-                                <label>{{ t('multi_station.boundary_order') }}<br>
-                                    <select id="boundaryDateOrder">
-                                        <option value="earliest">The Earliest</option>
-                                        <option value="latest">The Latest</option>
-                                    </select>
-                                </label>
-                                <label>{{ t('multi_station.boundary_element') }}<br>
-                                    <select id="boundaryDateElement">
-                                        <option value="TMIN">TMIN</option>
-                                        <option value="TMAX">TMAX</option>
-                                    </select>
-                                </label>
-                                <label>{{ t('multi_station.boundary_operator') }}<br>
-                                    <select id="boundaryDateOperator">
-                                        <option value="lte">&le;</option>
-                                        <option value="gte">&ge;</option>
-                                    </select>
-                                </label>
-                                <label>{{ t('multi_station.boundary_threshold') }}<br>
-                                    <input id="boundaryDateThreshold" type="number" step="0.1" value="-40.0">
                                 </label>
                             </div>
                             <div class="control-group">
