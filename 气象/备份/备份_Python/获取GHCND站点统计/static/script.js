@@ -167,6 +167,11 @@ function showPeriodModal(ranges, specificStationId = null) {
 
 document.addEventListener('DOMContentLoaded', () => {
     decorateMultiStatOptions();
+    const calculateAllLabel = document.getElementById('calculateAllMultiStatsLabel');
+    const multiStatOptions = document.getElementById('multiStatSelect');
+    if (calculateAllLabel && multiStatOptions) {
+        calculateAllLabel.textContent = calculateAllLabel.dataset.template.replace('{count}', multiStatOptions.options.length);
+    }
     const multiStationConditions = document.getElementById('multiStationSection');
     const multiStationConditionsMount = document.getElementById('multiStationConditionsSection');
     if (multiStationConditions && multiStationConditionsMount) {

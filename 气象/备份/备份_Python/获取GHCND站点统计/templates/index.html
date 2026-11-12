@@ -391,7 +391,7 @@
             <!-- COLLAPSIBLE SECTION 4: Multiple Stations Search Conditions -->
             <div class="collapsible-wrapper" id="multiStationSection">
                 <div class="collapsible-header" onclick="toggleSection('multiStationSection')">
-                    <strong>{{ t('multi_station.search_conditions') }}</strong>
+                    <h2>{{ t('multi_station.search_conditions') }}</h2>
                     <span class="collapsible-icon">▼</span>
                 </div>
                 <div class="collapsible-content">
@@ -929,7 +929,8 @@
                                 </select>
                                 <label for="calculateAllMultiStats" style="display:inline-flex; align-items:center; gap:6px; margin-left:12px; font-weight:normal;">
                                     <input type="checkbox" id="calculateAllMultiStats">
-                                    {{ t('tables.calculate_all_options') }}
+                                    <span id="calculateAllMultiStatsLabel"
+                                        data-template="{{ t('tables.calculate_all_options') }}">{{ t('tables.calculate_all_options', count=38) }}</span>
                                 </label>
                             </div>
                             <div class="control-group">

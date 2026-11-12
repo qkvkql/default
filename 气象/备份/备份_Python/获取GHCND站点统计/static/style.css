@@ -390,7 +390,7 @@ select {
     flex-wrap: wrap;
 }
 
-#multiStationSection .collapsible-header strong {
+#multiStationSection .collapsible-header h2 {
     color: #3a0ca3;
 }
 
