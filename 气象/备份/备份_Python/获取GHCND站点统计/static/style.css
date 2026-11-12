@@ -385,6 +385,29 @@ select {
     font-weight: 500;
 }
 
+/* Keep the multi-station action buttons visible when boundary-date filters are open. */
+#multiStatsSection .record-controls {
+    flex-wrap: wrap;
+}
+
+#multiStatsSection #boundaryDateControls {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+#multiStatsSection #boundaryDateControls label {
+    flex: 1 1 140px;
+    min-width: 120px;
+}
+
+#multiStatsSection #boundaryDateControls select,
+#multiStatsSection #boundaryDateControls input {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 190px;
+    margin-top: 4px;
+}
+
 .column-controls {
     margin-bottom: 15px;
     padding: 10px;

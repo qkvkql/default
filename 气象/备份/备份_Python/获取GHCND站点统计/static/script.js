@@ -8,6 +8,7 @@ let periodColVisibility = { min_tmin: true, max_tmin: true, min_tmax: true, max_
 let multiSortBy = 'dist';
 let multiSortDir = 'asc';
 let currentMultiStations = [];
+let originalMultiStations = [];
 let hasMultiSubsetOperation = false;
 let lastMultiSubsetSource = null;
 let lastMultiSubsetCriteria = null;
@@ -122,6 +123,7 @@ function openDateDetails(type, value, specificStationId = null) {
         station_id: stationId,
         source: source,
         ssod_access_method: getSsodAccessMethod(),
+        gsod_access_method: getGsodAccessMethod(),
         type: type,
         value: value,
         period_mode: periodMode,
@@ -138,6 +140,10 @@ function openDateDetails(type, value, specificStationId = null) {
 
 function getSsodAccessMethod() {
     return document.querySelector('input[name="ssodAccessMethod"]:checked')?.value || 'api';
+}
+
+function getGsodAccessMethod() {
+    return document.querySelector('input[name="gsodAccessMethod"]:checked')?.value || 'api';
 }
 
 function showPeriodModal(ranges, specificStationId = null) {
@@ -161,6 +167,15 @@ function showPeriodModal(ranges, specificStationId = null) {
 
 document.addEventListener('DOMContentLoaded', () => {
     decorateMultiStatOptions();
+    const multiStatSelect = document.getElementById('multiStatSelect');
+    const boundaryDateControls = document.getElementById('boundaryDateControls');
+    if (multiStatSelect && boundaryDateControls) {
+        const syncBoundaryDateControls = () => {
+            boundaryDateControls.style.display = multiStatSelect.value === 'boundary_date' ? 'flex' : 'none';
+        };
+        multiStatSelect.addEventListener('change', syncBoundaryDateControls);
+        syncBoundaryDateControls();
+    }
     const hiddenId = document.getElementById('stationId');
     const visualInput = document.getElementById('stationInput');
     if (hiddenId && hiddenId.value && !visualInput.value) {
@@ -185,6 +200,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (wbanRow) wbanRow.style.display = (this.value === 'GSOD') ? 'flex' : 'none';
             const ssodAccessMethodRow = document.getElementById('ssodAccessMethodRow');
             if (ssodAccessMethodRow) ssodAccessMethodRow.style.display = this.value === 'SSODv2' ? 'flex' : 'none';
+            const gsodAccessMethodRow = document.getElementById('gsodAccessMethodRow');
+            if (gsodAccessMethodRow) gsodAccessMethodRow.style.display = this.value === 'GSOD' ? 'flex' : 'none';
             const uploadRow = document.getElementById('xlsxUploadRow');
             if (uploadRow) uploadRow.style.display = isXlsx ? 'flex' : 'none';
             const chinesePathRow = document.getElementById('chineseStationsPathRow');
@@ -766,6 +783,28 @@ function removeMultiStationSubset() {
     renderCurrentMultiStations();
 }
 
+function addMultiStationSubset() {
+    const criteria = getMultiStationSearchCriteria();
+    if (!criteria) return;
+
+    const sourceStations = originalMultiStations.length ? originalMultiStations : currentMultiStations.slice();
+    if (originalMultiStations.length === 0) originalMultiStations = sourceStations.slice();
+    const subset = sourceStations.filter(st => matchesMultiStationSearch(st, criteria));
+    const stationsById = new Map(currentMultiStations.map(st => [st.id, st]));
+    const initialCount = stationsById.size;
+    subset.forEach(st => stationsById.set(st.id, st));
+    currentMultiStations = Array.from(stationsById.values());
+    lastMultiSubsetSource = null;
+    lastMultiSubsetCriteria = null;
+    hasMultiSubsetOperation = true;
+    renderCurrentMultiStations();
+
+    const addedCount = currentMultiStations.length - initialCount;
+    if (subset.length === 0) showToast('No stations matched in the original station list.');
+    else if (addedCount === 0) showToast('All matching stations are already in the result list.');
+    else showToast(`Added ${addedCount} station${addedCount === 1 ? '' : 's'}.`);
+}
+
 function sortCurrentMultiStations() {
     const numericColumns = new Set(['lat', 'lon', 'elev', 'dist']);
     const isEmpty = value => value === null || value === undefined || value === '-' ||
@@ -836,6 +875,17 @@ function sortMultiStatTable(column) {
     renderMultiStatTable();
 }
 
+function getBoundaryDateSortValue(value) {
+    const match = String(value || '').match(/^(\d{2})-(\d{2})$/);
+    if (!match) return NaN;
+    const monthDay = Number(match[1]) * 100 + Number(match[2]);
+    const hemisphere = document.querySelector('input[name="hemisphere"]:checked')?.value || 'north';
+    const periodMode = getPeriodModeFromSeason(rawMultiStatSeason, hemisphere);
+    const cycleStart = periodMode === 'p1' ? 716 : 116;
+    const cycleGroup = monthDay < cycleStart ? 1 : 0;
+    return cycleGroup * 10000 + monthDay;
+}
+
 function decorateMultiStatOptions() {
     const select = document.getElementById('multiStatSelect');
     if (!select) return;
@@ -846,6 +896,12 @@ function decorateMultiStatOptions() {
             option.dataset.baseLabel = label || option.textContent.trim();
             option.dataset.alias = getMultiStatAlias(option.value);
             option.textContent = `${option.dataset.baseLabel} (${option.dataset.alias})`;
+            return;
+        }
+        if (option.value === 'boundary_date') {
+            option.dataset.baseLabel = option.dataset.baseLabel || option.textContent.trim();
+            option.dataset.alias = 'BD';
+            option.textContent = `${option.dataset.baseLabel} (BD)`;
             return;
         }
         const alias = MULTI_STAT_ALIASES[option.value];
@@ -862,6 +918,9 @@ function decorateMultiStatOptions() {
 
 function getMultiStatAlias(metric, seasonMode = null) {
     seasonMode = seasonMode || document.querySelector('input[name="season"]:checked')?.value || 'winter';
+    if (metric === 'ltfi_total') return 'LTFI-Total';
+    if (metric === 'ltfi_avg') return 'LTFI-Avg';
+    if (metric === 'boundary_date') return 'BD';
     if (metric === 'period_avg_tmin') {
         return seasonMode === 'summer' ? 'SA_SN' : 'SA_WN';
     }
@@ -932,7 +991,10 @@ function renderMultiStatTable() {
         if (isEmptyB) return -1; // B is empty -> always bottom
 
         // Both not empty, proceed with normal sort
-        if (isStatValue || ['dist', 'lat', 'lon', 'elev'].includes(multiStatSortCol)) {
+        if (isStatValue && metric === 'boundary_date') {
+            valA = getBoundaryDateSortValue(valA);
+            valB = getBoundaryDateSortValue(valB);
+        } else if (isStatValue || ['dist', 'lat', 'lon', 'elev'].includes(multiStatSortCol)) {
             valA = parseFloat(valA || 0);
             valB = parseFloat(valB || 0);
         }
@@ -954,7 +1016,11 @@ function renderMultiStatTable() {
             const result = (row.stats && row.stats[metric]) || { val: '-', dates: [] };
             const dates = result.dates || [];
             let datesCell = '';
-            if (metric.startsWith('consecutive_days_') && result.streaks?.length) {
+            if (metric === 'ltfi_avg' && result.period_count) {
+                datesCell = `(${result.period_count.used}/${result.period_count.total})`;
+            } else if (metric === 'boundary_date' && result.boundary_detail) {
+                datesCell = escapeHtml(result.boundary_detail);
+            } else if (metric.startsWith('consecutive_days_') && result.streaks?.length) {
                 datesCell = result.streaks.map(({ start, end, count, boundary_missing }) => {
                     const dayLabel = count === 1 ? CONSECUTIVE_DAY_LABEL : CONSECUTIVE_DAYS_LABEL.replace(/^\d+/, count);
                     const boundaryWarning = boundary_missing ? ' <span style="color:#dc3545">❓</span>' : '';
@@ -1024,6 +1090,7 @@ async function calcMultiStats() {
         station_ids: currentMultiStations.map(s => s.id),
         source: document.getElementById('dataSource').value,
         ssod_access_method: getSsodAccessMethod(),
+        gsod_access_method: getGsodAccessMethod(),
         metric: selectedMetric,
         start_date: document.getElementById('startDate').value,
         end_date: document.getElementById('endDate').value,
@@ -1037,6 +1104,10 @@ async function calcMultiStats() {
         tavg_dir: document.getElementById('tavgDir').value,
         tmax_val: document.getElementById('tmaxVal').value,
         tmax_dir: document.getElementById('tmaxDir').value,
+        boundary_date_order: document.getElementById('boundaryDateOrder').value,
+        boundary_date_element: document.getElementById('boundaryDateElement').value,
+        boundary_date_operator: document.getElementById('boundaryDateOperator').value,
+        boundary_date_threshold: document.getElementById('boundaryDateThreshold').value,
         ...getValidTemperatureRangeParams(),
         calculate_all_options: document.getElementById('calculateAllMultiStats').checked,
     };
@@ -1232,6 +1303,7 @@ async function fetchData(keepSort = false) {
     rawPeriodStats = [];
     renderPeriodTable();
     currentMultiStations = [];
+    originalMultiStations = [];
     hasMultiSubsetOperation = false;
     lastMultiSubsetSource = null;
     lastMultiSubsetCriteria = null;
@@ -1265,6 +1337,7 @@ async function fetchData(keepSort = false) {
         station_id: finalStationId,
         source: source,
         ssod_access_method: getSsodAccessMethod(),
+        gsod_access_method: getGsodAccessMethod(),
         start_date: document.getElementById('startDate').value,
         end_date: document.getElementById('endDate').value,
         month_filter: document.getElementById('monthFilter').value,
@@ -1389,6 +1462,7 @@ async function fetchData(keepSort = false) {
         if (multiTbody) {
             if (result.multi_stations && result.multi_stations.length > 0) {
                 currentMultiStations = result.multi_stations;
+                originalMultiStations = result.multi_stations.slice();
                 renderCurrentMultiStations();
             } else {
                 multiTbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">No matching stations found.</td></tr>';

@@ -180,6 +180,8 @@ with app.app_context():
 GHCND_FILE = 'ghcnd-stations.txt'
 GSOD_FILE = 'isd-history.txt'
 SSOD_FILE = 'ghcnh-station-list.csv'
+GSOD_LOCAL_DATA_DIR = r'D:\NOAA Data'
+GSOD_LOCAL_CACHE = {}
 CHINESE_STATION_DATA_PATH = r'D:\文档\国家站气温记录'
 GHCND_DF = None
 GSOD_DF = None
@@ -379,7 +381,7 @@ def get_period_season_name(period_mode, hemisphere='north'):
 
 def fetch_and_clean_data(source, station_id, start_date, end_date,
                          valid_temperature_range=None, xlsx_dataset_id=_USE_REQUEST_CONTEXT,
-                         ssod_access_method='api'):
+                         ssod_access_method='api', gsod_access_method='api'):
     # Resolve request-bound settings before entering any worker threads.
     if valid_temperature_range is None:
         valid_temperature_range = get_valid_temperature_range()
@@ -441,35 +443,80 @@ def fetch_and_clean_data(source, station_id, start_date, end_date,
         except Exception:
             return pd.DataFrame()
     elif source == 'GSOD':
-        api_url = "https://www.ncei.noaa.gov/access/services/data/v1"
-        # GSOD API requires startDate and endDate
-        s_date = start_date if start_date else '1800-01-01'
-        e_date = end_date if end_date else datetime.now().strftime('%Y-%m-%d')
-        
-        params = {
-            'dataset': 'global-summary-of-the-day', 'stations': station_id,
-            'startDate': s_date, 'endDate': e_date,
-            'dataTypes': 'TEMP,MAX,MIN', 'format': 'json', 'units': 'standard', 'includeStationName': 'false',
-            'limit': 1000
-        }
-        try:
-            resp = requests.get(api_url, params=params, timeout=15)
-            if resp.status_code == 200:
-                raw_data = resp.json()
-                if raw_data:
-                    temp_df = pd.DataFrame(raw_data)
-                    temp_df['DATE'] = pd.to_datetime(temp_df['DATE'])
+        if gsod_access_method == 'local':
+            try:
+                local_root = Path(GSOD_LOCAL_DATA_DIR)
+                station_key = str(station_id).split(' - ')[0].strip().zfill(11)
+                start_ts = pd.to_datetime(start_date, errors='coerce') if start_date else pd.NaT
+                end_ts = pd.to_datetime(end_date, errors='coerce') if end_date else pd.NaT
+                first_year = start_ts.year if pd.notna(start_ts) else 1929
+                last_year = end_ts.year if pd.notna(end_ts) else 2025
+                frames = []
+                if local_root.is_dir() and first_year <= last_year:
+                    for year in range(first_year, last_year + 1):
+                        file_path = local_root / str(year) / f'{station_key}.csv'
+                        if not file_path.is_file():
+                            continue
+                        cache_key = str(file_path)
+                        if cache_key not in GSOD_LOCAL_CACHE:
+                            GSOD_LOCAL_CACHE[cache_key] = pd.read_csv(
+                                file_path, usecols=['STATION', 'DATE', 'TEMP', 'MAX', 'MIN'],
+                                dtype={'STATION': str}, low_memory=False
+                            )
+                        frames.append(GSOD_LOCAL_CACHE[cache_key])
+
+                if frames:
+                    temp_df = pd.concat(frames, ignore_index=True)
+                    temp_df['DATE'] = pd.to_datetime(temp_df['DATE'], errors='coerce')
                     for col in ['TEMP', 'MAX', 'MIN']:
-                        if col in temp_df.columns:
-                            temp_df[col] = temp_df[col].astype(str).str.replace('*', '', regex=False)
-                            temp_df[col] = pd.to_numeric(temp_df[col], errors='coerce')
-                            temp_df[col] = (temp_df[col] - 32) * 5.0 / 9.0
-                            temp_df[col] = temp_df[col].round(1)
+                        values = pd.to_numeric(
+                            temp_df[col].astype(str).str.replace('*', '', regex=False).str.strip(),
+                            errors='coerce'
+                        )
+                        values = values.where(values.abs() < 999)
+                        temp_df[col] = ((values - 32) * 5.0 / 9.0).round(1)
                     temp_df = temp_df.rename(columns={'TEMP': 'TAVG', 'MAX': 'TMAX', 'MIN': 'TMIN'})
-                    df = temp_df.melt(id_vars=['STATION', 'DATE'], value_vars=['TAVG', 'TMAX', 'TMIN'], var_name='ELEMENT', value_name='DATA_VALUE')
-                    df = df.rename(columns={'STATION': 'ID'})
-                    df = df.dropna(subset=['DATA_VALUE'])
-        except Exception: pass
+                    df = temp_df.melt(
+                        id_vars=['STATION', 'DATE'], value_vars=['TAVG', 'TMAX', 'TMIN'],
+                        var_name='ELEMENT', value_name='DATA_VALUE'
+                    )
+                    df = df.rename(columns={'STATION': 'ID'}).dropna(subset=['DATE', 'DATA_VALUE'])
+                    if start_date:
+                        df = df[df['DATE'] >= pd.to_datetime(start_date)]
+                    if end_date:
+                        df = df[df['DATE'] <= pd.to_datetime(end_date)]
+            except Exception as exc:
+                print(f'Local GSOD retrieval failed for {station_id}: {exc}')
+        else:
+            api_url = "https://www.ncei.noaa.gov/access/services/data/v1"
+            # GSOD API requires startDate and endDate
+            s_date = start_date if start_date else '1800-01-01'
+            e_date = end_date if end_date else datetime.now().strftime('%Y-%m-%d')
+
+            params = {
+                'dataset': 'global-summary-of-the-day', 'stations': station_id,
+                'startDate': s_date, 'endDate': e_date,
+                'dataTypes': 'TEMP,MAX,MIN', 'format': 'json', 'units': 'standard', 'includeStationName': 'false',
+                'limit': 1000
+            }
+            try:
+                resp = requests.get(api_url, params=params, timeout=15)
+                if resp.status_code == 200:
+                    raw_data = resp.json()
+                    if raw_data:
+                        temp_df = pd.DataFrame(raw_data)
+                        temp_df['DATE'] = pd.to_datetime(temp_df['DATE'])
+                        for col in ['TEMP', 'MAX', 'MIN']:
+                            if col in temp_df.columns:
+                                temp_df[col] = temp_df[col].astype(str).str.replace('*', '', regex=False)
+                                temp_df[col] = pd.to_numeric(temp_df[col], errors='coerce')
+                                temp_df[col] = (temp_df[col] - 32) * 5.0 / 9.0
+                                temp_df[col] = temp_df[col].round(1)
+                        temp_df = temp_df.rename(columns={'TEMP': 'TAVG', 'MAX': 'TMAX', 'MIN': 'TMIN'})
+                        df = temp_df.melt(id_vars=['STATION', 'DATE'], value_vars=['TAVG', 'TMAX', 'TMIN'], var_name='ELEMENT', value_name='DATA_VALUE')
+                        df = df.rename(columns={'STATION': 'ID'})
+                        df = df.dropna(subset=['DATA_VALUE'])
+            except Exception: pass
     elif source == 'SSODv2':
         # SSODv2 supports both NOAA's Data Service API and bulk station CSVs.
         root_url = 'https://www.ncei.noaa.gov/oa/synoptic-summary-of-the-day/v2/access'
@@ -1032,6 +1079,9 @@ def get_data():
         ssod_access_method = req.get('ssod_access_method', 'api')
         if ssod_access_method not in ('api', 'bulk'):
             ssod_access_method = 'api'
+        gsod_access_method = req.get('gsod_access_method', 'api')
+        if gsod_access_method not in ('api', 'local'):
+            gsod_access_method = 'api'
         station_id = req.get('station_id', '').split(' - ')[0]
         start_date = req.get('start_date')
         end_date = req.get('end_date')
@@ -1051,7 +1101,8 @@ def get_data():
 
         df = fetch_and_clean_data(
             source, station_id, start_date, end_date,
-            ssod_access_method=ssod_access_method
+            ssod_access_method=ssod_access_method,
+            gsod_access_method=gsod_access_method
         )
         if df.empty:
             return jsonify({'status': 'error', 'message': get_translation('messages.station_data_error')})
@@ -1425,6 +1476,7 @@ def get_multi_stats():
         metrics = [
             'min_tmin', 'min_tavg', 'min_tmax', 'max_tmin', 'max_tavg', 'max_tmax',
             'avg_tmin', 'avg_tavg', 'avg_tmax', 'period_avg_tmin', 'period_avg_tmax',
+            'ltfi_total', 'ltfi_avg', 'boundary_date',
             'max_days_tmin', 'max_days_tavg', 'max_days_tmax',
             'consecutive_days_tmin', 'consecutive_days_tavg', 'consecutive_days_tmax',
             'total_days_tmin', 'total_days_tavg', 'total_days_tmax', 'valid_days_tmin', 'valid_days_tavg', 'valid_days_tmax',
@@ -1442,6 +1494,9 @@ def get_multi_stats():
         ssod_access_method = req.get('ssod_access_method', 'api')
         if ssod_access_method not in ('api', 'bulk'):
             ssod_access_method = 'api'
+        gsod_access_method = req.get('gsod_access_method', 'api')
+        if gsod_access_method not in ('api', 'local'):
+            gsod_access_method = 'api'
         month_filter, day_filter, period_mode = req.get('month_filter'), req.get('day_filter', '0'), req.get('period')
         hemisphere = req.get('hemisphere', 'north')
         season_name = get_period_season_name(period_mode, hemisphere)
@@ -1458,6 +1513,19 @@ def get_multi_stats():
             'TAVG': (threshold('tavg_val'), req.get('tavg_dir', 'lte')),
             'TMAX': (threshold('tmax_val'), req.get('tmax_dir', 'lte')),
         }
+        boundary_date_order = req.get('boundary_date_order', 'earliest')
+        if boundary_date_order not in ('earliest', 'latest'):
+            boundary_date_order = 'earliest'
+        boundary_date_element = req.get('boundary_date_element', 'TMIN')
+        if boundary_date_element not in ('TMIN', 'TMAX'):
+            boundary_date_element = 'TMIN'
+        boundary_date_operator = req.get('boundary_date_operator', 'lte')
+        if boundary_date_operator not in ('lte', 'gte'):
+            boundary_date_operator = 'lte'
+        try:
+            boundary_date_threshold = float(req.get('boundary_date_threshold', -40.0))
+        except (TypeError, ValueError):
+            boundary_date_threshold = -40.0
 
         def normalize_station_frame(frame):
             """Enforce the common record schema before any metric uses dates."""
@@ -1492,7 +1560,71 @@ def get_multi_stats():
 
         def calculate_metric(metric, data, boundary_data=None):
             val, dates = '-', []
-            if metric.startswith('period_avg_'):
+            period_count = None
+            boundary_detail = None
+            if metric in ('ltfi_total', 'ltfi_avg'):
+                sub = data['TMIN']
+                period_ltfis = []
+                complete_period_ltfis = []
+                all_dates = pd.concat(
+                    [element_data['DATE'] for element_data in data.values() if not element_data.empty],
+                    ignore_index=True
+                ) if any(not element_data.empty for element_data in data.values()) else pd.Series(dtype='datetime64[ns]')
+                if not all_dates.empty:
+                    all_periods = pd.DataFrame({'DATE': all_dates})
+                    all_periods['Season_Year'] = all_periods['DATE'].dt.year
+                    if period_mode == 'p1':
+                        all_mask = (all_periods['DATE'].dt.month < 7) | ((all_periods['DATE'].dt.month == 7) & (all_periods['DATE'].dt.day < 16))
+                    else:
+                        all_mask = (all_periods['DATE'].dt.month == 1) & (all_periods['DATE'].dt.day < 16)
+                    all_periods.loc[all_mask, 'Season_Year'] -= 1
+                    total_period_count = int(all_periods['Season_Year'].nunique())
+                else:
+                    total_period_count = 0
+                if not sub.empty:
+                    periods = sub.copy()
+                    periods['Season_Year'] = periods['DATE'].dt.year
+                    if period_mode == 'p1':
+                        mask = (periods['DATE'].dt.month < 7) | ((periods['DATE'].dt.month == 7) & (periods['DATE'].dt.day < 16))
+                    else:
+                        mask = (periods['DATE'].dt.month == 1) & (periods['DATE'].dt.day < 16)
+                    periods.loc[mask, 'Season_Year'] -= 1
+                    for season_year, season_df in periods.groupby('Season_Year'):
+                        tmin_values = season_df['DATA_VALUE'].dropna()
+                        if tmin_values.empty:
+                            continue
+                        coefficients = (tmin_values.abs() // 10 + 1).clip(upper=10).where(tmin_values <= 0, 0)
+                        period_ltfi = round((tmin_values.abs() * coefficients).sum(), 1)
+                        period_ltfis.append(period_ltfi)
+
+                        if period_mode == 'p1':
+                            expected_dates = pd.date_range(datetime(int(season_year), 7, 16), datetime(int(season_year) + 1, 7, 15))
+                        else:
+                            expected_dates = pd.date_range(datetime(int(season_year), 1, 16), datetime(int(season_year) + 1, 1, 15))
+                        actual_dates = pd.DatetimeIndex(season_df['DATE'].dropna().dt.normalize().unique())
+                        # LTFI-Avg uses only periods with a TMIN record for every calendar day.
+                        if len(actual_dates) == len(expected_dates) and expected_dates.isin(actual_dates).all():
+                            complete_period_ltfis.append(period_ltfi)
+                if metric == 'ltfi_total' and period_ltfis:
+                    val = round(sum(period_ltfis), 1)
+                elif metric == 'ltfi_avg' and complete_period_ltfis:
+                    val = round(sum(complete_period_ltfis) / len(complete_period_ltfis), 1)
+                if metric == 'ltfi_avg':
+                    period_count = {'used': len(complete_period_ltfis), 'total': total_period_count}
+            elif metric == 'boundary_date':
+                sub = data[boundary_date_element]
+                if not sub.empty:
+                    matches = sub[sub['DATA_VALUE'] <= boundary_date_threshold] if boundary_date_operator == 'lte' else sub[sub['DATA_VALUE'] >= boundary_date_threshold]
+                    if not matches.empty:
+                        # Order month/day within the selected season cycle, then use year to break ties.
+                        matches = matches.assign(_boundary_md=matches['DATE'].dt.strftime('%m-%d'))
+                        cycle_start_md = '07-16' if period_mode == 'p1' else '01-16'
+                        matches = matches.assign(_boundary_cycle_group=(matches['_boundary_md'] < cycle_start_md).astype(int))
+                        matches = matches.sort_values(['_boundary_cycle_group', '_boundary_md', 'DATE'])
+                        record = matches.iloc[0] if boundary_date_order == 'earliest' else matches.iloc[-1]
+                        val = record['DATE'].strftime('%m-%d')
+                        boundary_detail = f"{record['DATE'].year}, {float(record['DATA_VALUE']):.1f}"
+            elif metric.startswith('period_avg_'):
                 elem = metric.rsplit('_', 1)[1].upper()
                 sub = data[elem]
                 qualifying_extremes = []
@@ -1614,11 +1746,18 @@ def get_multi_stats():
                     target = sub['DATA_VALUE'].max()
                     val = float(target)
                     dates = sub[sub['DATA_VALUE'] == target]['DATE'].dt.strftime('%Y-%m-%d').tolist()
-            return {'val': val, 'dates': dates}
+            result = {'val': val, 'dates': dates}
+            if period_count is not None:
+                result['period_count'] = period_count
+            if boundary_detail is not None:
+                result['boundary_detail'] = boundary_detail
+            return result
 
         def process_station(sid):
             name, lat, lon, elev = 'Unknown', '-', '-', '-'
             empty_stats = {m: {'val': '-', 'dates': []} for m in metric_order}
+            if 'ltfi_avg' in empty_stats:
+                empty_stats['ltfi_avg']['period_count'] = {'used': 0, 'total': 0}
             try:
                 stations = get_station_catalog(source)
                 row = stations[stations['ID'] == sid]
@@ -1636,7 +1775,8 @@ def get_multi_stats():
                     source, sid, fetch_start, fetch_end,
                     valid_temperature_range=valid_temperature_range,
                     xlsx_dataset_id=xlsx_dataset_id,
-                    ssod_access_method=ssod_access_method
+                    ssod_access_method=ssod_access_method,
+                    gsod_access_method=gsod_access_method
                 )
                 df = normalize_station_frame(df)
                 boundary_check_df = df.copy()
@@ -1798,7 +1938,8 @@ def calendar_months_stats():
     if source == 'xlsx': station_name, station_info = get_xlsx_station_metadata(station_id)
     df = fetch_and_clean_data(
         source, station_id, start_date, end_date,
-        ssod_access_method=request.args.get('ssod_access_method', 'api')
+        ssod_access_method=request.args.get('ssod_access_method', 'api'),
+        gsod_access_method=request.args.get('gsod_access_method', 'api')
     )
     
     if df.empty:
@@ -2002,7 +2143,8 @@ def date_details():
             pass
         df = fetch_and_clean_data(
             source, station_id, fetch_start, fetch_end,
-            ssod_access_method=request.args.get('ssod_access_method', 'api')
+            ssod_access_method=request.args.get('ssod_access_method', 'api'),
+            gsod_access_method=request.args.get('gsod_access_method', 'api')
         )
         boundary_check_df = df.copy()
         df = df[(df['DATE'] >= pd.to_datetime(req_start)) & (df['DATE'] <= pd.to_datetime(req_end))]
@@ -2168,7 +2310,8 @@ def period_stats():
             fetch_start_date, fetch_end_date = start_date, end_date
         df = fetch_and_clean_data(
             source, station_id, fetch_start_date, fetch_end_date,
-            ssod_access_method=request.args.get('ssod_access_method', 'api')
+            ssod_access_method=request.args.get('ssod_access_method', 'api'),
+            gsod_access_method=request.args.get('gsod_access_method', 'api')
         )
         if df.empty:
             return render_template('period_stats.html', station_name=station_name, station_info=station_info, 
@@ -2271,6 +2414,7 @@ def period_stats():
             df.loc[mask, 'Season_Year'] = df['Season_Year'] - 1
 
         period_stats_list = []
+        ltfi_avg_values = []
         list_min_tmin, list_min_tmax, list_max_tmin, list_max_tmax = [], [], [], []
         count_total, count_used_min_tmin, count_used_min_tmax, count_used_max_tmin, count_used_max_tmax = 0, 0, 0, 0, 0
         unique_seasons = sorted(df['Season_Year'].unique(), reverse=True)
@@ -2289,6 +2433,9 @@ def period_stats():
             s_tmin_df = season_df[season_df['ELEMENT'] == 'TMIN']
             s_tmax_df = season_df[season_df['ELEMENT'] == 'TMAX']
             s_tavg_df = season_df[season_df['ELEMENT'] == 'TAVG']
+            tmin_values = s_tmin_df['DATA_VALUE'].dropna()
+            tmin_coefficients = (tmin_values.abs() // 10 + 1).clip(upper=10).where(tmin_values <= 0, 0)
+            ltfi = round((tmin_values.abs() * tmin_coefficients).sum(), 1) if not tmin_values.empty else '-'
             min_tmin_obj = get_val_and_dates(s_tmin_df, 'min')
             max_tmin_obj = get_val_and_dates(s_tmin_df, 'max')
             min_tmax_obj = get_val_and_dates(s_tmax_df, 'min')
@@ -2321,11 +2468,22 @@ def period_stats():
             
             count_actual = season_df['DATE'].nunique()
             count_expected = 0
+            tmin_period_complete = False
             try:
                 if period_mode == 'p1': s_date, e_date = datetime(year, 7, 16), datetime(year + 1, 7, 15)
                 else: s_date, e_date = datetime(year, 1, 16), datetime(year + 1, 1, 15)
                 count_expected = (e_date - s_date).days + 1
+                expected_tmin_dates = pd.date_range(s_date, e_date)
+                actual_tmin_dates = pd.DatetimeIndex(s_tmin_df['DATE'].dropna().dt.normalize().unique())
+                # A period with even one missing daily TMIN is excluded from LTFI-Avg.
+                tmin_period_complete = (
+                    len(actual_tmin_dates) == len(expected_tmin_dates) and
+                    expected_tmin_dates.isin(actual_tmin_dates).all()
+                )
             except: pass
+
+            if tmin_period_complete and ltfi != '-':
+                ltfi_avg_values.append(ltfi)
 
             period_stats_list.append({
                 'range': f"{year}-{year+1}",
@@ -2333,9 +2491,15 @@ def period_stats():
                 'count_expected': count_expected,
                 'min_tmin': min_tmin_obj, 'max_tmin': max_tmin_obj, 'min_tmax': min_tmax_obj, 'max_tmax': max_tmax_obj,
                 'avg_tavg': avg_tavg,
+                'ltfi': ltfi,
                 'cnt_tmin': get_thresh_count('TMIN'), 'cnt_tavg': get_thresh_count('TAVG'), 'cnt_tmax': get_thresh_count('TMAX'),
                 'valid_tmin_period': valid_tmin_period, 'valid_tmax_period': valid_tmax_period
             })
+
+        ltfi_values = [row['ltfi'] for row in period_stats_list if isinstance(row['ltfi'], (int, float))]
+        ltfi_total = round(sum(ltfi_values), 1) if ltfi_values else '-'
+        ltfi_avg = round(sum(ltfi_avg_values) / len(ltfi_avg_values), 1) if ltfi_avg_values else '-'
+        ltfi_avg_used = len(ltfi_avg_values)
 
         def get_avg_data(lst, used_count):
             avg = float(round(sum(lst) / len(lst), 2)) if lst else '-'
@@ -2352,6 +2516,8 @@ def period_stats():
                                period_summary=period_summary, period_stats=period_stats_list, source=source, station_id=station_id,
                                period_mode=period_mode, min_days=min_days, streaks=streaks_data,
                                streaks_record_count=streaks_record_count, thresholds=thresh_params,
+                               ltfi_total=ltfi_total, ltfi_avg=ltfi_avg, ltfi_avg_used=ltfi_avg_used,
+                               ltfi_period_total=count_total,
                                hemisphere=hemisphere, season_name=season_name)
     except Exception as e:
         import traceback; traceback.print_exc()
@@ -2380,7 +2546,8 @@ def year_by_year():
         if source == 'xlsx': station_name, station_info = get_xlsx_station_metadata(station_id)
         df = fetch_and_clean_data(
             source, station_id, start_date, end_date,
-            ssod_access_method=request.args.get('ssod_access_method', 'api')
+            ssod_access_method=request.args.get('ssod_access_method', 'api'),
+            gsod_access_method=request.args.get('gsod_access_method', 'api')
         )
         if df.empty:
             return render_template('year_by_year.html', station_name=station_name, station_info=station_info,
@@ -2456,7 +2623,8 @@ def extreme_temps():
     if source == 'xlsx': station_name, station_info = get_xlsx_station_metadata(station_id)
     df = fetch_and_clean_data(
         source, station_id, None, None,
-        ssod_access_method=request.args.get('ssod_access_method', 'api')
+        ssod_access_method=request.args.get('ssod_access_method', 'api'),
+        gsod_access_method=request.args.get('gsod_access_method', 'api')
     )
     
     results = []

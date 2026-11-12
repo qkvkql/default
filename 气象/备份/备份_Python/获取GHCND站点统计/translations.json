@@ -58,6 +58,9 @@
       "ssod_access_method": "SSODv2 access method:",
       "ssod_api_method": "Access Data Service API (default)",
       "ssod_bulk_method": "Bulk CSV URLs",
+      "gsod_access_method": "GSOD data source:",
+      "gsod_api_method": "Access Data Service API (default)",
+      "gsod_local_method": "Local CSV files (D:\\NOAA Data)",
       "valid_temperature_range": "Valid temperature value range (°C):",
       "valid_temperature_low": "Low:",
       "valid_temperature_high": "High:",
@@ -190,7 +193,11 @@
       "wban_limit": "WBAN Limit (GSOD):",
       "limit_to_99999": "Limit to 99999",
       "include_opposite": "Include Opposite Hemisphere",
-      "area_limit_kml": "Area Limit by KML:"
+      "area_limit_kml": "Area Limit by KML:",
+      "boundary_order": "Boundary order:",
+      "boundary_element": "Temperature element:",
+      "boundary_operator": "Comparison:",
+      "boundary_threshold": "Temperature value:"
     },
     "tables": {
       "type": "Type",
@@ -211,6 +218,7 @@
       "days_tmin": "Days (TMIN)",
       "days_tavg": "Days (TAVG)",
       "days_tmax": "Days (TMAX)",
+      "ltfi": "Low Temperature Frequency Index (LTFI)",
       "min_tmin": "Min TMIN",
       "min_tmax": "Min TMAX",
       "max_tmin": "Max TMIN",
@@ -352,7 +360,9 @@
       "min_days_label": "Min valid days in 3-month core:",
       "min_days_submit": "Update",
       "valid_tmin": "TMIN ✓",
-      "valid_tmax": "TMAX ✓"
+      "valid_tmax": "TMAX ✓",
+      "ltfi_total": "LTFI-Total",
+      "ltfi_avg": "LTFI-Avg"
     }
   },
   "zh": {
@@ -414,6 +424,9 @@
       "ssod_access_method": "SSODv2 数据访问方式:",
       "ssod_api_method": "数据访问服务 API（默认）",
       "ssod_bulk_method": "批量 CSV 链接",
+      "gsod_access_method": "GSOD 数据源:",
+      "gsod_api_method": "数据访问服务 API（默认）",
+      "gsod_local_method": "本地 CSV 文件（D:\\NOAA Data）",
       "valid_temperature_range": "有效温度值范围 (°C):",
       "valid_temperature_low": "下限:",
       "valid_temperature_high": "上限:",
@@ -502,7 +515,11 @@
       "wban_limit": "WBAN限制(GSOD):",
       "limit_to_99999": "限制为99999",
       "include_opposite": "包含对侧半球",
-      "area_limit_kml": "KML范围限制:"
+      "area_limit_kml": "KML范围限制:",
+      "boundary_order": "边界顺序:",
+      "boundary_element": "温度类型:",
+      "boundary_operator": "比较符:",
+      "boundary_threshold": "温度值:"
     },
     "tables": {
       "type": "日温类型",
@@ -522,6 +539,7 @@
       "days_tmin": "夜温阈值天数",
       "days_tavg": "均温阈值天数",
       "days_tmax": "昼温阈值天数",
+      "ltfi": "低温频率指数 (LTFI)",
       "min_tmin": "最低气温",
       "min_tmax": "最低昼温",
       "max_tmin": "最高夜温",
@@ -706,7 +724,9 @@
       "min_days_label": "核心3个月最少有效天数:",
       "min_days_submit": "更新",
       "valid_tmin": "夜温 ✓",
-      "valid_tmax": "昼温 ✓"
+      "valid_tmax": "昼温 ✓",
+      "ltfi_total": "LTFI-总值",
+      "ltfi_avg": "LTFI-平均值"
     }
   }
 }

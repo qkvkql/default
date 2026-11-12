@@ -7,6 +7,7 @@ A comprehensive Flask-based web application for analyzing global daily weather d
 *   **Multiple Data Sources**: switch between GHCND, legacy GSOD, successor SSODv2, or an uploaded spreadsheet.
 *   **Advanced Statistics**: Calculate Min/Avg/Max temperatures, threshold counts (days above/below specific temperatures), and "Explosive Power" (temperature variance).
 *   **Period Analysis**: Compare weather patterns across different years, seasons (Winter/Summer), and custom date ranges.
+    *   Each period includes a Low Temperature Frequency Index (LTFI): `LTFI = Σ(|TMINᵢ| × coefficient(TMINᵢ))` over valid daily TMIN records, rounded to one decimal place for display. The coefficient is 0 for TMIN > 0°C; for non-positive TMIN it is `min(10, floor(|TMIN| / 10) + 1)` (so 0 to above −10°C maps to 1, (−20, −10]°C to 2, and so on, with values ≤ −90°C mapping to 10). LTFI-Avg includes only periods with a TMIN record on every calendar day in the full period.
 *   **Multi-Station Analysis**: Search and compare multiple stations based on distance, coordinates, or country.
 *   **Visualizations**: Interactive tables and statistics for easy data consumption.
 *   **Access Control**: Robust user management system with Admin roles, standard users, and "Special Visitor" access via invitation codes.

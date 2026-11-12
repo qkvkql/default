@@ -8,7 +8,7 @@ const ejs = require("ejs");
 const config = {
     multipleStation: 0, //是否切换到打印邻近站点模式
     stationObj: {
-        USAF: '31338',
+        USAF: '30473',
         WBAN: '99999' //留空则默认为99999，长度小于5则前面自动补0
     },
     explosiveConfig: {
