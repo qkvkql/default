@@ -104,7 +104,7 @@
 
     .results {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(5, minmax(0, 1fr));
       margin-top: 18px;
       overflow: hidden;
     }
@@ -118,7 +118,7 @@
 
     .result + .result { border-left: 1px solid #333333; }
 
-    .result:first-child { background: #463f3a; }
+    .result:nth-child(-n + 2) { background: #463f3a; }
 
     .result-name {
       display: block;
@@ -212,10 +212,93 @@
       font-weight: 700;
     }
 
+    .calculator-card {
+      margin-top: 18px;
+      padding: 20px;
+      border: 1px solid #e1e5eb;
+      border-radius: 16px;
+      background: #fff;
+      box-shadow: 0 8px 28px rgb(27 39 56 / 5%);
+    }
+
+    .calculator-card h2 {
+      margin: 0 0 14px;
+      font-size: 1rem;
+    }
+
+    #calculator-expression {
+      min-height: 150px;
+      font-size: 1.05rem;
+    }
+
+    .calculator-result {
+      display: grid;
+      gap: 8px;
+      margin: 16px 0 0;
+      color: #687180;
+      font-size: .9rem;
+    }
+
+    #calculator-output {
+      color: #202631;
+      font-size: 1.5rem;
+      font-variant-numeric: tabular-nums;
+      font-weight: 700;
+      overflow: visible;
+      overflow-wrap: anywhere;
+      text-overflow: clip;
+      white-space: pre-wrap;
+    }
+
+    .conversion-card {
+      margin-top: 18px;
+      padding: 20px;
+      border: 1px solid #e1e5eb;
+      border-radius: 16px;
+      background: #fff;
+      box-shadow: 0 8px 28px rgb(27 39 56 / 5%);
+    }
+
+    .conversion-card h2 {
+      margin: 0 0 16px;
+      font-size: 1rem;
+    }
+
+    .conversion-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .conversion-row {
+      display: grid;
+      grid-template-columns: 120px minmax(0, 1fr) minmax(0, 1fr);
+      align-items: end;
+      gap: 12px;
+      padding: 12px;
+      border: 1px solid #e8ebf0;
+      border-radius: 10px;
+      background: #fcfcfd;
+    }
+
+    .conversion-category {
+      align-self: center;
+      color: #596372;
+      font-size: .85rem;
+      font-weight: 650;
+    }
+
+    .conversion-row .control-field { min-width: 0; }
+
+    @media (max-width: 520px) {
+      .conversion-row { grid-template-columns: 1fr 1fr; }
+      .conversion-category { grid-column: 1 / -1; }
+    }
+
     @media (max-width: 620px) {
       .results { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .result:nth-child(3) { border-left: 0; border-top: 1px solid #333333; }
       .result:nth-child(4) { border-top: 1px solid #333333; }
+      .result:nth-child(5) { border-left: 0; border-top: 1px solid #333333; }
     }
 
     @media (max-width: 400px) {
@@ -243,6 +326,7 @@
 
     <section class="results" aria-label="Number results" aria-live="polite">
       <div class="result"><span class="result-name">Total Count</span><output id="count">0</output></div>
+      <div class="result"><span class="result-name">Sum</span><output id="sum">—</output></div>
       <div class="result"><span class="result-name">Min</span><output id="min">—</output></div>
       <div class="result"><span class="result-name">Avg</span><output id="avg">—</output></div>
       <div class="result"><span class="result-name">Max</span><output id="max">—</output></div>
@@ -277,11 +361,69 @@
       </div>
       <p class="matching-result">Matching numbers <output id="matching-count">—</output></p>
     </section>
+
+    <section class="calculator-card" aria-labelledby="calculator-title">
+      <h2 id="calculator-title">Calculator</h2>
+      <label class="hint" for="calculator-expression">Enter one expression per line. Use +, -, *, /, parentheses, and ^ for powers.</label>
+      <textarea id="calculator-expression" aria-label="Math expression" placeholder="For example: (2 + 3) ^ 2 / 5"></textarea>
+      <div class="calculator-result"><span>Results</span><output id="calculator-output" aria-live="polite"></output></div>
+    </section>
+
+    <section class="conversion-card" aria-labelledby="conversion-title">
+      <h2 id="conversion-title">Unit Conversion</h2>
+      <div class="conversion-list">
+        <div class="conversion-row">
+          <span class="conversion-category">Temperature</span>
+          <div class="control-field">
+            <label for="kelvin-value">Kelvin</label>
+            <input id="kelvin-value" type="number" step="any" inputmode="decimal" aria-label="Kelvin (convert to Celsius)">
+          </div>
+          <div class="control-field">
+            <label for="celsius-from-kelvin">Celsius</label>
+            <input id="celsius-from-kelvin" type="number" step="any" inputmode="decimal" aria-label="Celsius (convert from Kelvin)">
+          </div>
+        </div>
+        <div class="conversion-row">
+          <span class="conversion-category">Temperature</span>
+          <div class="control-field">
+            <label for="fahrenheit-value">Fahrenheit</label>
+            <input id="fahrenheit-value" type="number" step="any" inputmode="decimal" aria-label="Fahrenheit (convert to Celsius)">
+          </div>
+          <div class="control-field">
+            <label for="celsius-from-fahrenheit">Celsius</label>
+            <input id="celsius-from-fahrenheit" type="number" step="any" inputmode="decimal" aria-label="Celsius (convert from Fahrenheit)">
+          </div>
+        </div>
+        <div class="conversion-row">
+          <span class="conversion-category">Length</span>
+          <div class="control-field">
+            <label for="feet-value">Feet</label>
+            <input id="feet-value" type="number" step="any" inputmode="decimal" aria-label="Feet (convert to centimeters)">
+          </div>
+          <div class="control-field">
+            <label for="centimeters-from-feet">Centimeter</label>
+            <input id="centimeters-from-feet" type="number" step="any" inputmode="decimal" aria-label="Centimeters (convert from feet)">
+          </div>
+        </div>
+        <div class="conversion-row">
+          <span class="conversion-category">Length</span>
+          <div class="control-field">
+            <label for="inch-value">Inch</label>
+            <input id="inch-value" type="number" step="any" inputmode="decimal" aria-label="Inches (convert to centimeters)">
+          </div>
+          <div class="control-field">
+            <label for="centimeters-from-inch">Centimeter</label>
+            <input id="centimeters-from-inch" type="number" step="any" inputmode="decimal" aria-label="Centimeters (convert from inches)">
+          </div>
+        </div>
+      </div>
+    </section>
   </main>
 
   <script>
     const input = document.querySelector("#source-text");
     const countOutput = document.querySelector("#count");
+    const sumOutput = document.querySelector("#sum");
     const minOutput = document.querySelector("#min");
     const maxOutput = document.querySelector("#max");
     const avgOutput = document.querySelector("#avg");
@@ -294,6 +436,22 @@
     const minThreshold = document.querySelector("#min-threshold");
     const maxThreshold = document.querySelector("#max-threshold");
     const matchingCountOutput = document.querySelector("#matching-count");
+    const calculatorExpression = document.querySelector("#calculator-expression");
+    const calculatorOutput = document.querySelector("#calculator-output");
+
+    function bindConversion(leftId, rightId, convertLeft, convertRight) {
+      const left = document.querySelector(`#${leftId}`);
+      const right = document.querySelector(`#${rightId}`);
+
+      left.addEventListener("input", () => {
+        const value = left.valueAsNumber;
+        right.value = Number.isFinite(value) ? formatNumber(convertLeft(value)) : "";
+      });
+      right.addEventListener("input", () => {
+        const value = right.valueAsNumber;
+        left.value = Number.isFinite(value) ? formatNumber(convertRight(value)) : "";
+      });
+    }
 
     // A number is an integer or decimal, optionally with a leading sign.
     // Letters and other punctuation delimit values; scientific notation is not used.
@@ -302,6 +460,97 @@
     function formatNumber(value) {
       if (Object.is(value, -0)) value = 0;
       return Number(value.toPrecision(12)).toString();
+    }
+
+    function evaluateExpression(source) {
+      let position = 0;
+
+      function skipSpaces() {
+        while (/\s/.test(source[position] || "")) position++;
+      }
+
+      function parsePrimary() {
+        skipSpaces();
+        if (source[position] === "(") {
+          position++;
+          const value = parseExpression();
+          skipSpaces();
+          if (source[position] !== ")") throw new SyntaxError("Missing closing parenthesis");
+          position++;
+          return value;
+        }
+
+        const match = source.slice(position).match(/^(?:\d+\.?\d*|\.\d+)/);
+        if (!match) throw new SyntaxError("Expected a number");
+        position += match[0].length;
+        return Number(match[0]);
+      }
+
+      function parsePower() {
+        const base = parsePrimary();
+        skipSpaces();
+        if (source[position] !== "^") return base;
+        position++;
+        return Math.pow(base, parseUnary());
+      }
+
+      function parseUnary() {
+        skipSpaces();
+        if (source[position] === "+") {
+          position++;
+          return parseUnary();
+        }
+        if (source[position] === "-") {
+          position++;
+          return -parseUnary();
+        }
+        return parsePower();
+      }
+
+      function parseTerm() {
+        let value = parseUnary();
+        while (true) {
+          skipSpaces();
+          const operator = source[position];
+          if (operator !== "*" && operator !== "/") return value;
+          position++;
+          const right = parseUnary();
+          value = operator === "*" ? value * right : value / right;
+        }
+      }
+
+      function parseExpression() {
+        let value = parseTerm();
+        while (true) {
+          skipSpaces();
+          const operator = source[position];
+          if (operator !== "+" && operator !== "-") return value;
+          position++;
+          const right = parseTerm();
+          value = operator === "+" ? value + right : value - right;
+        }
+      }
+
+      const value = parseExpression();
+      skipSpaces();
+      if (position !== source.length || !Number.isFinite(value)) throw new SyntaxError("Invalid expression");
+      return value;
+    }
+
+    function updateCalculator() {
+      const results = calculatorExpression.value
+        .split(/\r?\n/)
+        .filter(line => line.trim() !== "")
+        .map(line => {
+          try {
+            return formatNumber(evaluateExpression(line));
+          } catch {
+            return "-";
+          }
+        })
+        .join("\n");
+      calculatorOutput.value = results;
+      calculatorOutput.textContent = results;
     }
 
     function updateMatchingCount(values) {
@@ -344,7 +593,7 @@
       updateMatchingCount(values);
 
       if (values.length === 0) {
-        for (const output of [minOutput, maxOutput, avgOutput]) {
+        for (const output of [sumOutput, minOutput, maxOutput, avgOutput]) {
           output.value = "—";
           output.textContent = "—";
         }
@@ -361,6 +610,7 @@
       }
 
       const results = [
+        [sumOutput, formatNumber(sum)],
         [minOutput, formatNumber(min)],
         [maxOutput, formatNumber(max)],
         [avgOutput, formatNumber(sum / values.length)]
@@ -372,6 +622,11 @@
     }
 
     input.addEventListener("input", updateSummary);
+    calculatorExpression.addEventListener("input", updateCalculator);
+    bindConversion("kelvin-value", "celsius-from-kelvin", value => value - 273.15, value => value + 273.15);
+    bindConversion("fahrenheit-value", "celsius-from-fahrenheit", value => (value - 32) * 5 / 9, value => value * 9 / 5 + 32);
+    bindConversion("feet-value", "centimeters-from-feet", value => value * 30.48, value => value / 30.48);
+    bindConversion("inch-value", "centimeters-from-inch", value => value * 2.54, value => value / 2.54);
     countType.addEventListener("change", updateSummary);
     for (const threshold of [singleThreshold, minThreshold, maxThreshold]) {
       threshold.addEventListener("input", updateSummary);
@@ -383,6 +638,7 @@
     });
 
     updateSummary();
+    updateCalculator();
   </script>
 </body>
 </html>
