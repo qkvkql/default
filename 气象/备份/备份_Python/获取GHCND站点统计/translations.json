@@ -278,6 +278,8 @@
       "average_min_tmax_per_period": "Avg of Minimum TMAX per Period",
       "average_max_tmin_per_period": "Avg of Maximum TMIN per Period",
       "average_max_tmax_per_period": "Avg of Maximum TMAX per Period",
+      "average_tmin_threshold_days_per_period": "Average TMIN Threshold Days per Period",
+      "average_tmax_threshold_days_per_period": "Average TMAX Threshold Days per Period",
       "label_tmin_min": "TMIN",
       "label_tavg_min": "TAVG",
       "label_tmax_min": "TMAX",
@@ -361,6 +363,7 @@
     "period_stats": {
       "min_days_label": "Min valid days in 3-month core:",
       "min_days_submit": "Update",
+      "avg_threshold_days_title": "Average Threshold Days per Valid Period",
       "valid_tmin": "TMIN ✓",
       "valid_tmax": "TMAX ✓",
       "ltfi_total": "LTFI-Total",
@@ -600,6 +603,8 @@
       "average_min_tmax_per_period": "冬均最低昼温",
       "average_max_tmin_per_period": "夏均最高夜温",
       "average_max_tmax_per_period": "夏均最高",
+      "average_tmin_threshold_days_per_period": "每周期平均夜温阈值日数",
+      "average_tmax_threshold_days_per_period": "每周期平均昼温阈值日数",
       "label_tmin_min": "夜温",
       "label_tavg_min": "均温",
       "label_tmax_min": "昼温",
@@ -727,6 +732,7 @@
     "period_stats": {
       "min_days_label": "核心3个月最少有效天数:",
       "min_days_submit": "更新",
+      "avg_threshold_days_title": "有效周期平均阈值日数",
       "valid_tmin": "夜温 ✓",
       "valid_tmax": "昼温 ✓",
       "ltfi_total": "LTFI-总值",

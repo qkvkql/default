@@ -887,6 +887,8 @@
                                     <option value="period_avg_tmax"
                                         data-winter-label="{{ t('statistics.average_min_tmax_per_period') }}"
                                         data-summer-label="{{ t('statistics.average_max_tmax_per_period') }}">{{ t('statistics.average_min_tmax_per_period') }}</option>
+                                    <option value="period_avg_tmin_threshold_days">{{ t('statistics.average_tmin_threshold_days_per_period') }}</option>
+                                    <option value="period_avg_tmax_threshold_days">{{ t('statistics.average_tmax_threshold_days_per_period') }}</option>
                                     <option value="ltfi_total">LTFI-Total</option>
                                     <option value="ltfi_avg">LTFI-Avg</option>
                                     <option value="boundary_date">Boundary date</option>
@@ -930,7 +932,7 @@
                                 <label for="calculateAllMultiStats" style="display:inline-flex; align-items:center; gap:6px; margin-left:12px; font-weight:normal;">
                                     <input type="checkbox" id="calculateAllMultiStats">
                                     <span id="calculateAllMultiStatsLabel"
-                                        data-template="{{ t('tables.calculate_all_options') }}">{{ t('tables.calculate_all_options', count=38) }}</span>
+                                        data-template="{{ t('tables.calculate_all_options') }}">{{ t('tables.calculate_all_options', count=40) }}</span>
                                 </label>
                             </div>
                             <div class="control-group">

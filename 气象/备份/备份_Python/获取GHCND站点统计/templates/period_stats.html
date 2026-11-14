@@ -273,6 +273,39 @@
                 </tbody>
             </table>
         </div>
+        <div class="collapsible-wrapper" id="thresholdDaysSummarySection">
+            <div class="collapsible-header" onclick="toggleSection('thresholdDaysSummarySection')">
+                <strong>{{ t('period_stats.avg_threshold_days_title') }}</strong>
+                <span class="collapsible-icon">▼</span>
+            </div>
+            <div class="collapsible-content">
+                <div class="collapsible-inner">
+                    <div class="table-responsive">
+                        <table class="stats-table">
+                            <thead>
+                                <tr>
+                                    <th>
+                                        {% set threshold_symbols = {'lte': '≤', 'gte': '≥'} %}
+                                        TMIN {{ threshold_symbols.get(thresholds['TMIN']['dir'], '') }} {{ thresholds['TMIN']['val'] or '' }}
+                                        <br><span class="header-note">{{ t('tables.val_used_total') }}</span>
+                                    </th>
+                                    <th>
+                                        TMAX {{ threshold_symbols.get(thresholds['TMAX']['dir'], '') }} {{ thresholds['TMAX']['val'] or '' }}
+                                        <br><span class="header-note">{{ t('tables.val_used_total') }}</span>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="summary-cell">{{ period_summary.avg_threshold_days_tmin.val }}<br><span class="header-note">({{ period_summary.avg_threshold_days_tmin.used }}/{{ period_summary.avg_threshold_days_tmin.total }})</span></td>
+                                    <td class="summary-cell">{{ period_summary.avg_threshold_days_tmax.val }}<br><span class="header-note">({{ period_summary.avg_threshold_days_tmax.used }}/{{ period_summary.avg_threshold_days_tmax.total }})</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
         {% endif %}
 
         {% if streaks and streaks_record_count > 10 %}

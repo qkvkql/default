@@ -1509,6 +1509,7 @@ def get_multi_stats():
         metrics = [
             'min_tmin', 'min_tavg', 'min_tmax', 'max_tmin', 'max_tavg', 'max_tmax',
             'avg_tmin', 'avg_tavg', 'avg_tmax', 'period_avg_tmin', 'period_avg_tmax',
+            'period_avg_tmin_threshold_days', 'period_avg_tmax_threshold_days',
             'ltfi_total', 'ltfi_avg', 'boundary_date',
             'max_days_tmin', 'max_days_tavg', 'max_days_tmax',
             'consecutive_days_tmin', 'consecutive_days_tavg', 'consecutive_days_tmax',
@@ -1591,6 +1592,19 @@ def get_multi_stats():
             frame['DATE'] = pd.to_datetime(frame['DATE'], errors='coerce')
             return frame.dropna(subset=['DATE'])
 
+        def get_total_period_count(data):
+            date_series = [element_data['DATE'] for element_data in data.values() if not element_data.empty]
+            if not date_series:
+                return 0
+            all_periods = pd.DataFrame({'DATE': pd.concat(date_series, ignore_index=True)})
+            all_periods['Season_Year'] = all_periods['DATE'].dt.year
+            if period_mode == 'p1':
+                mask = (all_periods['DATE'].dt.month < 7) | ((all_periods['DATE'].dt.month == 7) & (all_periods['DATE'].dt.day < 16))
+            else:
+                mask = (all_periods['DATE'].dt.month == 1) & (all_periods['DATE'].dt.day < 16)
+            all_periods.loc[mask, 'Season_Year'] -= 1
+            return int(all_periods['Season_Year'].nunique())
+
         def calculate_metric(metric, data, boundary_data=None):
             val, dates = '-', []
             period_count = None
@@ -1599,21 +1613,7 @@ def get_multi_stats():
                 sub = data['TMIN']
                 period_ltfis = []
                 complete_period_ltfis = []
-                all_dates = pd.concat(
-                    [element_data['DATE'] for element_data in data.values() if not element_data.empty],
-                    ignore_index=True
-                ) if any(not element_data.empty for element_data in data.values()) else pd.Series(dtype='datetime64[ns]')
-                if not all_dates.empty:
-                    all_periods = pd.DataFrame({'DATE': all_dates})
-                    all_periods['Season_Year'] = all_periods['DATE'].dt.year
-                    if period_mode == 'p1':
-                        all_mask = (all_periods['DATE'].dt.month < 7) | ((all_periods['DATE'].dt.month == 7) & (all_periods['DATE'].dt.day < 16))
-                    else:
-                        all_mask = (all_periods['DATE'].dt.month == 1) & (all_periods['DATE'].dt.day < 16)
-                    all_periods.loc[all_mask, 'Season_Year'] -= 1
-                    total_period_count = int(all_periods['Season_Year'].nunique())
-                else:
-                    total_period_count = 0
+                total_period_count = get_total_period_count(data)
                 if not sub.empty:
                     periods = sub.copy()
                     periods['Season_Year'] = periods['DATE'].dt.year
@@ -1657,6 +1657,37 @@ def get_multi_stats():
                         record = matches.iloc[0] if boundary_date_order == 'earliest' else matches.iloc[-1]
                         val = record['DATE'].strftime('%m-%d')
                         boundary_detail = f"{record['DATE'].year}, {float(record['DATA_VALUE']):.1f}"
+            elif metric in ('period_avg_tmin_threshold_days', 'period_avg_tmax_threshold_days'):
+                elem = 'TMIN' if metric.endswith('_tmin_threshold_days') else 'TMAX'
+                sub = data[elem]
+                qualifying_counts = []
+                if not sub.empty:
+                    periods = sub.copy()
+                    periods['Season_Year'] = periods['DATE'].dt.year
+                    if period_mode == 'p1':
+                        mask = (periods['DATE'].dt.month < 7) | ((periods['DATE'].dt.month == 7) & (periods['DATE'].dt.day < 16))
+                    else:
+                        mask = (periods['DATE'].dt.month == 1) & (periods['DATE'].dt.day < 16)
+                    periods.loc[mask, 'Season_Year'] -= 1
+                    core_months = [12, 1, 2] if period_mode == 'p1' else [6, 7, 8]
+                    limit, direction = thresholds[elem]
+                    for _, season_df in periods.groupby('Season_Year'):
+                        core_count = int(season_df['DATE'].dt.month.isin(core_months).sum())
+                        if core_count < 60:
+                            continue
+                        values = season_df['DATA_VALUE'].dropna()
+                        if values.empty:
+                            continue
+                        if limit is None:
+                            matching_days = 0
+                        elif direction == 'lte':
+                            matching_days = int((values <= limit).sum())
+                        else:
+                            matching_days = int((values >= limit).sum())
+                        qualifying_counts.append(matching_days)
+                if qualifying_counts:
+                    val = float(round(sum(qualifying_counts) / len(qualifying_counts), 2))
+                period_count = {'used': len(qualifying_counts), 'total': get_total_period_count(data)}
             elif metric.startswith('period_avg_'):
                 elem = metric.rsplit('_', 1)[1].upper()
                 sub = data[elem]
@@ -1791,6 +1822,9 @@ def get_multi_stats():
             empty_stats = {m: {'val': '-', 'dates': []} for m in metric_order}
             if 'ltfi_avg' in empty_stats:
                 empty_stats['ltfi_avg']['period_count'] = {'used': 0, 'total': 0}
+            for threshold_metric in ('period_avg_tmin_threshold_days', 'period_avg_tmax_threshold_days'):
+                if threshold_metric in empty_stats:
+                    empty_stats[threshold_metric]['period_count'] = {'used': 0, 'total': 0}
             try:
                 stations = get_station_catalog(source)
                 row = stations[stations['ID'] == sid]
@@ -2449,7 +2483,9 @@ def period_stats():
         period_stats_list = []
         ltfi_avg_values = []
         list_min_tmin, list_min_tmax, list_max_tmin, list_max_tmax = [], [], [], []
+        list_avg_threshold_days_tmin, list_avg_threshold_days_tmax = [], []
         count_total, count_used_min_tmin, count_used_min_tmax, count_used_max_tmin, count_used_max_tmax = 0, 0, 0, 0, 0
+        count_used_threshold_days_tmin, count_used_threshold_days_tmax = 0, 0
         unique_seasons = sorted(df['Season_Year'].unique(), reverse=True)
 
         for year in unique_seasons:
@@ -2487,17 +2523,23 @@ def period_stats():
 
             valid_tmin_period = core_tmin_count >= min_days
             valid_tmax_period = core_tmax_count >= min_days
+            threshold_days_tmin = get_thresh_count('TMIN')
+            threshold_days_tmax = get_thresh_count('TMAX')
 
             if is_winter_period:
                 if valid_tmin_period and min_tmin_obj['val'] != '-':
                     list_min_tmin.append(min_tmin_obj['val']); count_used_min_tmin += 1
+                    list_avg_threshold_days_tmin.append(threshold_days_tmin); count_used_threshold_days_tmin += 1
                 if valid_tmax_period and min_tmax_obj['val'] != '-':
                     list_min_tmax.append(min_tmax_obj['val']); count_used_min_tmax += 1
+                    list_avg_threshold_days_tmax.append(threshold_days_tmax); count_used_threshold_days_tmax += 1
             else:
                 if valid_tmin_period and max_tmin_obj['val'] != '-':
                     list_max_tmin.append(max_tmin_obj['val']); count_used_max_tmin += 1
+                    list_avg_threshold_days_tmin.append(threshold_days_tmin); count_used_threshold_days_tmin += 1
                 if valid_tmax_period and max_tmax_obj['val'] != '-':
                     list_max_tmax.append(max_tmax_obj['val']); count_used_max_tmax += 1
+                    list_avg_threshold_days_tmax.append(threshold_days_tmax); count_used_threshold_days_tmax += 1
             
             count_actual = season_df['DATE'].nunique()
             count_expected = 0
@@ -2542,7 +2584,9 @@ def period_stats():
             'avg_min_tmin': get_avg_data(list_min_tmin, count_used_min_tmin),
             'avg_min_tmax': get_avg_data(list_min_tmax, count_used_min_tmax),
             'avg_max_tmin': get_avg_data(list_max_tmin, count_used_max_tmin),
-            'avg_max_tmax': get_avg_data(list_max_tmax, count_used_max_tmax)
+            'avg_max_tmax': get_avg_data(list_max_tmax, count_used_max_tmax),
+            'avg_threshold_days_tmin': get_avg_data(list_avg_threshold_days_tmin, count_used_threshold_days_tmin),
+            'avg_threshold_days_tmax': get_avg_data(list_avg_threshold_days_tmax, count_used_threshold_days_tmax)
         }
 
         return render_template('period_stats.html', station_name=station_name, station_info=station_info, 

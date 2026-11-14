@@ -874,7 +874,7 @@ function sortMultiStatTable(column) {
         const isValue = column.startsWith('stat-value:');
         const metric = isValue ? column.slice('stat-value:'.length) : '';
         multiStatSortDir = isValue
-            ? (metric.startsWith('min_') || (metric.startsWith('period_avg_') && rawMultiStatSeason === 'winter') ? 'asc' : 'desc')
+            ? (metric.startsWith('min_') || (['period_avg_tmin', 'period_avg_tmax'].includes(metric) && rawMultiStatSeason === 'winter') ? 'asc' : 'desc')
             : (['dist', 'lat', 'lon', 'elev'].includes(column) ? 'desc' : 'asc');
     }
     renderMultiStatTable();
@@ -896,7 +896,7 @@ function decorateMultiStatOptions() {
     if (!select) return;
     const seasonMode = document.querySelector('input[name="season"]:checked')?.value || 'winter';
     Array.from(select.options).forEach(option => {
-        if (option.value.startsWith('period_avg_')) {
+        if (['period_avg_tmin', 'period_avg_tmax'].includes(option.value)) {
             const label = seasonMode === 'summer' ? option.dataset.summerLabel : option.dataset.winterLabel;
             option.dataset.baseLabel = label || option.textContent.trim();
             option.dataset.alias = getMultiStatAlias(option.value);
@@ -907,6 +907,12 @@ function decorateMultiStatOptions() {
             option.dataset.baseLabel = option.dataset.baseLabel || option.textContent.trim();
             option.dataset.alias = 'BD';
             option.textContent = `${option.dataset.baseLabel} (BD)`;
+            return;
+        }
+        if (option.value === 'period_avg_tmin_threshold_days' || option.value === 'period_avg_tmax_threshold_days') {
+            option.dataset.baseLabel = option.dataset.baseLabel || option.textContent.trim();
+            option.dataset.alias = getMultiStatAlias(option.value);
+            option.textContent = `${option.dataset.baseLabel} (${option.dataset.alias})`;
             return;
         }
         const alias = MULTI_STAT_ALIASES[option.value];
@@ -926,6 +932,8 @@ function getMultiStatAlias(metric, seasonMode = null) {
     if (metric === 'ltfi_total') return 'LTFI-Total';
     if (metric === 'ltfi_avg') return 'LTFI-Avg';
     if (metric === 'boundary_date') return 'BD';
+    if (metric === 'period_avg_tmin_threshold_days') return 'SA_NTH';
+    if (metric === 'period_avg_tmax_threshold_days') return 'SA_XTH';
     if (metric === 'period_avg_tmin') {
         return seasonMode === 'summer' ? 'SA_SN' : 'SA_WN';
     }
@@ -1021,7 +1029,7 @@ function renderMultiStatTable() {
             const result = (row.stats && row.stats[metric]) || { val: '-', dates: [] };
             const dates = result.dates || [];
             let datesCell = '';
-            if (metric === 'ltfi_avg' && result.period_count) {
+            if (['ltfi_avg', 'period_avg_tmin_threshold_days', 'period_avg_tmax_threshold_days'].includes(metric) && result.period_count) {
                 datesCell = `(${result.period_count.used}/${result.period_count.total})`;
             } else if (metric === 'boundary_date' && result.boundary_detail) {
                 datesCell = escapeHtml(result.boundary_detail);
@@ -1074,7 +1082,7 @@ async function calcMultiStats() {
 
     const selectedMetric = document.getElementById('multiStatSelect').value;
     multiStatSortCol = `stat-value:${selectedMetric}`;
-    multiStatSortDir = selectedMetric.startsWith('min_') || (selectedMetric.startsWith('period_avg_') && rawMultiStatSeason === 'winter') ? 'asc' : 'desc';
+    multiStatSortDir = selectedMetric.startsWith('min_') || (['period_avg_tmin', 'period_avg_tmax'].includes(selectedMetric) && rawMultiStatSeason === 'winter') ? 'asc' : 'desc';
 
     const timerSpan = document.getElementById('multiStatTimer');
     const startTime = Date.now();
