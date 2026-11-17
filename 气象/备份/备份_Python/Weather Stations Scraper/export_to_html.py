@@ -54,18 +54,21 @@ def write_into_station_list():
             print(f'{scraped[i]['wmo']} bad value for {temp1}!')
         if str(scraped[i][temp1]) != '-999' and str(scraped[i][temp1]) != '' and (str(o[temp1]) == 'None' or str(o[temp1]) == ''):
             sheet.cell(row = i + 2, column = c1, value = scraped[i][temp1])
+            o[temp1] = scraped[i][temp1]
 
         temp2 = 'max'
         if str(scraped[i][temp2]) == '-999':
             print(f'{scraped[i]['wmo']} bad value for {temp2}!')
         if str(scraped[i][temp2]) != '-999' and str(scraped[i][temp2]) != '' and (str(o[temp2]) == 'None' or str(o[temp2]) == ''):
             sheet.cell(row = i + 2, column = c1 + 1, value = scraped[i][temp2])
+            o[temp2] = scraped[i][temp2]
 
         temp3 = 'avg'
         if str(scraped[i][temp3]) == '-999':
             print(f'{scraped[i]['wmo']} bad value for {temp3}!')
         if str(scraped[i][temp3]) != '-999' and str(scraped[i][temp3]) != '' and (str(o[temp3]) == 'None' or str(o[temp3]) == ''):
             sheet.cell(row = i + 2, column = c1 + 2, value = scraped[i][temp3])
+            o[temp3] = scraped[i][temp3]
 
         """
         #超长判断语句
