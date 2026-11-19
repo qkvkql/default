@@ -16,6 +16,7 @@ import numpy as np
 import pandas as pd
 from flask import Flask, jsonify, render_template, request, send_from_directory
 from matplotlib.colors import BoundaryNorm, ListedColormap
+from matplotlib.font_manager import FontProperties
 from matplotlib.path import Path as MplPath
 from matplotlib.patches import PathPatch
 from pykrige.ok import OrdinaryKriging
@@ -27,6 +28,24 @@ from shapely.prepared import prep
 BASE_DIR = Path(__file__).resolve().parent
 OUTPUT_DIR = BASE_DIR / "static" / "outputs"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def cjk_font_properties() -> FontProperties | None:
+    """Return an installed font that includes Chinese glyphs, if available."""
+    windows_fonts = Path(os.environ.get("WINDIR", r"C:\Windows")) / "Fonts"
+    candidates = [
+        windows_fonts / "msyh.ttc",      # Microsoft YaHei
+        windows_fonts / "simhei.ttf",    # SimHei
+        windows_fonts / "simsun.ttc",    # SimSun
+        windows_fonts / "NotoSansSC-VF.ttf",
+    ]
+    for font_path in candidates:
+        if font_path.is_file():
+            return FontProperties(fname=str(font_path))
+    return None
+
+
+CJK_FONT = cjk_font_properties()
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 80 * 1024 * 1024
@@ -262,15 +281,34 @@ def parse_kml_boundaries(files) -> tuple[Polygon | MultiPolygon, list[Polygon | 
     return unioned, polygons
 
 
-def dataframe_from_upload(file_storage, lat_col: str, lon_col: str, value_col: str) -> pd.DataFrame:
+def dataframe_from_upload(
+    file_storage,
+    lat_col: str,
+    lon_col: str,
+    value_col: str,
+    dot_name_col: str | None = None,
+    is_deduced_col: str | None = None,
+) -> pd.DataFrame:
     df = pd.read_excel(file_storage)
     required = [lat_col, lon_col, value_col]
     missing = [column for column in required if column not in df.columns]
     if missing:
         raise ValueError(f"Missing required column(s): {', '.join(missing)}")
 
+    if dot_name_col and dot_name_col not in df.columns:
+        raise ValueError(f"Missing selected dot name column: {dot_name_col}")
+    if is_deduced_col and is_deduced_col not in df.columns:
+        raise ValueError(f"Missing selected Is Deduced? column: {is_deduced_col}")
+
     data = df[required].rename(columns={lat_col: "lat", lon_col: "lon", value_col: "value"})
-    data = data.apply(pd.to_numeric, errors="coerce").dropna()
+    if dot_name_col:
+        data["dot_name"] = df[dot_name_col].fillna("").astype(str).str.strip()
+    if is_deduced_col:
+        data["is_deduced"] = df[is_deduced_col].fillna("").astype(str).str.strip().ne("")
+    data[["lat", "lon", "value"]] = data[["lat", "lon", "value"]].apply(
+        pd.to_numeric, errors="coerce"
+    )
+    data = data.dropna(subset=["lat", "lon", "value"])
     data = data[
         data["lat"].between(-90, 90)
         & data["lon"].between(-180, 180)
@@ -577,6 +615,8 @@ def save_surface_image(
     value_levels: list[int] | None = None,
     extra_lats: list[float] | None = None,
     extra_lons: list[float] | None = None,
+    coordinate_data: pd.DataFrame | None = None,
+    dot_name_font_size: float = 24,
 ) -> str:
     filename = f"isotherm-{uuid.uuid4().hex}.png"
     output_path = OUTPUT_DIR / filename
@@ -728,6 +768,40 @@ def save_surface_image(
                 line, = ax.plot(x, y, color="grey", linestyle=":", linewidth=1.0, antialiased=True)
                 line.set_clip_path(clip_patch)
 
+    if coordinate_data is not None:
+        import matplotlib.patheffects as path_effects
+
+        visible_coordinates = coordinate_data[
+            coordinate_data.apply(lambda row: boundary.covers(Point(row["lon"], row["lat"])), axis=1)
+        ]
+        if not visible_coordinates.empty:
+            point_x, point_y = orthographic_project(
+                visible_coordinates["lon"].to_numpy(),
+                visible_coordinates["lat"].to_numpy(),
+                center_lon,
+                center_lat,
+            )
+            for (_, row), x, y in zip(visible_coordinates.iterrows(), point_x, point_y):
+                if not np.isfinite(x) or not np.isfinite(y):
+                    continue
+                ax.plot(x, y, marker="o", markersize=3.5, color="black", linestyle="none", zorder=8)
+                name = str(row.get("dot_name", "") or "").strip()
+                is_deduced = bool(row.get("is_deduced", False))
+                text_color = "red" if is_deduced else "black"
+                if name:
+                    name_text = ax.text(
+                        x, y, name, color=text_color, fontsize=dot_name_font_size, ha="left", va="bottom",
+                        zorder=9, fontproperties=CJK_FONT,
+                    )
+                    name_text.set_path_effects([path_effects.withStroke(linewidth=2.5, foreground="white")])
+
+                value_text = ax.text(
+                    x, y, f"{float(row['value']):g}", color=text_color,
+                    fontsize=dot_name_font_size, ha="right", va="top",
+                    zorder=9, fontproperties=CJK_FONT,
+                )
+                value_text.set_path_effects([path_effects.withStroke(linewidth=2.5, foreground="white")])
+
     draw_boundary_outline(ax, boundary, center_lon, center_lat)
     ax.set_xlim(min_x - margin, max_x + margin)
     ax.set_ylim(min_y - margin, max_y + margin)
@@ -768,6 +842,15 @@ def render_map():
         lat_col = request.form["lat_col"]
         lon_col = request.form["lon_col"]
         value_col = request.form["value_col"]
+        dot_name_col = request.form.get("dot_name_col", "").strip() or None
+        is_deduced_col = request.form.get("is_deduced_col", "").strip() or None
+        show_coordinates = request.form.get("show_coordinates", "false").lower() == "true"
+        try:
+            dot_name_font_size = float(request.form.get("dot_name_font_size", "24"))
+        except ValueError:
+            raise ValueError("Dot name font size must be a number between 1 and 36.")
+        if not math.isfinite(dot_name_font_size) or not 1 <= dot_name_font_size <= 36:
+            raise ValueError("Dot name font size must be a number between 1 and 36.")
 
         extra_lats = json.loads(request.form.get("extra_lats", "[]"))
         extra_lons = json.loads(request.form.get("extra_lons", "[]"))
@@ -803,7 +886,7 @@ def render_map():
             label = f"{lower} to {v}"
             legend_items.append({"color": entry_colors[i], "label": label, "range": label})
 
-        data = dataframe_from_upload(excel, lat_col, lon_col, value_col)
+        data = dataframe_from_upload(excel, lat_col, lon_col, value_col, dot_name_col, is_deduced_col)
         boundary, province_polygons = parse_kml_boundaries(kml_files)
         min_lon, min_lat, max_lon, max_lat = boundary.bounds
         grid_lon, grid_lat = make_grid((min_lon, min_lat, max_lon, max_lat))
@@ -839,6 +922,8 @@ def render_map():
             value_levels=multiples_of_10,
             extra_lats=extra_lats,
             extra_lons=extra_lons,
+            coordinate_data=data if show_coordinates else None,
+            dot_name_font_size=dot_name_font_size,
         )
 
         return jsonify(

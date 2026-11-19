@@ -6,7 +6,7 @@ echo Starting Color-coded Isotherm Map server...
 echo Open http://127.0.0.1:5000 in your browser.
 echo.
 
-start "" /b powershell.exe -NoProfile -WindowStyle Hidden -Command "Start-Sleep -Seconds 3; $paths=@((Join-Path $env:ProgramFiles 'Google\Chrome\Application\chrome.exe'), (Join-Path ${env:ProgramFiles(x86)} 'Google\Chrome\Application\chrome.exe'), (Join-Path $env:LOCALAPPDATA 'Google\Chrome\Application\chrome.exe')); $chrome=$paths | Where-Object { Test-Path $_ } | Select-Object -First 1; if ($chrome) { Start-Process -FilePath $chrome -ArgumentList 'http://127.0.0.1:5000' } else { Start-Process chrome 'http://127.0.0.1:5000' }"
+start "" /b powershell.exe -NoProfile -WindowStyle Hidden -Command "Start-Sleep -Seconds 3; $paths=@((Join-Path $env:ProgramFiles 'Mozilla Firefox\firefox.exe'), (Join-Path ${env:ProgramFiles(x86)} 'Mozilla Firefox\firefox.exe'), (Join-Path $env:LOCALAPPDATA 'Mozilla Firefox\firefox.exe')); $firefox=$paths | Where-Object { Test-Path $_ } | Select-Object -First 1; if ($firefox) { Start-Process -FilePath $firefox -ArgumentList 'http://127.0.0.1:5000' } else { Start-Process -FilePath 'firefox' -ArgumentList 'http://127.0.0.1:5000' -ErrorAction Stop }"
 
 if exist ".venv\Scripts\python.exe" (
     ".venv\Scripts\python.exe" app.py

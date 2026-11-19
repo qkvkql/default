@@ -92,7 +92,7 @@ p,
 
 .workflow-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(190px, 1fr));
+  grid-template-columns: minmax(190px, 1fr) minmax(360px, 1.5fr) minmax(190px, 1fr);
   gap: 16px;
   margin-top: 22px;
 }
@@ -141,6 +141,34 @@ p,
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
+}
+
+.checkbox-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.checkbox-option input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+
+.font-size-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.font-size-option input {
+  width: 64px;
+  min-height: 36px;
+  box-sizing: border-box;
 }
 
 label {
@@ -669,21 +697,39 @@ select {
 
 .legend {
   display: grid;
-  gap: 7px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 10px;
+  row-gap: 4px;
+  justify-self: start;
+  width: fit-content;
+  max-width: 100%;
+  box-sizing: border-box;
+  margin: 12px 0 2px;
+  padding: 10px 14px;
+  border: 1px solid #dbe2ea;
+  border-radius: 8px;
+  background: #f7f9fb;
+}
+
+.legend:empty {
+  display: none;
 }
 
 .legend-row {
   display: grid;
-  grid-template-columns: 22px 1fr;
-  gap: 8px;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: 5px;
   align-items: center;
-  font-size: 13px;
+  min-width: 0;
+  font-size: 11px;
+  line-height: 1.15;
 }
 
 .legend-swatch {
-  width: 22px;
-  height: 18px;
-  border-radius: 4px;
+  width: 16px;
+  height: 12px;
+  border-radius: 3px;
+  box-sizing: border-box;
   border: 1px solid rgba(0, 0, 0, 0.16);
 }
 

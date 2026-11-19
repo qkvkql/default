@@ -42,6 +42,18 @@
                 Value
                 <select id="valueColumn" disabled></select>
               </label>
+              <label>
+                Dot Name
+                <select id="dotNameColumn" disabled>
+                  <option value="">(None)</option>
+                </select>
+              </label>
+              <label>
+                Is Deduced?
+                <select id="isDeducedColumn" disabled>
+                  <option value="">(None)</option>
+                </select>
+              </label>
             </div>
           </div>
 
@@ -88,6 +100,14 @@
 
         <div class="action-row">
           <button id="drawButton" class="primary-button" type="button">Draw Isotherm Image</button>
+          <label class="checkbox-option">
+            <input id="showCoordinates" type="checkbox" />
+            Show Coordinates Information
+          </label>
+          <label class="font-size-option">
+            Dot name font size
+            <input id="dotNameFontSize" type="number" min="1" max="36" step="1" value="24" />
+          </label>
           <div id="message" class="message" role="status"></div>
         </div>
       </section>
