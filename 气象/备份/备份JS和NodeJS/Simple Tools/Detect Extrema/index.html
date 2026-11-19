@@ -373,6 +373,17 @@
       <h2 id="conversion-title">Unit Conversion</h2>
       <div class="conversion-list">
         <div class="conversion-row">
+          <span class="conversion-category">Coordinates</span>
+          <div class="control-field">
+            <label for="coordinates-original">Original format</label>
+            <input id="coordinates-original" type="text" autocomplete="off" placeholder="49.5359°N, 120.5174°E" aria-label="Coordinates in original format">
+          </div>
+          <div class="control-field">
+            <label for="coordinates-standard">Standard (latitude, longitude)</label>
+            <input id="coordinates-standard" type="text" readonly aria-label="Standard coordinates: latitude, tab, longitude">
+          </div>
+        </div>
+        <div class="conversion-row">
           <span class="conversion-category">Temperature</span>
           <div class="control-field">
             <label for="kelvin-value">Kelvin</label>
@@ -451,6 +462,48 @@
         const value = right.valueAsNumber;
         left.value = Number.isFinite(value) ? formatNumber(convertRight(value)) : "";
       });
+    }
+
+    function convertCoordinates(value) {
+      const matches = [...value.matchAll(/(?:(N|S|E|W|北纬|南纬|东经|西经)\s*)?([+-]?\d+(?:\.\d+)?)(?:\s*°|\s*度)?(?:\s*(\d+(?:\.\d+)?)\s*(?:['′’分])(?:\s*(\d+(?:\.\d+)?)\s*(?:["″”秒]))?)?\s*(?:(N|S|E|W|北纬|南纬|东经|西经))?/gi)];
+      const coordinates = matches.map(match => {
+        const direction = (match[1] || match[5] || "").toUpperCase();
+        const degrees = Number(match[2]);
+        const minutes = match[3] === undefined ? 0 : Number(match[3]);
+        const seconds = match[4] === undefined ? 0 : Number(match[4]);
+        if (minutes >= 60 || seconds >= 60) return { direction, number: NaN, text: "" };
+        const sign = /^(S|W|南纬|西经)$/.test(direction) || degrees < 0 ? -1 : 1;
+        const magnitude = Math.abs(degrees) + minutes / 60 + seconds / 3600;
+        const number = sign * magnitude;
+        const isDms = match[3] !== undefined || match[4] !== undefined;
+        const text = isDms
+          ? String(Number(number.toFixed(8)))
+          : /^(S|W|南纬|西经)$/.test(direction) ? String(-Math.abs(degrees))
+            : /^(N|E|北纬|东经)$/.test(direction) ? String(Math.abs(degrees))
+              : match[2];
+        return { direction, number, text };
+      });
+
+      if (coordinates.length !== 2 || coordinates.some(({ number }) => !Number.isFinite(number))) return "";
+      const latitudeDirections = ["N", "S", "北纬", "南纬"];
+      const longitudeDirections = ["E", "W", "东经", "西经"];
+      let latitude;
+      let longitude;
+      const untagged = [];
+      for (const coordinate of coordinates) {
+        if (latitudeDirections.includes(coordinate.direction)) latitude = coordinate;
+        else if (longitudeDirections.includes(coordinate.direction)) longitude = coordinate;
+        else untagged.push(coordinate);
+      }
+      if (!latitude && !longitude && untagged.length === 2) {
+        [latitude, longitude] = coordinates;
+      } else if (untagged.length === 1 && (!latitude || !longitude)) {
+        if (!latitude) latitude = untagged[0];
+        else longitude = untagged[0];
+      }
+      if (!latitude || !longitude) return "";
+      if (Math.abs(latitude.number) > 90 || Math.abs(longitude.number) > 180) return "";
+      return `${latitude.text}\t${longitude.text}`;
     }
 
     // A number is an integer or decimal, optionally with a leading sign.
@@ -624,6 +677,11 @@
     input.addEventListener("input", updateSummary);
     calculatorExpression.addEventListener("input", updateCalculator);
     bindConversion("kelvin-value", "celsius-from-kelvin", value => value - 273.15, value => value + 273.15);
+    const coordinatesOriginal = document.querySelector("#coordinates-original");
+    const coordinatesStandard = document.querySelector("#coordinates-standard");
+    coordinatesOriginal.addEventListener("input", () => {
+      coordinatesStandard.value = convertCoordinates(coordinatesOriginal.value.trim());
+    });
     bindConversion("fahrenheit-value", "celsius-from-fahrenheit", value => (value - 32) * 5 / 9, value => value * 9 / 5 + 32);
     bindConversion("feet-value", "centimeters-from-feet", value => value * 30.48, value => value / 30.48);
     bindConversion("inch-value", "centimeters-from-inch", value => value * 2.54, value => value / 2.54);
