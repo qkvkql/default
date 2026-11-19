@@ -308,13 +308,13 @@ def dataframe_from_upload(
     data[["lat", "lon", "value"]] = data[["lat", "lon", "value"]].apply(
         pd.to_numeric, errors="coerce"
     )
-    data = data.dropna(subset=["lat", "lon", "value"])
+    data.loc[~np.isfinite(data["value"]), "value"] = np.nan
+    data = data.dropna(subset=["lat", "lon"])
     data = data[
         data["lat"].between(-90, 90)
         & data["lon"].between(-180, 180)
-        & np.isfinite(data["value"])
     ]
-    if len(data) < 4:
+    if data["value"].notna().sum() < 4:
         raise ValueError("At least four valid latitude, longitude, and value rows are required for Kriging.")
     return data
 
@@ -617,6 +617,7 @@ def save_surface_image(
     extra_lons: list[float] | None = None,
     coordinate_data: pd.DataFrame | None = None,
     dot_name_font_size: float = 24,
+    isotherm_label_font_size: float = 8,
 ) -> str:
     filename = f"isotherm-{uuid.uuid4().hex}.png"
     output_path = OUTPUT_DIR / filename
@@ -712,7 +713,7 @@ def save_surface_image(
                 contour_lines,
                 levels=sorted(value_levels),
                 fmt="%g",
-                fontsize=8,
+                fontsize=isotherm_label_font_size,
                 colors="black",
                 inline=True,
                 inline_spacing=2,
@@ -723,7 +724,7 @@ def save_surface_image(
                 contour_lines,
                 levels=sorted(value_levels),
                 fmt="%g",
-                fontsize=8,
+                fontsize=isotherm_label_font_size,
                 colors="black",
                 inline=True,
                 inline_spacing=2,
@@ -795,12 +796,13 @@ def save_surface_image(
                     )
                     name_text.set_path_effects([path_effects.withStroke(linewidth=2.5, foreground="white")])
 
-                value_text = ax.text(
-                    x, y, f"{float(row['value']):g}", color=text_color,
-                    fontsize=dot_name_font_size, ha="right", va="top",
-                    zorder=9, fontproperties=CJK_FONT,
-                )
-                value_text.set_path_effects([path_effects.withStroke(linewidth=2.5, foreground="white")])
+                if pd.notna(row.get("value")):
+                    value_text = ax.text(
+                        x, y, f"{float(row['value']):g}", color=text_color,
+                        fontsize=dot_name_font_size, ha="right", va="top",
+                        zorder=9, fontproperties=CJK_FONT,
+                    )
+                    value_text.set_path_effects([path_effects.withStroke(linewidth=2.5, foreground="white")])
 
     draw_boundary_outline(ax, boundary, center_lon, center_lat)
     ax.set_xlim(min_x - margin, max_x + margin)
@@ -851,6 +853,12 @@ def render_map():
             raise ValueError("Dot name font size must be a number between 1 and 36.")
         if not math.isfinite(dot_name_font_size) or not 1 <= dot_name_font_size <= 36:
             raise ValueError("Dot name font size must be a number between 1 and 36.")
+        try:
+            isotherm_label_font_size = float(request.form.get("isotherm_label_font_size", "8"))
+        except ValueError:
+            raise ValueError("Isotherm label font size must be a number between 1 and 36.")
+        if not math.isfinite(isotherm_label_font_size) or not 1 <= isotherm_label_font_size <= 36:
+            raise ValueError("Isotherm label font size must be a number between 1 and 36.")
 
         extra_lats = json.loads(request.form.get("extra_lats", "[]"))
         extra_lons = json.loads(request.form.get("extra_lons", "[]"))
@@ -886,7 +894,8 @@ def render_map():
             label = f"{lower} to {v}"
             legend_items.append({"color": entry_colors[i], "label": label, "range": label})
 
-        data = dataframe_from_upload(excel, lat_col, lon_col, value_col, dot_name_col, is_deduced_col)
+        coordinate_data = dataframe_from_upload(excel, lat_col, lon_col, value_col, dot_name_col, is_deduced_col)
+        data = coordinate_data.dropna(subset=["value"]).copy()
         boundary, province_polygons = parse_kml_boundaries(kml_files)
         min_lon, min_lat, max_lon, max_lat = boundary.bounds
         grid_lon, grid_lat = make_grid((min_lon, min_lat, max_lon, max_lat))
@@ -922,8 +931,9 @@ def render_map():
             value_levels=multiples_of_10,
             extra_lats=extra_lats,
             extra_lons=extra_lons,
-            coordinate_data=data if show_coordinates else None,
+            coordinate_data=coordinate_data if show_coordinates else None,
             dot_name_font_size=dot_name_font_size,
+            isotherm_label_font_size=isotherm_label_font_size,
         )
 
         return jsonify(

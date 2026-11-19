@@ -10,6 +10,7 @@ const dotNameColumn    = document.querySelector("#dotNameColumn");
 const isDeducedColumn  = document.querySelector("#isDeducedColumn");
 const showCoordinates  = document.querySelector("#showCoordinates");
 const dotNameFontSize  = document.querySelector("#dotNameFontSize");
+const isothermLabelFontSize = document.querySelector("#isothermLabelFontSize");
 const drawButton       = document.querySelector("#drawButton");
 const message          = document.querySelector("#message");
 const statusPill       = document.querySelector("#statusPill");
@@ -613,6 +614,7 @@ drawButton.addEventListener("click", async () => {
   formData.append("is_deduced_col", isDeducedColumn.value);
   formData.append("show_coordinates", showCoordinates.checked ? "true" : "false");
   formData.append("dot_name_font_size", dotNameFontSize.value);
+  formData.append("isotherm_label_font_size", isothermLabelFontSize.value);
   formData.append("color_rule", JSON.stringify(generatedColorMap.colorRule));
   formData.append("extra_lats", JSON.stringify(parseExtraLines(extraLatsInput.value)));
   formData.append("extra_lons", JSON.stringify(parseExtraLines(extraLonsInput.value)));
