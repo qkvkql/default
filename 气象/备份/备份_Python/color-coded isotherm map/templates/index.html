@@ -112,6 +112,15 @@
             Isotherm label font size
             <input id="isothermLabelFontSize" type="number" min="1" max="36" step="1" value="8" />
           </label>
+          <label class="text-position-option">
+            Dot information text position
+            <select id="dotTextPosition">
+              <option value="name-left-value-right">Name top-left, value bottom-right</option>
+              <option value="both-left">Name top-left, value bottom-left</option>
+              <option value="name-right-value-left" selected>Name top-right, value bottom-left</option>
+              <option value="both-right">Name top-right, value bottom-right</option>
+            </select>
+          </label>
           <div id="message" class="message" role="status"></div>
         </div>
       </section>

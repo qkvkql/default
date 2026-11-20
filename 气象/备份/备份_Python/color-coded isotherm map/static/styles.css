@@ -171,6 +171,18 @@ p,
   box-sizing: border-box;
 }
 
+.text-position-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.text-position-option select {
+  width: 245px;
+  min-height: 36px;
+}
+
 label {
   display: grid;
   gap: 6px;
@@ -231,6 +243,7 @@ select {
 .action-row {
   margin-top: 18px;
   justify-content: flex-start;
+  flex-wrap: wrap;
 }
 
 .message {

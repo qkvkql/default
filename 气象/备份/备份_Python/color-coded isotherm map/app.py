@@ -618,6 +618,7 @@ def save_surface_image(
     coordinate_data: pd.DataFrame | None = None,
     dot_name_font_size: float = 24,
     isotherm_label_font_size: float = 8,
+    dot_text_position: str = "name-right-value-left",
 ) -> str:
     filename = f"isotherm-{uuid.uuid4().hex}.png"
     output_path = OUTPUT_DIR / filename
@@ -670,6 +671,8 @@ def save_surface_image(
 
     # Draw contour lines at the pre-filtered multiples-of-10 levels.
     if value_levels:
+        import matplotlib.patheffects as path_effects
+
         contour_lines = ax.contour(
             x_mesh,
             y_mesh,
@@ -686,6 +689,81 @@ def save_surface_image(
         # to ensure non-closed lines get labels properly placed inside.
         clip_mpl_path = clip_patch.get_path()
         label_locations = []
+
+        text_alignments = {
+            "name-left-value-right": (("right", "bottom"), ("left", "top")),
+            "both-left": (("right", "bottom"), ("right", "top")),
+            "name-right-value-left": (("left", "bottom"), ("right", "top")),
+            "both-right": (("left", "bottom"), ("left", "top")),
+        }
+        name_alignment, value_alignment = text_alignments.get(
+            dot_text_position, text_alignments["name-right-value-left"]
+        )
+        name_ha, name_va = name_alignment
+        value_ha, value_va = value_alignment
+
+        visible_coordinates = None
+        dot_text_boxes = []
+        if coordinate_data is not None:
+            visible_coordinates = coordinate_data[
+                coordinate_data.apply(lambda row: boundary.covers(Point(row["lon"], row["lat"])), axis=1)
+            ]
+            if not visible_coordinates.empty:
+                point_x, point_y = orthographic_project(
+                    visible_coordinates["lon"].to_numpy(),
+                    visible_coordinates["lat"].to_numpy(),
+                    center_lon,
+                    center_lat,
+                )
+                finite_points = np.isfinite(point_x) & np.isfinite(point_y)
+                visible_coordinates = visible_coordinates.iloc[np.flatnonzero(finite_points)]
+                point_x = point_x[finite_points]
+                point_y = point_y[finite_points]
+
+                # Set the final plot transform before measuring the coordinate
+                # text boxes used for collision avoidance.
+                ax.set_xlim(min_x - margin, max_x + margin)
+                ax.set_ylim(min_y - margin, max_y + margin)
+                ax.set_aspect("equal", adjustable="box")
+                fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
+
+                temporary_texts = []
+                for (_, row), x, y in zip(visible_coordinates.iterrows(), point_x, point_y):
+                    name = str(row.get("dot_name", "") or "").strip()
+                    if name:
+                        temporary_texts.append(ax.text(
+                            x, y, name, fontsize=dot_name_font_size, ha=name_ha, va=name_va,
+                            fontproperties=CJK_FONT,
+                        ))
+                    if pd.notna(row.get("value")):
+                        temporary_texts.append(ax.text(
+                            x, y, f"{float(row['value']):g}", fontsize=dot_name_font_size,
+                            ha=value_ha, va=value_va, fontproperties=CJK_FONT,
+                        ))
+                fig.canvas.draw()
+                renderer = fig.canvas.get_renderer()
+                dot_text_boxes = [
+                    artist.get_window_extent(renderer).expanded(1.15, 1.25)
+                    for artist in temporary_texts
+                ]
+                for artist in temporary_texts:
+                    artist.remove()
+
+                # Use the widest contour label as a conservative collision box.
+                widest_label = max((f"{level:g}" for level in value_levels), key=len)
+                sample_label = ax.text(
+                    point_x[0], point_y[0], widest_label,
+                    fontsize=isotherm_label_font_size, ha="center", va="center",
+                )
+                fig.canvas.draw()
+                label_extent = sample_label.get_window_extent(fig.canvas.get_renderer())
+                label_half_width = label_extent.width * 0.8
+                label_half_height = label_extent.height * 0.8
+                sample_label.remove()
+            else:
+                label_half_width = label_half_height = 0
+        else:
+            label_half_width = label_half_height = 0
         
         paths = []
         if hasattr(contour_lines, "collections") and contour_lines.collections:
@@ -705,8 +783,36 @@ def save_surface_image(
             groups = np.split(indices, np.where(np.diff(indices) > 1)[0] + 1)
             longest_group = max(groups, key=len)
             if len(longest_group) > 0:
-                mid_idx = longest_group[len(longest_group) // 2]
-                label_locations.append(tuple(vertices[mid_idx]))
+                if dot_text_boxes:
+                    sample_positions = np.linspace(
+                        0, len(longest_group) - 1, min(160, len(longest_group)), dtype=int
+                    )
+                    candidates = vertices[longest_group[sample_positions]]
+                    display_candidates = ax.transData.transform(candidates)
+                    collision_counts = []
+                    for cx, cy in display_candidates:
+                        collision_count = sum(
+                            cx + label_half_width >= box.x0
+                            and cx - label_half_width <= box.x1
+                            and cy + label_half_height >= box.y0
+                            and cy - label_half_height <= box.y1
+                            for box in dot_text_boxes
+                        )
+                        collision_counts.append(collision_count)
+
+                    # Prefer the contour midpoint whenever it is clear. If it
+                    # collides, move only as far as needed to find a clear spot.
+                    midpoint = (len(longest_group) - 1) / 2
+                    clear = [i for i, count in enumerate(collision_counts) if count == 0]
+                    pool = clear if clear else range(len(candidates))
+                    best = min(
+                        pool,
+                        key=lambda i: (collision_counts[i], abs(sample_positions[i] - midpoint)),
+                    )
+                    label_locations.append(tuple(candidates[best]))
+                else:
+                    mid_idx = longest_group[len(longest_group) // 2]
+                    label_locations.append(tuple(vertices[mid_idx]))
                 
         if label_locations:
             texts = ax.clabel(
@@ -733,6 +839,9 @@ def save_surface_image(
                 tx, ty = txt.get_position()
                 if not clip_mpl_path.contains_point((tx, ty)):
                     txt.set_visible(False)
+
+        for txt in texts:
+            txt.set_path_effects([path_effects.withStroke(linewidth=2.5, foreground="#FFFF00")])
 
     if province_polygons:
         draw_province_borders(ax, province_polygons, center_lon, center_lat)
@@ -782,6 +891,17 @@ def save_surface_image(
                 center_lon,
                 center_lat,
             )
+            text_alignments = {
+                "name-left-value-right": (("right", "bottom"), ("left", "top")),
+                "both-left": (("right", "bottom"), ("right", "top")),
+                "name-right-value-left": (("left", "bottom"), ("right", "top")),
+                "both-right": (("left", "bottom"), ("left", "top")),
+            }
+            name_alignment, value_alignment = text_alignments.get(
+                dot_text_position, text_alignments["name-right-value-left"]
+            )
+            name_ha, name_va = name_alignment
+            value_ha, value_va = value_alignment
             for (_, row), x, y in zip(visible_coordinates.iterrows(), point_x, point_y):
                 if not np.isfinite(x) or not np.isfinite(y):
                     continue
@@ -791,7 +911,7 @@ def save_surface_image(
                 text_color = "red" if is_deduced else "black"
                 if name:
                     name_text = ax.text(
-                        x, y, name, color=text_color, fontsize=dot_name_font_size, ha="left", va="bottom",
+                        x, y, name, color=text_color, fontsize=dot_name_font_size, ha=name_ha, va=name_va,
                         zorder=9, fontproperties=CJK_FONT,
                     )
                     name_text.set_path_effects([path_effects.withStroke(linewidth=2.5, foreground="white")])
@@ -799,7 +919,7 @@ def save_surface_image(
                 if pd.notna(row.get("value")):
                     value_text = ax.text(
                         x, y, f"{float(row['value']):g}", color=text_color,
-                        fontsize=dot_name_font_size, ha="right", va="top",
+                        fontsize=dot_name_font_size, ha=value_ha, va=value_va,
                         zorder=9, fontproperties=CJK_FONT,
                     )
                     value_text.set_path_effects([path_effects.withStroke(linewidth=2.5, foreground="white")])
@@ -847,6 +967,11 @@ def render_map():
         dot_name_col = request.form.get("dot_name_col", "").strip() or None
         is_deduced_col = request.form.get("is_deduced_col", "").strip() or None
         show_coordinates = request.form.get("show_coordinates", "false").lower() == "true"
+        dot_text_position = request.form.get("dot_text_position", "name-right-value-left")
+        if dot_text_position not in {
+            "name-left-value-right", "both-left", "name-right-value-left", "both-right"
+        }:
+            dot_text_position = "name-right-value-left"
         try:
             dot_name_font_size = float(request.form.get("dot_name_font_size", "24"))
         except ValueError:
@@ -934,6 +1059,7 @@ def render_map():
             coordinate_data=coordinate_data if show_coordinates else None,
             dot_name_font_size=dot_name_font_size,
             isotherm_label_font_size=isotherm_label_font_size,
+            dot_text_position=dot_text_position,
         )
 
         return jsonify(
