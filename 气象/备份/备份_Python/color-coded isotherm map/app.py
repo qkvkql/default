@@ -635,7 +635,8 @@ def save_surface_image(
     max_x, max_y = np.nanmax(clip_vertices, axis=0)
     extent_width = max(max_x - min_x, 0.05)
     extent_height = max(max_y - min_y, 0.05)
-    margin = max(extent_width, extent_height) * 0.025
+    margin_x = extent_width * 0.05
+    margin_y = extent_height * 0.05
     aspect = max(extent_width / extent_height, 0.2)
     width = 16
     height = min(max(width / aspect, 4), 20)
@@ -722,8 +723,8 @@ def save_surface_image(
 
                 # Set the final plot transform before measuring the coordinate
                 # text boxes used for collision avoidance.
-                ax.set_xlim(min_x - margin, max_x + margin)
-                ax.set_ylim(min_y - margin, max_y + margin)
+                ax.set_xlim(min_x - margin_x, max_x + margin_x)
+                ax.set_ylim(min_y - margin_y, max_y + margin_y)
                 ax.set_aspect("equal", adjustable="box")
                 fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
 
@@ -925,8 +926,8 @@ def save_surface_image(
                     value_text.set_path_effects([path_effects.withStroke(linewidth=2.5, foreground="white")])
 
     draw_boundary_outline(ax, boundary, center_lon, center_lat)
-    ax.set_xlim(min_x - margin, max_x + margin)
-    ax.set_ylim(min_y - margin, max_y + margin)
+    ax.set_xlim(min_x - margin_x, max_x + margin_x)
+    ax.set_ylim(min_y - margin_y, max_y + margin_y)
     ax.set_aspect("equal", adjustable="box")
     ax.axis("off")
     fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
