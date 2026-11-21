@@ -47,6 +47,53 @@ def cjk_font_properties() -> FontProperties | None:
 
 CJK_FONT = cjk_font_properties()
 
+
+def mongolian_font_properties() -> FontProperties | None:
+    """Return a font with traditional Mongolian script glyphs, if available."""
+    windows_fonts = Path(os.environ.get("WINDIR", r"C:\Windows")) / "Fonts"
+    candidates = [
+        windows_fonts / "monbaiti.ttf",  # Mongolian Baiti
+        windows_fonts / "NotoSansMongolian-Regular.ttf",
+        windows_fonts / "NotoSansMongolian-VF.ttf",
+    ]
+    for font_path in candidates:
+        if font_path.is_file():
+            return FontProperties(fname=str(font_path))
+    return None
+
+
+MONGOLIAN_FONT = mongolian_font_properties()
+
+
+def mongolian_cyrillic_font_properties() -> FontProperties | None:
+    """Return a font that contains Mongolian Cyrillic Ө/ө and Ү/ү glyphs."""
+    windows_fonts = Path(os.environ.get("WINDIR", r"C:\Windows")) / "Fonts"
+    candidates = [
+        windows_fonts / "arial.ttf",
+        windows_fonts / "segoeui.ttf",
+        windows_fonts / "tahoma.ttf",
+    ]
+    for font_path in candidates:
+        if font_path.is_file():
+            return FontProperties(fname=str(font_path))
+    return None
+
+
+MONGOLIAN_CYRILLIC_FONT = mongolian_cyrillic_font_properties()
+
+
+def dot_name_font_properties(text: str) -> FontProperties | None:
+    """Choose a font covering the Mongolian characters used in a dot name."""
+    contains_mongolian_cyrillic = any(char in "ӨөҮү" for char in text)
+    if contains_mongolian_cyrillic and MONGOLIAN_CYRILLIC_FONT:
+        return MONGOLIAN_CYRILLIC_FONT
+
+    contains_mongolian = any(
+        0x1800 <= ord(char) <= 0x18AF or 0x11660 <= ord(char) <= 0x1167F
+        for char in text
+    )
+    return MONGOLIAN_FONT if contains_mongolian and MONGOLIAN_FONT else CJK_FONT
+
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 80 * 1024 * 1024
 
@@ -734,7 +781,7 @@ def save_surface_image(
                     if name:
                         temporary_texts.append(ax.text(
                             x, y, name, fontsize=dot_name_font_size, ha=name_ha, va=name_va,
-                            fontproperties=CJK_FONT,
+                            fontproperties=dot_name_font_properties(name),
                         ))
                     if pd.notna(row.get("value")):
                         temporary_texts.append(ax.text(
@@ -913,7 +960,7 @@ def save_surface_image(
                 if name:
                     name_text = ax.text(
                         x, y, name, color=text_color, fontsize=dot_name_font_size, ha=name_ha, va=name_va,
-                        zorder=9, fontproperties=CJK_FONT,
+                        zorder=9, fontproperties=dot_name_font_properties(name),
                     )
                     name_text.set_path_effects([path_effects.withStroke(linewidth=2.5, foreground="white")])
 

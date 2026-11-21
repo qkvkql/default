@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "controlPoints": [
+    {
+      "value": -58,
+      "color": "#ffffff"
+    },
+    {
+      "value": -55,
+      "color": "#f72585"
+    },
+    {
+      "value": -51,
+      "color": "#b5179e"
+    },
+    {
+      "value": -48,
+      "color": "#7209b7"
+    },
+    {
+      "value": -46,
+      "color": "#3a0ca3"
+    },
+    {
+      "value": -44,
+      "color": "#3f37c9"
+    },
+    {
+      "value": -42,
+      "color": "#4361ee"
+    }
+  ]
+}
