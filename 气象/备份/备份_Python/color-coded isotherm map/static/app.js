@@ -24,6 +24,10 @@ const imagePlaceholder = document.querySelector("#imagePlaceholder");
 // Extra Grid Lines
 const extraLatsInput     = document.querySelector("#extraLats");
 const extraLonsInput     = document.querySelector("#extraLons");
+const minLatitudeInput   = document.querySelector("#minLatitude");
+const maxLatitudeInput   = document.querySelector("#maxLatitude");
+const minLongitudeInput  = document.querySelector("#minLongitude");
+const maxLongitudeInput  = document.querySelector("#maxLongitude");
 const checkExtraLinesBtn = document.querySelector("#checkExtraLinesBtn");
 const extraLinesMessage  = document.querySelector("#extraLinesMessage");
 
@@ -605,7 +609,7 @@ drawButton.addEventListener("click", async () => {
     return;
   }
   if (!generatedColorMap) {
-    setMessage("Please define and generate the Color Rule (section 6) before drawing.", "error");
+    setMessage("Please define and generate the Color Rule (section 7) before drawing.", "error");
     if (colorRuleBody.hidden) colorRuleToggle.click();
     generateRuleBtn.classList.add("btn-pulse");
     setTimeout(() => generateRuleBtn.classList.remove("btn-pulse"), 1200);
@@ -628,6 +632,10 @@ drawButton.addEventListener("click", async () => {
   formData.append("color_rule", JSON.stringify(generatedColorMap.colorRule));
   formData.append("extra_lats", JSON.stringify(parseExtraLines(extraLatsInput.value)));
   formData.append("extra_lons", JSON.stringify(parseExtraLines(extraLonsInput.value)));
+  formData.append("min_latitude", minLatitudeInput.value);
+  formData.append("max_latitude", maxLatitudeInput.value);
+  formData.append("min_longitude", minLongitudeInput.value);
+  formData.append("max_longitude", maxLongitudeInput.value);
   
   const interpMode = document.querySelector('input[name="interpMode"]:checked').value;
   formData.append("interp_mode", interpMode);

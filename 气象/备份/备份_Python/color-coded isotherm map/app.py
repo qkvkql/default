@@ -20,7 +20,7 @@ from matplotlib.font_manager import FontProperties
 from matplotlib.path import Path as MplPath
 from matplotlib.patches import PathPatch
 from pykrige.ok import OrdinaryKriging
-from shapely.geometry import MultiPolygon, Point, Polygon
+from shapely.geometry import MultiPolygon, Point, Polygon, box
 from shapely.ops import unary_union
 from shapely.prepared import prep
 
@@ -602,7 +602,13 @@ def draw_boundary_outline(ax, boundary, center_lon: float, center_lat: float) ->
         ax.plot(exterior_x, exterior_y, color="#1f2937", linewidth=1.1, antialiased=True)
 
 
-def draw_province_borders(ax, province_polygons: list, center_lon: float, center_lat: float) -> None:
+def draw_province_borders(
+    ax,
+    province_polygons: list,
+    center_lon: float,
+    center_lat: float,
+    clip_patch: PathPatch | None = None,
+) -> None:
     """Draw individual province borders as dotted dark-grey lines."""
     for geom in province_polygons:
         polys = list(geom.geoms) if isinstance(geom, MultiPolygon) else [geom]
@@ -611,7 +617,12 @@ def draw_province_borders(ax, province_polygons: list, center_lon: float, center
             exterior_x, exterior_y = orthographic_project(
                 np.array(exterior_lon), np.array(exterior_lat), center_lon, center_lat
             )
-            ax.plot(exterior_x, exterior_y, color="#b0b0b0", linewidth=0.6, linestyle="solid", antialiased=True)
+            line, = ax.plot(
+                exterior_x, exterior_y, color="#b0b0b0", linewidth=0.6,
+                linestyle="solid", antialiased=True,
+            )
+            if clip_patch is not None:
+                line.set_clip_path(clip_patch)
 
 
 def ring_to_path_parts(coordinates) -> tuple[list[tuple[float, float]], list[int]]:
@@ -897,7 +908,7 @@ def save_surface_image(
             txt.set_path_effects([path_effects.withStroke(linewidth=2.5, foreground="#FFFF00")])
 
     if province_polygons:
-        draw_province_borders(ax, province_polygons, center_lon, center_lat)
+        draw_province_borders(ax, province_polygons, center_lon, center_lat, clip_patch)
 
     if extra_lats or extra_lons:
         polygons = list(boundary.geoms) if isinstance(boundary, MultiPolygon) else [boundary]
@@ -1046,6 +1057,35 @@ def render_map():
         extra_lats = json.loads(request.form.get("extra_lats", "[]"))
         extra_lons = json.loads(request.form.get("extra_lons", "[]"))
 
+        coordinate_range_fields = {
+            "min_latitude": ("Minimum latitude", -90, 90),
+            "max_latitude": ("Maximum latitude", -90, 90),
+            "min_longitude": ("Minimum longitude", -180, 180),
+            "max_longitude": ("Maximum longitude", -180, 180),
+        }
+        coordinate_range = {}
+        for field, (label, lower_limit, upper_limit) in coordinate_range_fields.items():
+            raw_value = request.form.get(field, "").strip()
+            if not raw_value:
+                coordinate_range[field] = None
+                continue
+            try:
+                value = float(raw_value)
+            except ValueError:
+                raise ValueError(f"{label} must be a number.")
+            if not math.isfinite(value) or not lower_limit <= value <= upper_limit:
+                raise ValueError(f"{label} must be between {lower_limit} and {upper_limit}.")
+            coordinate_range[field] = value
+
+        min_lat = coordinate_range["min_latitude"]
+        max_lat = coordinate_range["max_latitude"]
+        min_lon = coordinate_range["min_longitude"]
+        max_lon = coordinate_range["max_longitude"]
+        if min_lat is not None and max_lat is not None and min_lat >= max_lat:
+            raise ValueError("Minimum latitude must be less than maximum latitude.")
+        if min_lon is not None and max_lon is not None and min_lon >= max_lon:
+            raise ValueError("Minimum longitude must be less than maximum longitude.")
+
         # ── Parse the dynamic color rule sent by the frontend ──────────────
         raw_color_rule = request.form.get("color_rule")
         if not raw_color_rule:
@@ -1085,6 +1125,29 @@ def render_map():
         if coordinate_info_mode == "main":
             coordinates_to_show = coordinate_data[coordinate_data["is_main_dot"]]
         boundary, province_polygons = parse_kml_boundaries(kml_files)
+        if any(value is not None for value in coordinate_range.values()):
+            range_boundary = box(
+                min_lon if min_lon is not None else -180,
+                min_lat if min_lat is not None else -90,
+                max_lon if max_lon is not None else 180,
+                max_lat if max_lat is not None else 90,
+            )
+            intersection = boundary.intersection(range_boundary)
+            polygon_parts = []
+
+            def collect_polygons(geometry):
+                if isinstance(geometry, Polygon):
+                    polygon_parts.append(geometry)
+                elif isinstance(geometry, MultiPolygon):
+                    polygon_parts.extend(geometry.geoms)
+                elif hasattr(geometry, "geoms"):
+                    for part in geometry.geoms:
+                        collect_polygons(part)
+
+            collect_polygons(intersection)
+            if not polygon_parts:
+                raise ValueError("Coordinates Range does not overlap the selected KML boundaries with any area.")
+            boundary = unary_union(polygon_parts)
         min_lon, min_lat, max_lon, max_lat = boundary.bounds
         grid_lon, grid_lat = make_grid((min_lon, min_lat, max_lon, max_lat))
         interp_mode = request.form.get("interp_mode", "mean")

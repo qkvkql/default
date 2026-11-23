@@ -73,8 +73,31 @@
           </div>
         </div>
 
+        <div class="panel-section coordinates-range-section">
+          <h2>4. Coordinates Range (Optional)</h2>
+          <div class="select-grid coordinates-range-grid">
+            <label>
+              Min latitude
+              <input type="number" id="minLatitude" step="any" placeholder="No minimum" />
+            </label>
+            <label>
+              Max latitude
+              <input type="number" id="maxLatitude" step="any" placeholder="No maximum" />
+            </label>
+            <label>
+              Min longitude
+              <input type="number" id="minLongitude" step="any" placeholder="No minimum" />
+            </label>
+            <label>
+              Max longitude
+              <input type="number" id="maxLongitude" step="any" placeholder="No maximum" />
+            </label>
+          </div>
+          <p class="muted" style="font-size: 0.85rem;">Leave a field empty to keep that side unrestricted.</p>
+        </div>
+
         <div class="panel-section extra-lines-section">
-          <h2>4. Extra Grid Lines (Optional)</h2>
+          <h2>5. Extra Grid Lines (Optional)</h2>
           <div class="select-grid" style="align-items: end;">
             <label>
               Latitudes (tab-separated)
@@ -90,7 +113,7 @@
         </div>
 
         <div class="panel-section interp-mode-section">
-          <h2>5. Interpolation Mode</h2>
+          <h2>6. Interpolation Mode</h2>
           <div class="interp-mode-group" role="radiogroup" aria-label="Interpolation mode" style="display: flex; gap: 16px; align-items: center;">
             <label title="Cold-biased correction — ensures lowest temperature readings always appear on the map. Best for minimum temperature maps." style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 500; font-size: 14px;">
               <input type="radio" name="interpMode" id="modeLow" value="low" style="margin: 0;" /> Low
@@ -145,7 +168,7 @@
           aria-controls="colorRuleBody"
         >
           <span class="toggle-icon">▶</span>
-          <span>6. Color Rule</span>
+          <span>7. Color Rule</span>
           <span id="colorRuleStatus" class="rule-badge rule-badge--undefined">Not defined</span>
         </button>
 
