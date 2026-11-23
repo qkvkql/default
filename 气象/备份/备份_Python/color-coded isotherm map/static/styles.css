@@ -143,19 +143,17 @@ p,
   gap: 10px;
 }
 
-.checkbox-option {
+.coordinate-mode-option {
   display: flex;
   align-items: center;
   gap: 8px;
   font-weight: 600;
-  cursor: pointer;
   white-space: nowrap;
 }
 
-.checkbox-option input {
-  width: 16px;
-  height: 16px;
-  margin: 0;
+.coordinate-mode-option select {
+  width: 290px;
+  min-height: 36px;
 }
 
 .font-size-option {

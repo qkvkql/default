@@ -7,8 +7,9 @@ const latColumn        = document.querySelector("#latColumn");
 const lonColumn        = document.querySelector("#lonColumn");
 const valueColumn      = document.querySelector("#valueColumn");
 const dotNameColumn    = document.querySelector("#dotNameColumn");
+const mainDotColumn    = document.querySelector("#mainDotColumn");
 const isDeducedColumn  = document.querySelector("#isDeducedColumn");
-const showCoordinates  = document.querySelector("#showCoordinates");
+const coordinateInfoMode = document.querySelector("#coordinateInfoMode");
 const dotNameFontSize  = document.querySelector("#dotNameFontSize");
 const isothermLabelFontSize = document.querySelector("#isothermLabelFontSize");
 const dotTextPosition = document.querySelector("#dotTextPosition");
@@ -93,6 +94,7 @@ function fillColumnSelectors(columns) {
   lonColumn.innerHTML   = optionHtml(columns, "lon");
   valueColumn.innerHTML = optionHtml(columns, "value");
   const previousDotName = dotNameColumn.value;
+  const previousMainDot = mainDotColumn.value;
   const previousDeduced = isDeducedColumn.value;
   dotNameColumn.innerHTML = `<option value="">(None)</option>${columns
     .map((col) => `<option value="${escapeHtml(col)}">${escapeHtml(col)}</option>`)
@@ -100,13 +102,18 @@ function fillColumnSelectors(columns) {
   isDeducedColumn.innerHTML = `<option value="">(None)</option>${columns
     .map((col) => `<option value="${escapeHtml(col)}">${escapeHtml(col)}</option>`)
     .join("")}`;
+  mainDotColumn.innerHTML = `<option value="">(None)</option>${columns
+    .map((col) => `<option value="${escapeHtml(col)}">${escapeHtml(col)}</option>`)
+    .join("")}`;
   if (columns.includes(previousDotName)) dotNameColumn.value = previousDotName;
+  if (columns.includes(previousMainDot)) mainDotColumn.value = previousMainDot;
   if (columns.includes(previousDeduced)) isDeducedColumn.value = previousDeduced;
   for (const select of [latColumn, lonColumn, valueColumn]) {
     select.disabled = false;
     if (!select.value && columns.length) select.value = columns[0];
   }
   dotNameColumn.disabled = false;
+  mainDotColumn.disabled = false;
   isDeducedColumn.disabled = false;
 }
 
@@ -612,8 +619,9 @@ drawButton.addEventListener("click", async () => {
   formData.append("lon_col",    lonColumn.value);
   formData.append("value_col",  valueColumn.value);
   formData.append("dot_name_col", dotNameColumn.value);
+  formData.append("main_dot_col", mainDotColumn.value);
   formData.append("is_deduced_col", isDeducedColumn.value);
-  formData.append("show_coordinates", showCoordinates.checked ? "true" : "false");
+  formData.append("coordinate_info_mode", coordinateInfoMode.value);
   formData.append("dot_name_font_size", dotNameFontSize.value);
   formData.append("isotherm_label_font_size", isothermLabelFontSize.value);
   formData.append("dot_text_position", dotTextPosition.value);

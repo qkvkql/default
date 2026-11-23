@@ -334,6 +334,7 @@ def dataframe_from_upload(
     lon_col: str,
     value_col: str,
     dot_name_col: str | None = None,
+    main_dot_col: str | None = None,
     is_deduced_col: str | None = None,
 ) -> pd.DataFrame:
     df = pd.read_excel(file_storage)
@@ -344,12 +345,16 @@ def dataframe_from_upload(
 
     if dot_name_col and dot_name_col not in df.columns:
         raise ValueError(f"Missing selected dot name column: {dot_name_col}")
+    if main_dot_col and main_dot_col not in df.columns:
+        raise ValueError(f"Missing selected Main Dot column: {main_dot_col}")
     if is_deduced_col and is_deduced_col not in df.columns:
         raise ValueError(f"Missing selected Is Deduced? column: {is_deduced_col}")
 
     data = df[required].rename(columns={lat_col: "lat", lon_col: "lon", value_col: "value"})
     if dot_name_col:
         data["dot_name"] = df[dot_name_col].fillna("").astype(str).str.strip()
+    if main_dot_col:
+        data["is_main_dot"] = df[main_dot_col].fillna("").astype(str).str.strip().ne("")
     if is_deduced_col:
         data["is_deduced"] = df[is_deduced_col].fillna("").astype(str).str.strip().ne("")
     data[["lat", "lon", "value"]] = data[["lat", "lon", "value"]].apply(
@@ -1013,8 +1018,13 @@ def render_map():
         lon_col = request.form["lon_col"]
         value_col = request.form["value_col"]
         dot_name_col = request.form.get("dot_name_col", "").strip() or None
+        main_dot_col = request.form.get("main_dot_col", "").strip() or None
         is_deduced_col = request.form.get("is_deduced_col", "").strip() or None
-        show_coordinates = request.form.get("show_coordinates", "false").lower() == "true"
+        coordinate_info_mode = request.form.get("coordinate_info_mode", "none")
+        if coordinate_info_mode not in {"none", "main", "all"}:
+            coordinate_info_mode = "none"
+        if coordinate_info_mode == "main" and not main_dot_col:
+            raise ValueError("Select a Main Dot column to show coordinates information for main dots.")
         dot_text_position = request.form.get("dot_text_position", "name-right-value-left")
         if dot_text_position not in {
             "name-left-value-right", "both-left", "name-right-value-left", "both-right"
@@ -1067,8 +1077,13 @@ def render_map():
             label = f"{lower} to {v}"
             legend_items.append({"color": entry_colors[i], "label": label, "range": label})
 
-        coordinate_data = dataframe_from_upload(excel, lat_col, lon_col, value_col, dot_name_col, is_deduced_col)
+        coordinate_data = dataframe_from_upload(
+            excel, lat_col, lon_col, value_col, dot_name_col, main_dot_col, is_deduced_col
+        )
         data = coordinate_data.dropna(subset=["value"]).copy()
+        coordinates_to_show = coordinate_data
+        if coordinate_info_mode == "main":
+            coordinates_to_show = coordinate_data[coordinate_data["is_main_dot"]]
         boundary, province_polygons = parse_kml_boundaries(kml_files)
         min_lon, min_lat, max_lon, max_lat = boundary.bounds
         grid_lon, grid_lat = make_grid((min_lon, min_lat, max_lon, max_lat))
@@ -1104,7 +1119,7 @@ def render_map():
             value_levels=multiples_of_10,
             extra_lats=extra_lats,
             extra_lons=extra_lons,
-            coordinate_data=coordinate_data if show_coordinates else None,
+            coordinate_data=coordinates_to_show if coordinate_info_mode != "none" else None,
             dot_name_font_size=dot_name_font_size,
             isotherm_label_font_size=isotherm_label_font_size,
             dot_text_position=dot_text_position,

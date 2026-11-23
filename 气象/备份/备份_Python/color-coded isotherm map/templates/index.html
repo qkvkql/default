@@ -49,6 +49,12 @@
                 </select>
               </label>
               <label>
+                Main Dot
+                <select id="mainDotColumn" disabled>
+                  <option value="">(None)</option>
+                </select>
+              </label>
+              <label>
                 Is Deduced?
                 <select id="isDeducedColumn" disabled>
                   <option value="">(None)</option>
@@ -100,9 +106,13 @@
 
         <div class="action-row">
           <button id="drawButton" class="primary-button" type="button">Draw Isotherm Image</button>
-          <label class="checkbox-option">
-            <input id="showCoordinates" type="checkbox" />
-            Show Coordinates Information
+          <label class="coordinate-mode-option">
+            Coordinates Information
+            <select id="coordinateInfoMode">
+              <option value="none" selected>Do not show coordinates information</option>
+              <option value="main">Show Coordinates Information of Main Dots</option>
+              <option value="all">Show Coordinates Information of All Dots</option>
+            </select>
           </label>
           <label class="font-size-option">
             Dot name font size
