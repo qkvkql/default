@@ -505,6 +505,18 @@ $("workbook-path").addEventListener("keydown", e => { if (e.key === "Enter") cha
 $("save-all").addEventListener("click", async () => { for (const rowNo of [...state.pending.keys()]) { if (!await saveRow(rowNo)) break; } });
 $("insert-cancel").addEventListener("click", () => $("insert-dialog").close());
 $("view-close").addEventListener("click", () => $("view-dialog").close());
+$("insert-fields").addEventListener("paste", e => {
+  const latitudeField = e.target.closest('input[name="latitude"]');
+  const longitudeField = document.getElementById("new-longitude");
+  if (!latitudeField || !longitudeField) return;
+  const clipboardText = (e.clipboardData || window.clipboardData).getData("text");
+  const firstLine = clipboardText.replace(/\r\n?/g, "\n").split("\n", 1)[0];
+  const coordinates = firstLine.split("\t");
+  if (coordinates.length < 2) return;
+  e.preventDefault();
+  latitudeField.value = coordinates[0].trim();
+  longitudeField.value = coordinates[1].trim();
+});
 $("view-fields").addEventListener("dblclick", e => {
   const cell = e.target.closest("td");
   if (!cell) return;
