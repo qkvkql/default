@@ -289,6 +289,60 @@
 
     .conversion-row .control-field { min-width: 0; }
 
+    .case-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .text-conversion-result {
+      margin-top: 18px;
+      color: #596372;
+      font-size: .9rem;
+    }
+
+    .text-conversion-card > summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 650;
+      list-style: none;
+    }
+
+    .text-conversion-card > summary::-webkit-details-marker { display: none; }
+    .text-conversion-card > summary::after { content: "+"; color: #687180; font-size: 1.25rem; }
+    .text-conversion-card[open] > summary { margin-bottom: 16px; }
+    .text-conversion-card[open] > summary::after { content: "−"; }
+
+    .text-result-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    #text-conversion-output {
+      display: block;
+      min-height: 110px;
+      margin-top: 8px;
+      padding: 12px;
+      border: 1px solid #d9dee6;
+      border-radius: 10px;
+      color: #202631;
+      background: #fcfcfd;
+      font: 15px/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      overflow: visible;
+      overflow-wrap: anywhere;
+      text-overflow: clip;
+      white-space: pre-wrap;
+    }
+
+    #copy-text-result { flex: 0 0 auto; }
+    #copy-status { display: block; min-height: 1.2em; margin-top: 6px; color: #687180; }
+
     @media (max-width: 520px) {
       .conversion-row { grid-template-columns: 1fr 1fr; }
       .conversion-category { grid-column: 1 / -1; }
@@ -427,8 +481,39 @@
             <input id="centimeters-from-inch" type="number" step="any" inputmode="decimal" aria-label="Centimeters (convert from inches)">
           </div>
         </div>
+        <div class="conversion-row">
+          <span class="conversion-category">Weight</span>
+          <div class="control-field">
+            <label for="pound-value">Pound</label>
+            <input id="pound-value" type="number" step="any" inputmode="decimal" aria-label="Pounds (convert to kilograms)">
+          </div>
+          <div class="control-field">
+            <label for="kilogram-from-pound">Kilogram</label>
+            <input id="kilogram-from-pound" type="number" step="any" inputmode="decimal" aria-label="Kilograms (convert from pounds)">
+          </div>
+        </div>
       </div>
     </section>
+
+    <details class="conversion-card text-conversion-card">
+      <summary id="text-conversion-title">Text Conversion</summary>
+      <label for="text-conversion-input">Your text</label>
+      <textarea id="text-conversion-input" placeholder="Enter text to convert"></textarea>
+      <div class="case-buttons" aria-label="Text case conversions">
+        <button type="button" data-case="capitalized">To Capitalized Case</button>
+        <button type="button" data-case="sentence">To Sentence Case</button>
+        <button type="button" data-case="lower">To Lower Case</button>
+        <button type="button" data-case="upper">To Upper Case</button>
+      </div>
+      <div class="text-conversion-result">
+        <div class="text-result-header">
+          <span>Result</span>
+          <button id="copy-text-result" type="button">Copy Result</button>
+        </div>
+        <output id="text-conversion-output" aria-live="polite"></output>
+        <span id="copy-status" role="status" aria-live="polite"></span>
+      </div>
+    </details>
   </main>
 
   <script>
@@ -685,6 +770,81 @@
     bindConversion("fahrenheit-value", "celsius-from-fahrenheit", value => (value - 32) * 5 / 9, value => value * 9 / 5 + 32);
     bindConversion("feet-value", "centimeters-from-feet", value => value * 30.48, value => value / 30.48);
     bindConversion("inch-value", "centimeters-from-inch", value => value * 2.54, value => value / 2.54);
+    bindConversion("pound-value", "kilogram-from-pound", value => value * 0.45359237, value => value / 0.45359237);
+    const textConversionInput = document.querySelector("#text-conversion-input");
+    const textConversionOutput = document.querySelector("#text-conversion-output");
+    const copyStatus = document.querySelector("#copy-status");
+
+    function toCapitalizedCase(text) {
+      return text.toLowerCase().replace(/[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+)*/gu, word => {
+        const [first, ...rest] = [...word];
+        return first.toUpperCase() + rest.join("");
+      });
+    }
+
+    function toSentenceCase(text) {
+      let capitalizeNextLetter = true;
+      let result = "";
+      for (const character of text.toLowerCase()) {
+        if (/[.!?]/u.test(character)) capitalizeNextLetter = true;
+        if (/\p{L}/u.test(character)) {
+          result += capitalizeNextLetter ? character.toUpperCase() : character;
+          capitalizeNextLetter = false;
+        } else {
+          result += character;
+          if (/\p{N}/u.test(character)) capitalizeNextLetter = false;
+        }
+      }
+      return result;
+    }
+
+    document.querySelectorAll("[data-case]").forEach(button => {
+      button.addEventListener("click", () => {
+        const text = textConversionInput.value;
+        let result;
+        switch (button.dataset.case) {
+          case "capitalized": result = toCapitalizedCase(text); break;
+          case "sentence": result = toSentenceCase(text); break;
+          case "lower": result = text.toLowerCase(); break;
+          case "upper": result = text.toUpperCase(); break;
+        }
+        textConversionOutput.value = result;
+        textConversionOutput.textContent = result;
+        copyStatus.textContent = "";
+      });
+    });
+    async function copyText(text) {
+      if (navigator.clipboard?.writeText) {
+        try {
+          await navigator.clipboard.writeText(text);
+          return;
+        } catch {
+          // Fall through to the selection-based copy for browsers that reject clipboard access.
+        }
+      }
+
+      const temporaryInput = document.createElement("textarea");
+      temporaryInput.value = text;
+      temporaryInput.style.position = "fixed";
+      temporaryInput.style.opacity = "0";
+      document.body.append(temporaryInput);
+      try {
+        temporaryInput.select();
+        if (!document.execCommand("copy")) throw new Error("Clipboard copy failed");
+      } finally {
+        temporaryInput.remove();
+      }
+    }
+
+    document.querySelector("#copy-text-result").addEventListener("click", async () => {
+      const text = textConversionOutput.value;
+      try {
+        await copyText(text);
+        copyStatus.textContent = "Copied.";
+      } catch {
+        copyStatus.textContent = "Could not copy. Select and copy the result manually.";
+      }
+    });
     countType.addEventListener("change", updateSummary);
     for (const threshold of [singleThreshold, minThreshold, maxThreshold]) {
       threshold.addEventListener("input", updateSummary);
