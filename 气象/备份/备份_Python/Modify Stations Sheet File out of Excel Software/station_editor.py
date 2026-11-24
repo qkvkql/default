@@ -2,13 +2,12 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
-import shutil
 import tempfile
 import threading
 import webbrowser
 from copy import copy
-from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
@@ -74,9 +73,11 @@ PAGE = r'''<!doctype html>
     th:nth-child(8), td.action { width: 110px; }
     th:nth-child(9), td.country { width: 120px; }
     th:nth-child(10), td.clear-column { width: 110px; }
-    th { position: sticky; top: 0; background: #eef2f7; z-index: 2; text-align: left; font-size: 12px; color: #425166; padding: 10px; border-bottom: 1px solid #dbe1e9; }
+    th { position: sticky; top: 0; background: #eef2f7; z-index: 2; text-align: center; font-size: 12px; color: #425166; padding: 10px; border-bottom: 1px solid #dbe1e9; }
     td { padding: 6px 8px; border-bottom: 1px solid #edf0f4; font-size: 13px; }
-    tr:hover td { background: #fafcff; }
+    tbody tr:nth-child(odd) td { background: #fff; }
+    tbody tr:nth-child(even) td { background: #f3f7fc; }
+    tbody tr:hover td { background: #eaf2ff; }
     td.num { width: 138px; }
     td.action { width: 245px; }
     .station-id { position: relative; overflow: visible; color: #6a7482; width: 65px; font-variant-numeric: tabular-nums; }
@@ -87,12 +88,12 @@ PAGE = r'''<!doctype html>
     .id-menu button { width: 100%; text-align: left; border: 0; height: 32px; padding: 0 8px; }
     .station-name { overflow: hidden; white-space: nowrap; }
     .cn-name-text { display: block; font-size: 20px; line-height: 1.2; white-space: nowrap; overflow: hidden; }
-    .province { min-width: 130px; }
-    .data-input { width: 100%; height: 42px; padding: 0 5px; border: 1px solid #cbd4df; border-radius: 5px; text-align: right; font-size: 20px; font-variant-numeric: tabular-nums; }
-    .data-input:focus { outline: 2px solid #8ab4f8; border-color: #5c91e5; }
+    .province { min-width: 130px; text-align: right; }
+    .data-input { width: 100%; height: 42px; padding: 0 5px; border: 1px solid #cbd4df; border-radius: 5px; background: transparent; text-align: right; font-size: 20px; font-variant-numeric: tabular-nums; }
+    .data-input[data-col="min"], .data-input[data-col="max"] { padding-right: 4ch; }
+    .data-input[data-col="avg"] { padding-right: 3ch; }
+    .data-input:focus { outline: 2px solid #8ab4f8; border-color: #5c91e5; background: #fff; }
     tr.dirty { outline: 2px solid #d92d20; outline-offset: -2px; }
-    tr.dirty td { background: #fff8f7; }
-    tr.dirty:hover td { background: #fff2f0; }
     .dirty-mark { color: #b42318; font-size: 11px; white-space: nowrap; }
     .row-save { height: 30px; padding: 0 9px; font-size: 12px; }
     .row-clear { height: 30px; padding: 0 8px; font-size: 12px; white-space: nowrap; }
@@ -103,6 +104,10 @@ PAGE = r'''<!doctype html>
     .dialog-head { border-bottom: 1px solid #e0e5ec; }
     .dialog-foot { border-top: 1px solid #e0e5ec; display:flex; justify-content:flex-end; gap:8px; }
     .dialog-body { padding: 16px 18px; overflow:auto; max-height: 62vh; }
+    .view-table { width: 100%; min-width: 0; table-layout: auto; border-collapse: collapse; }
+    .view-table th { position: static; width: 150px; text-align: left; white-space: nowrap; }
+    .view-table th, .view-table td { border-bottom: 1px solid #e5e9ef; user-select: text; }
+    .view-table td { cursor: text; white-space: pre-wrap; overflow-wrap: anywhere; }
     .fields { display:grid; grid-template-columns: repeat(auto-fit, minmax(210px,1fr)); gap:10px; }
     .field label { display:block; color:#526176; font-size:12px; margin:0 0 4px; }
     .field input { width:100%; height:34px; border:1px solid #cbd4df; border-radius:5px; padding:0 8px; }
@@ -135,18 +140,32 @@ PAGE = r'''<!doctype html>
   </main>
   <dialog id="insert-dialog">
     <form id="insert-form">
-      <div class="dialog-head"><strong id="insert-title">插入新站</strong><div class="sub">输入框提示内容来自所选站点；新站 ID 自动生成，后续站点 ID 会顺延。</div></div>
+      <div class="dialog-head"><strong id="insert-title">插入新站</strong><div class="sub" id="insert-hint">表单会预填所选站点当前各列的值，可按需修改；新站 ID 自动生成，后续站点 ID 会顺延。</div></div>
       <div class="dialog-body"><div id="insert-fields" class="fields"></div></div>
-      <div class="dialog-foot"><button type="button" id="insert-cancel">取消</button><button class="primary" type="submit">插入站点</button></div>
+      <div class="dialog-foot"><button type="button" id="insert-cancel">取消</button><button id="insert-submit" class="primary" type="submit">插入站点</button></div>
     </form>
   </dialog>
+  <dialog id="view-dialog">
+    <div class="dialog-head"><strong id="view-title">查看站点信息</strong><div class="sub">双击单元格文本可选中整项，然后复制。</div></div>
+    <div class="dialog-body"><table class="view-table"><tbody id="view-fields"></tbody></table></div>
+    <div class="dialog-foot"><button type="button" id="view-close">关闭</button></div>
+  </dialog>
 <script>
-const state = { rows: [], headers: [], visibleRows: [], pending: new Map(), busy: new Set(), insertAfter: null, unsavedOnly: false };
+const state = { rows: [], headers: [], visibleRows: [], pending: new Map(), busy: new Set(), insertAfter: null, editRow: null, formMode: "insert", unsavedOnly: false };
 const $ = id => document.getElementById(id);
 const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;", "'":"&#39;"}[c]));
 const norm = value => value == null ? "" : String(value);
 
-function rowValues(row) { return [row.min, row.max, row.avg].map(norm); }
+function formatTempValue(value, column) {
+  const raw = norm(value).trim();
+  if (!raw) return "";
+  const number = Number(raw);
+  if (!Number.isFinite(number)) return norm(value);
+  return number.toFixed(column === "avg" ? 2 : 1);
+}
+function rowValues(row) {
+  return [formatTempValue(row.min, "min"), formatTempValue(row.max, "max"), formatTempValue(row.avg, "avg")];
+}
 function currentValues(rowNo) {
   return ["min", "max", "avg"].map(k => document.querySelector(`[data-row="${rowNo}"][data-col="${k}"]`)?.value ?? "");
 }
@@ -189,7 +208,7 @@ function draw() {
   const visible = sourceRows.filter(row => {
     if (country && row.country !== country) return false;
     if (province && row.province !== province) return false;
-    return !q || [row.id, row.name, row.cn_name, row.country, row.province, ...row.codes].some(v => norm(v).toLocaleLowerCase().includes(q));
+    return !q || [row.id, row.name, row.cn_name, row.country, row.province, row.fields?.USAF, row.fields?.rp5, row.fields?.domes_id, row.fields?.stereotype].some(v => norm(v).toLocaleLowerCase().includes(q));
   });
   state.visibleRows = visible;
   $("rows").innerHTML = visible.map(row => {
@@ -197,7 +216,7 @@ function draw() {
     const dirty = state.pending.has(row.row);
     const locked = state.busy.has(row.row);
     return `<tr data-row="${row.row}" class="${dirty ? "dirty" : ""}">
-      <td class="station-id"><button class="id-button" data-id-menu="${escapeHtml(row.id)}" aria-expanded="false">${escapeHtml(row.id)}</button><div class="id-menu" hidden><button type="button" data-insert-after="${escapeHtml(row.id)}">在此 ID 后插入</button></div></td><td class="province">${escapeHtml(row.province)}</td><td class="station-name"><span class="cn-name-text" title="${escapeHtml(row.cn_name)}">${escapeHtml(row.cn_name)}</span></td>
+      <td class="station-id"><button class="id-button" data-id-menu="${escapeHtml(row.id)}" aria-expanded="false">${escapeHtml(row.id)}</button><div class="id-menu" hidden><button type="button" data-insert-after="${escapeHtml(row.id)}">在此 ID 后插入</button><button type="button" data-edit-row="${row.row}">修改站点信息</button><button type="button" data-view-row="${row.row}">查看站点信息</button></div></td><td class="province">${escapeHtml(row.province)}</td><td class="station-name"><span class="cn-name-text" title="${escapeHtml(row.cn_name)}">${escapeHtml(row.cn_name)}</span></td>
       ${["min","max","avg"].map((k,i)=>`<td class="num"><input class="data-input" inputmode="decimal" autocomplete="off" aria-label="${k} ${escapeHtml(row.name)}" data-row="${row.row}" data-col="${k}" value="${escapeHtml(values[i])}" ${locked?"disabled":""}></td>`).join("")}
       <td class="status-column"><span class="dirty-mark">${dirty?"未保存":""}</span></td><td class="action"><button class="row-save" data-save="${row.row}" ${(!dirty||locked)?"disabled":""}>保存此站</button></td><td class="country">${escapeHtml(row.country)}</td><td class="clear-column"><button class="row-clear" data-clear-row="${row.row}" ${locked?"disabled":""}>清除数据</button></td>
     </tr>`;
@@ -261,6 +280,7 @@ async function loadData() {
     $("status").classList.remove("error");
     draw();
   } catch (e) {
+    if (e.message.startsWith("ID 校验失败：")) alert(e.message);
     $("status").textContent = e.message;
     $("status").classList.add("error");
   }
@@ -273,16 +293,56 @@ function openInsert(afterId) {
     alert("先保存或恢复未保存的 min / max / avg 修改，再插入新站。");
     return;
   }
+  state.formMode = "insert";
+  state.editRow = null;
   state.insertAfter = Number(afterId);
   const source = state.rows.find(row => String(row.id) === String(afterId));
+  buildInsertFields();
   $("insert-title").textContent = `在 ID ${afterId} 后插入新站（新 ID：${Number(afterId)+1}）`;
+  $("insert-hint").textContent = "表单会预填所选站点当前各列的值，可按需修改；新站 ID 自动生成，后续站点 ID 会顺延。";
+  $("insert-submit").textContent = "插入站点";
   $("insert-form").reset();
   state.headers.filter(name => name !== "id").forEach(name => {
     const field = document.getElementById(`new-${name}`);
-    if (field) field.placeholder = source?.fields?.[name] ?? "";
+    if (field) field.value = norm(source?.fields?.[name]);
   });
   $("insert-dialog").showModal();
   $("new-cn_name")?.focus();
+}
+function openEdit(rowNo) {
+  if (state.pending.size) {
+    alert("先保存或恢复未保存的 min / max / avg 修改，再修改站点信息。");
+    return;
+  }
+  const source = state.rows.find(row => row.row === Number(rowNo));
+  if (!source) { alert("找不到此站点，请重新载入工作簿。"); return; }
+  state.formMode = "edit";
+  state.editRow = source.row;
+  state.insertAfter = null;
+  buildInsertFields();
+  $("insert-fields").insertAdjacentHTML("afterbegin", `<div class="field"><label for="edit-id">id</label><input id="edit-id" value="${escapeHtml(source.id)}" readonly></div>`);
+  $("insert-title").textContent = `修改 ID ${source.id} 的站点信息`;
+  $("insert-hint").textContent = "所有站点信息已预填；ID 保持不变。修改后点击“保存修改”。";
+  $("insert-submit").textContent = "保存修改";
+  $("insert-form").reset();
+  state.headers.filter(name => name !== "id").forEach(name => {
+    const field = document.getElementById(`new-${name}`);
+    if (field) field.value = norm(source.fields?.[name]);
+  });
+  $("insert-dialog").showModal();
+  $("new-cn_name")?.focus();
+}
+function openView(rowNo) {
+  const source = state.rows.find(row => row.row === Number(rowNo));
+  if (!source) { alert("找不到此站点，请重新载入工作簿。"); return; }
+  const fields = {...source.fields, id: source.id};
+  const pending = state.pending.get(source.row);
+  if (pending) ["min", "max", "avg"].forEach((name, index) => { fields[name] = pending[index]; });
+  $("view-title").textContent = `查看 ID ${source.id} 的站点信息`;
+  $("view-fields").innerHTML = state.headers.map(name =>
+    `<tr><th scope="row">${escapeHtml(name)}</th><td>${escapeHtml(norm(fields[name]))}</td></tr>`
+  ).join("");
+  $("view-dialog").showModal();
 }
 async function changeWorkbookPath() {
   let path = $("workbook-path").value.trim();
@@ -329,6 +389,12 @@ async function saveRow(rowNo) {
 }
 
 $("rows").addEventListener("input", e => { const el=e.target.closest(".data-input"); if(el) updateDirty(Number(el.dataset.row)); });
+$("rows").addEventListener("focusout", e => {
+  const el = e.target.closest(".data-input");
+  if (!el) return;
+  el.value = formatTempValue(el.value, el.dataset.col);
+  updateDirty(Number(el.dataset.row));
+});
 $("rows").addEventListener("paste", e => {
   const input = e.target.closest(".data-input");
   if (!input) return;
@@ -359,7 +425,7 @@ $("rows").addEventListener("paste", e => {
   const changedRows = new Set();
   targets.forEach(({rowNo, col, value}) => {
     const target = document.querySelector(`[data-row="${rowNo}"][data-col="${cols[col]}"]`);
-    if (target) { target.value = value; changedRows.add(rowNo); }
+    if (target) { target.value = formatTempValue(value, cols[col]); changedRows.add(rowNo); }
   });
   changedRows.forEach(updateDirty);
   const nextRow = state.visibleRows[startRow + matrix.length];
@@ -385,6 +451,26 @@ $("rows").addEventListener("click", e => {
       menu.parentElement.querySelector(".id-button")?.setAttribute("aria-expanded", "false");
     }
     openInsert(ins.dataset.insertAfter);
+    return;
+  }
+  const edit = e.target.closest("[data-edit-row]");
+  if (edit) {
+    const menu = edit.closest(".id-menu");
+    if (menu) {
+      menu.hidden = true;
+      menu.parentElement.querySelector(".id-button")?.setAttribute("aria-expanded", "false");
+    }
+    openEdit(edit.dataset.editRow);
+    return;
+  }
+  const view = e.target.closest("[data-view-row]");
+  if (view) {
+    const menu = view.closest(".id-menu");
+    if (menu) {
+      menu.hidden = true;
+      menu.parentElement.querySelector(".id-button")?.setAttribute("aria-expanded", "false");
+    }
+    openView(view.dataset.viewRow);
     return;
   }
   const clear = e.target.closest("[data-clear-row]");
@@ -418,21 +504,37 @@ $("load-path").addEventListener("click", changeWorkbookPath);
 $("workbook-path").addEventListener("keydown", e => { if (e.key === "Enter") changeWorkbookPath(); });
 $("save-all").addEventListener("click", async () => { for (const rowNo of [...state.pending.keys()]) { if (!await saveRow(rowNo)) break; } });
 $("insert-cancel").addEventListener("click", () => $("insert-dialog").close());
+$("view-close").addEventListener("click", () => $("view-dialog").close());
+$("view-fields").addEventListener("dblclick", e => {
+  const cell = e.target.closest("td");
+  if (!cell) return;
+  const range = document.createRange();
+  range.selectNodeContents(cell);
+  const selection = window.getSelection();
+  selection.removeAllRanges();
+  selection.addRange(range);
+});
 $("insert-form").addEventListener("submit", async e => {
   e.preventDefault();
   const values = Object.fromEntries(new FormData(e.currentTarget).entries());
   const button = e.currentTarget.querySelector('[type="submit"]');
   button.disabled = true;
   try {
-    const response = await fetch("/api/insert", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({after_id:state.insertAfter, values})});
+    const isEditing = state.formMode === "edit";
+    const source = isEditing ? state.rows.find(row => row.row === state.editRow) : null;
+    const endpoint = isEditing ? "/api/update" : "/api/insert";
+    const payload = isEditing
+      ? {row:state.editRow, values, revision:source?.revision}
+      : {after_id:state.insertAfter, values};
+    const response = await fetch(endpoint, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload)});
     const result = await response.json();
-    if (!response.ok) throw new Error(result.error || "插入失败");
+    if (!response.ok) throw new Error(result.error || (isEditing ? "修改失败" : "插入失败"));
     $("insert-dialog").close();
     $("search").value = "";
     $("country").value = "";
     $("province").value = "";
     await loadData();
-    $("status").textContent = `已插入站点：ID ${result.id}`;
+    $("status").textContent = isEditing ? `已修改站点：ID ${result.id}` : `已插入站点：ID ${result.id}`;
   } catch (err) { alert(err.message); }
   finally { button.disabled = false; }
 });
@@ -468,6 +570,32 @@ def workbook_sheet(workbook):
             if all(header in headers for header in REQUIRED_HEADERS):
                 return sheet, row_idx, headers
     raise ValueError("找不到同时包含 min、max、avg 列的工作表。")
+
+
+def validate_station_ids(sheet, header_row, headers):
+    if "id" not in headers:
+        raise ValueError("ID 校验失败：找不到 id 列。")
+    if header_row != 1:
+        raise ValueError(f"ID 校验失败：表头在第 {header_row} 行；id 列必须在第 2 行从 1 开始。")
+
+    id_column = headers.index("id") + 1
+    expected_id = 1
+    last_consecutive_row = 1
+    id_values = sheet.iter_rows(min_row=2, min_col=id_column, max_col=id_column, values_only=True)
+    for row_no, (value,) in enumerate(id_values, start=2):
+        is_numeric = isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
+        if row_no == 2:
+            if not is_numeric or value != 1:
+                raise ValueError(f"ID 校验失败：第 2 行的 id 应为 1，当前值为 {value!r}。")
+        if not is_numeric:
+            break
+        if value != expected_id:
+            raise ValueError(f"ID 校验失败：第 {row_no} 行的 id 应为 {expected_id}，当前值为 {value!r}。")
+        expected_id += 1
+        last_consecutive_row = row_no
+    if last_consecutive_row == 1:
+        raise ValueError("ID 校验失败：第 2 行的 id 应为 1，当前值为空。")
+    return last_consecutive_row
 
 
 def row_to_station(row_no, values, headers):
@@ -506,8 +634,9 @@ def read_stations(path):
     workbook = load_workbook(path, read_only=True, data_only=True)
     try:
         sheet, header_row, headers = workbook_sheet(workbook)
+        last_id_row = validate_station_ids(sheet, header_row, headers)
         rows = []
-        for row_no, values in enumerate(sheet.iter_rows(min_row=header_row + 1, values_only=True), start=header_row + 1):
+        for row_no, values in enumerate(sheet.iter_rows(min_row=header_row + 1, max_row=last_id_row, values_only=True), start=header_row + 1):
             item = row_to_station(row_no, values, headers)
             if item:
                 rows.append(item)
@@ -537,11 +666,7 @@ def set_workbook_path(raw_path):
     return candidate
 
 
-def backup_and_save(workbook, path):
-    backup_dir = path.parent / (path.stem + "_editor_backups")
-    backup_dir.mkdir(exist_ok=True)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-    shutil.copy2(path, backup_dir / f"{path.stem}_{timestamp}{path.suffix}")
+def save_workbook(workbook, path):
     temp_name = None
     try:
         with tempfile.NamedTemporaryFile(prefix=f".{path.stem}_", suffix=path.suffix, dir=path.parent, delete=False) as tmp:
@@ -577,9 +702,72 @@ def save_station(path, row_no, values, expected_revision):
             cell = sheet.cell(row=row_no, column=positions[name])
             cell.value = None if value is None or str(value).strip() == "" else float(value)
 
-        backup_and_save(workbook, path)
+        save_workbook(workbook, path)
         row_now = [sheet.cell(row=row_no, column=col).value for col in range(1, len(headers) + 1)]
         return revision_for(row_now, headers)
+    finally:
+        workbook.close()
+
+
+def update_station(path, row_no, new_values, expected_revision):
+    workbook = load_workbook(path, data_only=False)
+    try:
+        sheet, header_row, headers = workbook_sheet(workbook)
+        if row_no <= header_row or row_no > sheet.max_row:
+            raise ValueError("站点行已不存在。请重新载入工作簿。")
+        positions = {name: i + 1 for i, name in enumerate(headers)}
+        if "id" not in positions:
+            raise ValueError("找不到 id 列。")
+
+        old = [sheet.cell(row=row_no, column=col).value for col in range(1, len(headers) + 1)]
+        if revision_for(old, headers) != expected_revision:
+            raise ValueError("此站点在工作簿中已被其他操作修改。请重新载入后再编辑。")
+
+        for name in REQUIRED_HEADERS:
+            raw = str(new_values.get(name, "")).strip()
+            if raw:
+                try:
+                    number = float(raw)
+                except ValueError as exc:
+                    raise ValueError("min、max、avg 只能填写数字或留空。") from exc
+                if not math.isfinite(number):
+                    raise ValueError("温度值必须是有效数字。")
+
+        usaf_column = positions.get("USAF")
+        candidate_usaf = str(new_values.get("USAF", "")).strip()
+        if usaf_column and candidate_usaf:
+            id_column = positions["id"]
+            marker_column = positions.get("min")
+            for check_row in range(header_row + 1, sheet.max_row + 1):
+                if check_row == row_no:
+                    continue
+                marker = sheet.cell(row=check_row, column=marker_column).value if marker_column else None
+                current_id = sheet.cell(row=check_row, column=id_column).value
+                current_usaf = sheet.cell(row=check_row, column=usaf_column).value
+                if (str(marker or "").strip().upper() != "END"
+                        and current_id not in (None, "")
+                        and str(current_usaf or "").strip() == candidate_usaf):
+                    raise ValueError(f"USAF {candidate_usaf} 已存在，请检查重复站点代码。")
+
+        numeric_fields = {"min", "max", "avg", "latitude", "longitude", "elev", "timezone", "region_id"}
+        for name, column in positions.items():
+            if name == "id":
+                continue
+            raw = str(new_values.get(name, "")).strip()
+            if not raw:
+                value = None
+            elif name in numeric_fields:
+                try:
+                    value = float(raw)
+                except ValueError:
+                    value = raw
+            else:
+                value = raw
+            sheet.cell(row=row_no, column=column).value = value
+
+        save_workbook(workbook, path)
+        row_now = [sheet.cell(row=row_no, column=col).value for col in range(1, len(headers) + 1)]
+        return row_now[positions["id"] - 1], revision_for(row_now, headers)
     finally:
         workbook.close()
 
@@ -603,16 +791,17 @@ def insert_station(path, after_id, new_values):
         if after_row is None:
             raise ValueError(f"找不到 ID {after_id}。请重新载入工作簿。")
 
-        for code_field in ("USAF", "rp5", "WBAN", "domes_id"):
-            candidate = str(new_values.get(code_field, "")).strip()
-            if not candidate:
-                continue
+        usaf_column = positions.get("USAF")
+        candidate_usaf = str(new_values.get("USAF", "")).strip()
+        if usaf_column and candidate_usaf:
             for row_no in range(header_row + 1, sheet.max_row + 1):
-                current_id = sheet.cell(row=row_no, column=id_column).value
                 marker = sheet.cell(row=row_no, column=marker_column).value if marker_column else None
-                current = sheet.cell(row=row_no, column=positions[code_field]).value if code_field in positions else None
-                if str(marker or "").strip().upper() != "END" and current_id not in (None, "") and str(current).strip() == candidate:
-                    raise ValueError(f"{code_field} {candidate} 已存在，请检查重复站点代码。")
+                current_id = sheet.cell(row=row_no, column=id_column).value
+                current_usaf = sheet.cell(row=row_no, column=usaf_column).value
+                if (str(marker or "").strip().upper() != "END"
+                        and current_id not in (None, "")
+                        and str(current_usaf or "").strip() == candidate_usaf):
+                    raise ValueError(f"USAF {candidate_usaf} 已存在，请检查重复站点代码。")
 
         if not any(str(new_values.get(name, "")).strip() for name in ("cn_name", "USAF", "rp5", "WBAN", "domes_id")):
             raise ValueError("请至少填写站点名称或一个站点代码。")
@@ -654,13 +843,13 @@ def insert_station(path, after_id, new_values):
             elif name in numeric_fields:
                 try:
                     value = float(raw)
-                except ValueError as exc:
-                    raise ValueError(f"{name} 必须是数字。") from exc
+                except ValueError:
+                    value = raw
             else:
                 value = raw
             sheet.cell(row=insert_row, column=column).value = value
 
-        backup_and_save(workbook, path)
+        save_workbook(workbook, path)
         return new_id
     finally:
         workbook.close()
@@ -702,7 +891,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         route = urlparse(self.path).path
-        if route not in ("/api/save", "/api/insert", "/api/path"):
+        if route not in ("/api/save", "/api/insert", "/api/update", "/api/path"):
             self.send_json(404, {"error": "Not found"})
             return
         try:
@@ -718,6 +907,17 @@ class Handler(BaseHTTPRequestHandler):
                 with WRITE_LOCK:
                     new_id = insert_station(ACTIVE_WORKBOOK_PATH, after_id, payload.get("values", {}))
                 self.send_json(200, {"ok": True, "id": new_id})
+                return
+            if route == "/api/update":
+                row_no = int(payload["row"])
+                with WRITE_LOCK:
+                    station_id, new_revision = update_station(
+                        ACTIVE_WORKBOOK_PATH,
+                        row_no,
+                        payload.get("values", {}),
+                        str(payload.get("revision", "")),
+                    )
+                self.send_json(200, {"ok": True, "id": station_id, "revision": new_revision})
                 return
             row_no = int(payload["row"])
             values = payload["values"]
