@@ -63,6 +63,7 @@ PAGE = r'''<!doctype html>
     button:disabled { opacity: .5; cursor: default; }
     .status { color: #5b6676; font-size: 13px; margin-left: auto; }
     .hint { font-size: 12px; color: #667386; margin: 0 0 10px; }
+    .validation-notice { margin: 0 0 10px; padding: 9px 12px; border: 1px solid #e8c76a; border-radius: 6px; color: #704d00; background: #fff9e8; font-size: 13px; white-space: pre-wrap; }
     .table-wrap { overflow: auto; max-height: calc(100vh - 205px); background: white; border: 1px solid #dbe1e9; border-radius: 9px; }
     table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 1250px; table-layout: fixed; }
     th:nth-child(1), td.station-id { width: 65px; }
@@ -133,6 +134,7 @@ PAGE = r'''<!doctype html>
       <div id="status" class="status"></div>
     </div>
     <p class="hint">从当前 min / max / avg 单元格开始，可按 Excel 的行列方式粘贴多格数据；超出 avg 列的数据会忽略。红框表示尚未保存。</p>
+    <div id="numeric-warnings" class="validation-notice" hidden></div>
     <div class="table-wrap"><table>
       <thead><tr><th>ID</th><th>省份（level1）</th><th>cn_name</th><th>Min</th><th>Max</th><th>Avg</th><th>状态</th><th>保存</th><th>国家（country）</th><th>清除数据</th></tr></thead>
       <tbody id="rows"></tbody>
@@ -267,6 +269,12 @@ async function loadData() {
     const data = await r.json();
     if (data.path) $("workbook-path").value = data.path;
     if (!r.ok) throw new Error(data.error || "读取失败");
+    const numericWarnings = data.numeric_warnings || [];
+    const warningBox = $("numeric-warnings");
+    warningBox.hidden = numericWarnings.length === 0;
+    warningBox.textContent = numericWarnings.length
+      ? `发现 ${numericWarnings.length} 个非数字值（可在“修改站点信息”中修正）：\n${numericWarnings.join("\n")}`
+      : "";
     state.rows = data.rows;
     state.headers = data.headers;
     state.pending.clear();
@@ -610,6 +618,29 @@ def validate_station_ids(sheet, header_row, headers):
     return last_consecutive_row
 
 
+def validate_numeric_columns(sheet, header_row, headers, last_row):
+    numeric_columns = {
+        name: headers.index(name)
+        for name in ("latitude", "longitude", "elev", "timezone")
+        if name in headers
+    }
+    if not numeric_columns:
+        return []
+
+    warnings = []
+    for row_no, values in enumerate(sheet.iter_rows(min_row=header_row + 1, max_row=last_row, values_only=True), start=header_row + 1):
+        for name, index in numeric_columns.items():
+            value = values[index] if index < len(values) else None
+            if value is None or (isinstance(value, str) and not value.strip()):
+                continue
+            try:
+                if isinstance(value, bool) or not math.isfinite(float(value)):
+                    raise ValueError
+            except (TypeError, ValueError, OverflowError):
+                warnings.append(f"第 {row_no} 行 {name} = {value!r}")
+    return warnings
+
+
 def row_to_station(row_no, values, headers):
     positions = {name: i for i, name in enumerate(headers)}
 
@@ -647,12 +678,13 @@ def read_stations(path):
     try:
         sheet, header_row, headers = workbook_sheet(workbook)
         last_id_row = validate_station_ids(sheet, header_row, headers)
+        numeric_warnings = validate_numeric_columns(sheet, header_row, headers, last_id_row)
         rows = []
         for row_no, values in enumerate(sheet.iter_rows(min_row=header_row + 1, max_row=last_id_row, values_only=True), start=header_row + 1):
             item = row_to_station(row_no, values, headers)
             if item:
                 rows.append(item)
-        return sheet.title, rows, headers, header_row
+        return sheet.title, rows, headers, header_row, numeric_warnings
     finally:
         workbook.close()
 
@@ -894,8 +926,8 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 with WRITE_LOCK:
                     path = ACTIVE_WORKBOOK_PATH
-                    sheet, rows, headers, _ = read_stations(path)
-                self.send_json(200, {"path": str(path), "sheet": sheet, "rows": rows, "headers": headers, "count": len(rows)})
+                    sheet, rows, headers, _, numeric_warnings = read_stations(path)
+                self.send_json(200, {"path": str(path), "sheet": sheet, "rows": rows, "headers": headers, "count": len(rows), "numeric_warnings": numeric_warnings})
             except Exception as exc:
                 self.send_json(500, {"path": str(ACTIVE_WORKBOOK_PATH), "error": str(exc)})
             return
