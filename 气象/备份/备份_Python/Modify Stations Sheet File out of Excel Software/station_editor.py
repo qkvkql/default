@@ -208,7 +208,7 @@ function draw() {
   const visible = sourceRows.filter(row => {
     if (country && row.country !== country) return false;
     if (province && row.province !== province) return false;
-    return !q || [row.id, row.name, row.cn_name, row.country, row.province, row.fields?.USAF, row.fields?.rp5, row.fields?.domes_id, row.fields?.stereotype].some(v => norm(v).toLocaleLowerCase().includes(q));
+    return !q || [row.id, row.name, row.cn_name, row.country, row.province, row.fields?.level2, row.fields?.USAF, row.fields?.rp5, row.fields?.domes_id, row.fields?.stereotype].some(v => norm(v).toLocaleLowerCase().includes(q));
   });
   state.visibleRows = visible;
   $("rows").innerHTML = visible.map(row => {
