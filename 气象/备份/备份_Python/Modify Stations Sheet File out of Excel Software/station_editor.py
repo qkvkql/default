@@ -87,6 +87,8 @@ PAGE = r'''<!doctype html>
     .id-menu { position: absolute; left: 4px; top: calc(100% - 2px); z-index: 8; min-width: 148px; padding: 5px; background: #fff; border: 1px solid #cbd4df; border-radius: 7px; box-shadow: 0 8px 24px #18212f33; }
     .id-menu[hidden] { display: none; }
     .id-menu button { width: 100%; text-align: left; border: 0; height: 32px; padding: 0 8px; }
+    .move-banner { margin: 0 0 12px; padding: 11px 14px; border: 1px solid #f4c56a; border-radius: 7px; background: #fff8e7; color: #714b00; font-weight: 600; }
+    tr.move-source td { background: #fff3cf; }
     .station-name { overflow: hidden; white-space: nowrap; }
     .cn-name-text { display: block; font-size: 20px; line-height: 1.2; white-space: nowrap; overflow: hidden; }
     .province { min-width: 130px; text-align: right; }
@@ -109,6 +111,7 @@ PAGE = r'''<!doctype html>
     .view-table th { position: static; width: 150px; text-align: left; white-space: nowrap; }
     .view-table th, .view-table td { border-bottom: 1px solid #e5e9ef; user-select: text; }
     .view-table td { cursor: text; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .view-table td.coordinate-value { white-space: pre; tab-size: 4; font-family: Consolas, "Courier New", monospace; }
     .fields { display:grid; grid-template-columns: repeat(auto-fit, minmax(210px,1fr)); gap:10px; }
     .field label { display:block; color:#526176; font-size:12px; margin:0 0 4px; }
     .field input { width:100%; height:34px; border:1px solid #cbd4df; border-radius:5px; padding:0 8px; }
@@ -124,6 +127,7 @@ PAGE = r'''<!doctype html>
     <div class="pathbar"><label for="workbook-path">工作簿路径</label><input id="workbook-path" type="text" spellcheck="false" placeholder="输入 .xlsx 完整路径"><button id="load-path" class="primary">载入此文件</button></div>
   </header>
   <main>
+    <div id="move-banner" class="move-banner" hidden></div>
     <div class="toolbar">
       <input id="search" class="search" type="search" placeholder="搜索站点 ID、名称或代码">
       <select id="country"><option value="">所有国家</option></select>
@@ -153,7 +157,7 @@ PAGE = r'''<!doctype html>
     <div class="dialog-foot"><button type="button" id="view-close">关闭</button></div>
   </dialog>
 <script>
-const state = { rows: [], headers: [], visibleRows: [], pending: new Map(), busy: new Set(), insertAfter: null, editRow: null, formMode: "insert", unsavedOnly: false };
+const state = { rows: [], headers: [], visibleRows: [], pending: new Map(), busy: new Set(), insertAfter: null, editRow: null, formMode: "insert", unsavedOnly: false, moveSource: null, moveBusy: false };
 const $ = id => document.getElementById(id);
 const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;", "'":"&#39;"}[c]));
 const norm = value => value == null ? "" : String(value);
@@ -217,16 +221,22 @@ function draw() {
     const values = state.pending.get(row.row) || rowValues(row);
     const dirty = state.pending.has(row.row);
     const locked = state.busy.has(row.row);
-    return `<tr data-row="${row.row}" class="${dirty ? "dirty" : ""}">
-      <td class="station-id"><button class="id-button" data-id-menu="${escapeHtml(row.id)}" aria-expanded="false">${escapeHtml(row.id)}</button><div class="id-menu" hidden><button type="button" data-insert-after="${escapeHtml(row.id)}">在此 ID 后插入</button><button type="button" data-edit-row="${row.row}">修改站点信息</button><button type="button" data-view-row="${row.row}">查看站点信息</button></div></td><td class="province">${escapeHtml(row.province)}</td><td class="station-name"><span class="cn-name-text" title="${escapeHtml(row.cn_name)}">${escapeHtml(row.cn_name)}</span></td>
-      ${["min","max","avg"].map((k,i)=>`<td class="num"><input class="data-input" inputmode="decimal" autocomplete="off" aria-label="${k} ${escapeHtml(row.name)}" data-row="${row.row}" data-col="${k}" value="${escapeHtml(values[i])}" ${locked?"disabled":""}></td>`).join("")}
-      <td class="status-column"><span class="dirty-mark">${dirty?"未保存":""}</span></td><td class="action"><button class="row-save" data-save="${row.row}" ${(!dirty||locked)?"disabled":""}>保存此站</button></td><td class="country">${escapeHtml(row.country)}</td><td class="clear-column"><button class="row-clear" data-clear-row="${row.row}" ${locked?"disabled":""}>清除数据</button></td>
+    const moveMode = state.moveSource !== null;
+    const menu = moveMode
+      ? `<button type="button" data-move-before="${escapeHtml(row.id)}">将站点移动到此 ID 上方</button>`
+      : `<button type="button" data-view-row="${row.row}">查看站点信息</button><button type="button" data-edit-row="${row.row}">修改站点信息</button><button type="button" data-move-start="${escapeHtml(row.id)}">移动站点</button><button type="button" data-insert-after="${escapeHtml(row.id)}">在此 ID 后插入</button>`;
+    const moveSource = moveMode && Number(row.id) === state.moveSource;
+    return `<tr data-row="${row.row}" class="${dirty ? "dirty" : ""} ${moveSource ? "move-source" : ""}">
+      <td class="station-id"><button class="id-button" data-id-menu="${escapeHtml(row.id)}" aria-expanded="false" ${state.moveBusy?"disabled":""}>${escapeHtml(row.id)}</button><div class="id-menu" hidden>${menu}</div></td><td class="province">${escapeHtml(row.province)}</td><td class="station-name"><span class="cn-name-text" title="${escapeHtml(row.cn_name)}">${escapeHtml(row.cn_name)}</span></td>
+      ${["min","max","avg"].map((k,i)=>`<td class="num"><input class="data-input" inputmode="decimal" autocomplete="off" aria-label="${k} ${escapeHtml(row.name)}" data-row="${row.row}" data-col="${k}" value="${escapeHtml(values[i])}" ${locked||moveMode?"disabled":""}></td>`).join("")}
+      <td class="status-column"><span class="dirty-mark">${dirty?"未保存":""}</span></td><td class="action"><button class="row-save" data-save="${row.row}" ${(!dirty||locked||moveMode)?"disabled":""}>保存此站</button></td><td class="country">${escapeHtml(row.country)}</td><td class="clear-column"><button class="row-clear" data-clear-row="${row.row}" ${locked||moveMode?"disabled":""}>清除数据</button></td>
     </tr>`;
   }).join("") || `<tr><td colspan="10" class="empty">没有符合条件的站点</td></tr>`;
   requestAnimationFrame(fitChineseNames);
   $("status").textContent = `${visible.length} / ${state.rows.length} 个站点` + (state.pending.size ? ` · ${state.pending.size} 行未保存` : "");
   $("save-all").disabled = state.pending.size === 0 || state.busy.size > 0;
   updateLocateButton();
+  updateMoveModeUi();
 }
 function clearViewFilters() {
   $("search").value = "";
@@ -238,6 +248,18 @@ function updateLocateButton() {
   button.textContent = state.unsavedOnly ? "取消定位（显示全部）" : `定位未保存 (${state.pending.size})`;
   button.disabled = !state.unsavedOnly && state.pending.size === 0;
   button.classList.toggle("primary", state.unsavedOnly);
+}
+function updateMoveModeUi() {
+  const active = state.moveSource !== null;
+  const banner = $("move-banner");
+  banner.hidden = !active;
+  banner.textContent = active
+    ? `正在移动 ID ${state.moveSource}：点击目标 ID，再选“将站点移动到此 ID 上方”。按 Esc 取消。${state.moveBusy ? " 正在保存移动…" : ""}`
+    : "";
+  ["search", "country", "province", "reload", "save-all", "workbook-path", "load-path"].forEach(id => {
+    $(id).disabled = active;
+  });
+  $("locate-unsaved").disabled = active || (!state.unsavedOnly && state.pending.size === 0);
 }
 const fitCanvas = document.createElement("canvas");
 const fitContext = fitCanvas.getContext("2d");
@@ -347,10 +369,55 @@ function openView(rowNo) {
   const pending = state.pending.get(source.row);
   if (pending) ["min", "max", "avg"].forEach((name, index) => { fields[name] = pending[index]; });
   $("view-title").textContent = `查看 ID ${source.id} 的站点信息`;
-  $("view-fields").innerHTML = state.headers.map(name =>
-    `<tr><th scope="row">${escapeHtml(name)}</th><td>${escapeHtml(norm(fields[name]))}</td></tr>`
-  ).join("");
+  $("view-fields").innerHTML = state.headers.filter(name => name !== "longitude").map(name => {
+    if (name === "latitude") {
+      const coordinates = `${norm(fields.latitude)}\t${norm(fields.longitude)}`;
+      return `<tr><th scope="row">latitude / longitude</th><td class="coordinate-value">${escapeHtml(coordinates)}</td></tr>`;
+    }
+    return `<tr><th scope="row">${escapeHtml(name)}</th><td>${escapeHtml(norm(fields[name]))}</td></tr>`;
+  }).join("");
   $("view-dialog").showModal();
+}
+function startMove(sourceId) {
+  if (state.pending.size) {
+    alert("移动站点前，请先保存或恢复所有未保存的数据修改。");
+    return;
+  }
+  state.moveSource = Number(sourceId);
+  state.moveBusy = false;
+  state.unsavedOnly = false;
+  clearViewFilters();
+  draw();
+}
+async function moveStationBefore(targetId) {
+  targetId = Number(targetId);
+  if (targetId === state.moveSource) {
+    alert("请选择另一个 ID 作为目标位置。");
+    return;
+  }
+  const sourceId = state.moveSource;
+  if (targetId === sourceId + 1) {
+    state.moveSource = null;
+    state.moveBusy = false;
+    draw();
+    $("status").textContent = `原 ID ${sourceId} 已经位于 ID ${targetId} 上方，无需移动`;
+    return;
+  }
+  state.moveBusy = true;
+  draw();
+  try {
+    const response = await fetch("/api/move", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({source_id:sourceId, target_id:targetId})});
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || "移动失败");
+    state.moveSource = null;
+    state.moveBusy = false;
+    await loadData();
+    $("status").textContent = `已将原 ID ${sourceId} 的站点移到目标站点上方，新 ID 为 ${result.id}`;
+  } catch (e) {
+    state.moveBusy = false;
+    draw();
+    alert(e.message);
+  }
 }
 async function changeWorkbookPath() {
   let path = $("workbook-path").value.trim();
@@ -451,6 +518,28 @@ $("rows").addEventListener("click", e => {
     idButton.setAttribute("aria-expanded", String(shouldOpen));
     return;
   }
+  if (state.moveSource !== null) {
+    const target = e.target.closest("[data-move-before]");
+    if (target) {
+      const menu = target.closest(".id-menu");
+      if (menu) {
+        menu.hidden = true;
+        menu.parentElement.querySelector(".id-button")?.setAttribute("aria-expanded", "false");
+      }
+      moveStationBefore(target.dataset.moveBefore);
+    }
+    return;
+  }
+  const move = e.target.closest("[data-move-start]");
+  if (move) {
+    const menu = move.closest(".id-menu");
+    if (menu) {
+      menu.hidden = true;
+      menu.parentElement.querySelector(".id-button")?.setAttribute("aria-expanded", "false");
+    }
+    startMove(move.dataset.moveStart);
+    return;
+  }
   const ins = e.target.closest("[data-insert-after]");
   if (ins) {
     const menu = ins.closest(".id-menu");
@@ -498,6 +587,13 @@ document.addEventListener("click", e => {
   if (e.target.closest(".station-id")) return;
   document.querySelectorAll(".id-menu:not([hidden])").forEach(menu => { menu.hidden = true; });
   document.querySelectorAll(".id-button[aria-expanded='true']").forEach(button => button.setAttribute("aria-expanded", "false"));
+});
+document.addEventListener("keydown", e => {
+  if (state.moveSource !== null && e.key === "Escape") {
+    state.moveSource = null;
+    state.moveBusy = false;
+    draw();
+  }
 });
 $("search").addEventListener("input", draw);
 $("country").addEventListener("change", () => { $("province").value = ""; updateProvinceOptions(); draw(); });
@@ -899,6 +995,68 @@ def insert_station(path, after_id, new_values):
         workbook.close()
 
 
+def move_station(path, source_id, target_id):
+    workbook = load_workbook(path, data_only=False)
+    try:
+        sheet, header_row, headers = workbook_sheet(workbook)
+        last_row = validate_station_ids(sheet, header_row, headers)
+        station_count = last_row - header_row
+        if source_id < 1 or source_id > station_count:
+            raise ValueError(f"找不到要移动的站点 ID {source_id}。")
+        if target_id < 1 or target_id > station_count:
+            raise ValueError(f"找不到目标站点 ID {target_id}。")
+        if source_id == target_id:
+            raise ValueError("目标 ID 不能与要移动的站点相同。")
+        if source_id + 1 == target_id:
+            return source_id
+
+        id_column = headers.index("id") + 1
+        row_records = []
+        for row_no in range(header_row + 1, last_row + 1):
+            cells = []
+            for col in range(1, sheet.max_column + 1):
+                cell = sheet.cell(row=row_no, column=col)
+                cells.append({
+                    "value": cell.value,
+                    "style": copy(cell._style) if cell.has_style else None,
+                    "comment": copy(cell.comment) if cell.comment else None,
+                    "hyperlink": copy(cell.hyperlink) if cell.hyperlink else None,
+                })
+            dimension = sheet.row_dimensions[row_no]
+            row_records.append({
+                "cells": cells,
+                "height": dimension.height,
+                "hidden": dimension.hidden,
+                "outlineLevel": dimension.outlineLevel,
+                "collapsed": dimension.collapsed,
+            })
+
+        source_index = source_id - 1
+        record = row_records.pop(source_index)
+        target_index = target_id - 1 if source_id > target_id else target_id - 2
+        row_records.insert(target_index, record)
+
+        for index, row_record in enumerate(row_records):
+            row_no = header_row + 1 + index
+            for col, cell_record in enumerate(row_record["cells"], start=1):
+                cell = sheet.cell(row=row_no, column=col)
+                cell.value = cell_record["value"]
+                cell._style = copy(cell_record["style"]) if cell_record["style"] is not None else None
+                cell.comment = copy(cell_record["comment"]) if cell_record["comment"] else None
+                cell.hyperlink = copy(cell_record["hyperlink"]) if cell_record["hyperlink"] else None
+            sheet.cell(row=row_no, column=id_column).value = index + 1
+            dimension = sheet.row_dimensions[row_no]
+            dimension.height = row_record["height"]
+            dimension.hidden = row_record["hidden"]
+            dimension.outlineLevel = row_record["outlineLevel"]
+            dimension.collapsed = row_record["collapsed"]
+
+        save_workbook(workbook, path)
+        return target_index + 1
+    finally:
+        workbook.close()
+
+
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
         print(f"[{self.log_date_time_string()}] {fmt % args}")
@@ -935,7 +1093,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         route = urlparse(self.path).path
-        if route not in ("/api/save", "/api/insert", "/api/update", "/api/path"):
+        if route not in ("/api/save", "/api/insert", "/api/update", "/api/move", "/api/path"):
             self.send_json(404, {"error": "Not found"})
             return
         try:
@@ -950,6 +1108,13 @@ class Handler(BaseHTTPRequestHandler):
                 after_id = int(payload["after_id"])
                 with WRITE_LOCK:
                     new_id = insert_station(ACTIVE_WORKBOOK_PATH, after_id, payload.get("values", {}))
+                self.send_json(200, {"ok": True, "id": new_id})
+                return
+            if route == "/api/move":
+                source_id = int(payload["source_id"])
+                target_id = int(payload["target_id"])
+                with WRITE_LOCK:
+                    new_id = move_station(ACTIVE_WORKBOOK_PATH, source_id, target_id)
                 self.send_json(200, {"ok": True, "id": new_id})
                 return
             if route == "/api/update":
