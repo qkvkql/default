@@ -503,10 +503,8 @@ $("rows").addEventListener("paste", e => {
     if (target) { target.value = formatTempValue(value, cols[col]); changedRows.add(rowNo); }
   });
   changedRows.forEach(updateDirty);
-  const nextRow = state.visibleRows[startRow + matrix.length];
-  const lastRowNo = state.visibleRows[startRow + matrix.length - 1].row;
-  const lastCol = Math.min(cols.length - 1, startCol + Math.max(...matrix.map(row => row.length), 1) - 1);
-  document.querySelector(`[data-row="${nextRow ? nextRow.row : lastRowNo}"][data-col="${nextRow ? "min" : cols[lastCol]}"]`)?.focus();
+  const lastTarget = targets[targets.length - 1];
+  if (lastTarget) document.querySelector(`[data-row="${lastTarget.rowNo}"][data-col="${cols[lastTarget.col]}"]`)?.focus();
 });
 $("rows").addEventListener("click", e => {
   const idButton = e.target.closest("[data-id-menu]");
