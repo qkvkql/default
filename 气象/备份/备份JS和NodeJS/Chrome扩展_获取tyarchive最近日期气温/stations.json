@@ -6,12 +6,6 @@
     "level1": "辽宁"
   },
   {
-    "USAF": "54252",
-    "cn_name": "西丰",
-    "domes_id": "",
-    "level1": "辽宁"
-  },
-  {
     "USAF": "54161",
     "cn_name": "长春",
     "domes_id": "",
@@ -108,12 +102,6 @@
     "level1": "内蒙古"
   },
   {
-    "USAF": "53392",
-    "cn_name": "康保",
-    "domes_id": "",
-    "level1": "河北"
-  },
-  {
     "USAF": "52323",
     "cn_name": "马鬃山",
     "domes_id": "",
@@ -122,12 +110,6 @@
   {
     "USAF": "52101",
     "cn_name": "巴里坤",
-    "domes_id": "",
-    "level1": "新疆"
-  },
-  {
-    "USAF": "51186",
-    "cn_name": "青河",
     "domes_id": "",
     "level1": "新疆"
   },
@@ -222,12 +204,6 @@
     "level1": "江西"
   },
   {
-    "USAF": "57494",
-    "cn_name": "武汉",
-    "domes_id": "",
-    "level1": "湖北"
-  },
-  {
     "USAF": "58238",
     "cn_name": "南京",
     "domes_id": "",
@@ -237,6 +213,12 @@
     "USAF": "58457",
     "cn_name": "杭州",
     "domes_id": "",
+    "level1": "浙江"
+  },
+  {
+    "USAF": "",
+    "cn_name": "天目山",
+    "domes_id": "K1146",
     "level1": "浙江"
   },
   {
@@ -324,12 +306,6 @@
     "level1": "内蒙古"
   },
   {
-    "USAF": "53478",
-    "cn_name": "右玉",
-    "domes_id": "",
-    "level1": "山西"
-  },
-  {
     "USAF": "58826",
     "cn_name": "沙县",
     "domes_id": "",
@@ -346,6 +322,36 @@
     "cn_name": "衡东",
     "domes_id": "",
     "level1": "湖南"
+  },
+  {
+    "USAF": "51186",
+    "cn_name": "青河",
+    "domes_id": "",
+    "level1": "新疆"
+  },
+  {
+    "USAF": "53487",
+    "cn_name": "大同",
+    "domes_id": "",
+    "level1": "山西"
+  },
+  {
+    "USAF": "53478",
+    "cn_name": "右玉",
+    "domes_id": "",
+    "level1": "山西"
+  },
+  {
+    "USAF": "53392",
+    "cn_name": "康保",
+    "domes_id": "",
+    "level1": "河北"
+  },
+  {
+    "USAF": "54252",
+    "cn_name": "西丰",
+    "domes_id": "",
+    "level1": "辽宁"
   },
   {
     "USAF": "55294",
@@ -384,12 +390,6 @@
     "level1": "吉林"
   },
   {
-    "USAF": "52908",
-    "cn_name": "五道梁",
-    "domes_id": "",
-    "level1": "青海"
-  },
-  {
     "USAF": "51542",
     "cn_name": "巴音布鲁克",
     "domes_id": "",
@@ -421,14 +421,32 @@
   },
   {
     "USAF": "",
-    "cn_name": "芒硝湖",
-    "domes_id": "Y8014",
-    "level1": "新疆"
+    "cn_name": "塞罕坝",
+    "domes_id": "B3521",
+    "level1": "河北"
+  },
+  {
+    "USAF": "52908",
+    "cn_name": "五道梁",
+    "domes_id": "",
+    "level1": "青海"
   },
   {
     "USAF": "",
-    "cn_name": "黑石北湖(北)",
-    "domes_id": "Y9590",
+    "cn_name": "武汉",
+    "domes_id": "Q1000",
+    "level1": "湖北"
+  },
+  {
+    "USAF": "57494",
+    "cn_name": "武汉",
+    "domes_id": "",
+    "level1": "湖北"
+  },
+  {
+    "USAF": "",
+    "cn_name": "芒硝湖",
+    "domes_id": "Y8014",
     "level1": "新疆"
   },
   {
@@ -451,9 +469,9 @@
   },
   {
     "USAF": "",
-    "cn_name": "塞罕坝",
-    "domes_id": "B3521",
-    "level1": "河北"
+    "cn_name": "黑石北湖(北)",
+    "domes_id": "Y9590",
+    "level1": "新疆"
   },
   {
     "USAF": "",
@@ -482,6 +500,12 @@
   {
     "USAF": "50674",
     "cn_name": "乌伊岭",
+    "domes_id": "",
+    "level1": "黑龙江"
+  },
+  {
+    "USAF": "50772",
+    "cn_name": "五营",
     "domes_id": "",
     "level1": "黑龙江"
   },
@@ -535,7 +559,7 @@
   },
   {
     "USAF": "",
-    "cn_name": "阿木尔镇",
+    "cn_name": "阿木尔",
     "domes_id": "H2547",
     "level1": "黑龙江"
   },
@@ -559,7 +583,7 @@
   },
   {
     "USAF": "",
-    "cn_name": "吐尔洪乡",
+    "cn_name": "吐尔洪",
     "domes_id": "Y5308",
     "level1": "新疆"
   },
@@ -591,6 +615,12 @@
     "USAF": "50344",
     "cn_name": "白山景区(上)",
     "domes_id": "",
+    "level1": "黑龙江"
+  },
+  {
+    "USAF": "",
+    "cn_name": "保护区",
+    "domes_id": "H2554",
     "level1": "黑龙江"
   },
   {
@@ -636,8 +666,20 @@
     "level1": "黑龙江"
   },
   {
+    "USAF": "",
+    "cn_name": "大贵",
+    "domes_id": "H0894",
+    "level1": "黑龙江"
+  },
+  {
     "USAF": "50468",
-    "cn_name": "黑河",
+    "cn_name": "爱辉",
+    "domes_id": "",
+    "level1": "黑龙江"
+  },
+  {
+    "USAF": "50564",
+    "cn_name": "孙吴",
     "domes_id": "",
     "level1": "黑龙江"
   },
@@ -690,6 +732,12 @@
     "level1": "吉林省"
   },
   {
+    "USAF": "54285",
+    "cn_name": "二道",
+    "domes_id": "",
+    "level1": "吉林省"
+  },
+  {
     "USAF": "",
     "cn_name": "白音敖包",
     "domes_id": "C1484",
@@ -727,8 +775,26 @@
   },
   {
     "USAF": "",
+    "cn_name": "奇乌",
+    "domes_id": "",
+    "level1": "内蒙古"
+  },
+  {
+    "USAF": "",
     "cn_name": "乌玛(零公里)",
     "domes_id": "C0197",
+    "level1": "内蒙古"
+  },
+  {
+    "USAF": "",
+    "cn_name": "恩和哈达",
+    "domes_id": "",
+    "level1": "内蒙古"
+  },
+  {
+    "USAF": "",
+    "cn_name": "恩河",
+    "domes_id": "",
     "level1": "内蒙古"
   },
   {
@@ -765,6 +831,12 @@
     "USAF": "",
     "cn_name": "阿巴河",
     "domes_id": "C0238",
+    "level1": "内蒙古"
+  },
+  {
+    "USAF": "",
+    "cn_name": "亚克鲁奇",
+    "domes_id": "C0240",
     "level1": "内蒙古"
   },
   {
@@ -871,6 +943,12 @@
   },
   {
     "USAF": "",
+    "cn_name": "阿龙山",
+    "domes_id": "C0063",
+    "level1": "内蒙古"
+  },
+  {
+    "USAF": "",
     "cn_name": "阿龙山防火办",
     "domes_id": "",
     "level1": "内蒙古"
@@ -933,6 +1011,12 @@
     "USAF": "",
     "cn_name": "扎敦水利枢纽",
     "domes_id": "C0316",
+    "level1": "内蒙古"
+  },
+  {
+    "USAF": "",
+    "cn_name": "乌尔其汉",
+    "domes_id": "C0017",
     "level1": "内蒙古"
   },
   {
@@ -1032,12 +1116,6 @@
     "level1": "山西"
   },
   {
-    "USAF": "53487",
-    "cn_name": "大同",
-    "domes_id": "",
-    "level1": "山西"
-  },
-  {
     "USAF": "53646",
     "cn_name": "榆林",
     "domes_id": "",
@@ -1051,7 +1129,7 @@
   },
   {
     "USAF": "",
-    "cn_name": "海坨山",
+    "cn_name": "小海坨",
     "domes_id": "A1490",
     "level1": "北京"
   },
@@ -1087,6 +1165,12 @@
   },
   {
     "USAF": "",
+    "cn_name": "(普兰)马泉河源头",
+    "domes_id": "U7078",
+    "level1": "西藏"
+  },
+  {
+    "USAF": "",
     "cn_name": "冈仁波齐3",
     "domes_id": "U7502",
     "level1": "西藏"
@@ -1095,6 +1179,12 @@
     "USAF": "",
     "cn_name": "冈仁波齐4",
     "domes_id": "U7101",
+    "level1": "西藏"
+  },
+  {
+    "USAF": "",
+    "cn_name": "古姆",
+    "domes_id": "U7007",
     "level1": "西藏"
   },
   {
@@ -1107,6 +1197,12 @@
     "USAF": "55664",
     "cn_name": "定日",
     "domes_id": "",
+    "level1": "西藏"
+  },
+  {
+    "USAF": "",
+    "cn_name": "休布嘎布",
+    "domes_id": "U2189",
     "level1": "西藏"
   },
   {
@@ -1172,6 +1268,12 @@
   {
     "USAF": "51060",
     "cn_name": "布尔津",
+    "domes_id": "",
+    "level1": "新疆"
+  },
+  {
+    "USAF": "51243",
+    "cn_name": "克拉玛依",
     "domes_id": "",
     "level1": "新疆"
   },

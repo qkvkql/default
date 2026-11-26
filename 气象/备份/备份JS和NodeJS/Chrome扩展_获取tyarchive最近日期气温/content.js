@@ -145,11 +145,12 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 8px;
+      gap: 5px;
     }
     #target-date-input {
-      width: 50%;
-      flex: none;
+      width: auto;
+      min-width: 0;
+      flex: 1 1 auto;
       padding: 8px 10px;
       border-radius: 8px;
       border: 1px solid #334155;
@@ -167,15 +168,15 @@
     }
     #target-date-input::placeholder { color: #64748b; }
 
-    /* ── Avg-fetch toggle button ── */
-    #fetch-avg-toggle {
+    /* ── Average-fetch toggle buttons ── */
+    .fetch-avg-toggle {
       flex-shrink: 0;
-      padding: 7px 10px;
+      padding: 6px 5px;
       border-radius: 8px;
       border: 1px solid #475569;
       background: rgba(51,65,85,0.4);
       color: #64748b;
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 600;
       cursor: pointer;
       white-space: nowrap;
@@ -185,17 +186,17 @@
       line-height: 1.2;
       text-align: center;
     }
-    #fetch-avg-toggle:hover {
+    .fetch-avg-toggle:hover {
       background: rgba(71,85,105,0.55);
       border-color: #64748b;
       color: #94a3b8;
     }
-    #fetch-avg-toggle.active {
+    .fetch-avg-toggle.active {
       background: rgba(16,185,129,0.18);
       border-color: #10b981;
       color: #6ee7b7;
     }
-    #fetch-avg-toggle.active:hover {
+    .fetch-avg-toggle.active:hover {
       background: rgba(16,185,129,0.30);
       border-color: #34d399;
       color: #a7f3d0;
@@ -627,7 +628,8 @@
         <label id="date-label" for="target-date-input">目标日期</label>
         <div id="date-row">
           <input id="target-date-input" type="text" placeholder="MM-DD" autocomplete="off" />
-          <button id="fetch-avg-toggle" title="开启后额外从均温辅助页获取日均温（可能等待最长 30 秒）">获取均温<br>关</button>
+          <button id="fetch-internal-avg-toggle" class="fetch-avg-toggle" aria-pressed="false" title="使用当前实时图表数据视图中的平均气温">获取页内均温<br>关</button>
+          <button id="fetch-external-avg-toggle" class="fetch-avg-toggle active" aria-pressed="true" title="从均温辅助页获取日均温（可能等待最长 30 秒）">获取页外均温<br>开</button>
         </div>
         <div id="extrema-toggle-row">
           <button id="hourly-extrema-toggle" class="active" aria-pressed="true">仅针对特殊站做极值检查</button>
@@ -646,15 +648,30 @@
   const statusBar = shadow.getElementById('status-bar');
   const toast = shadow.getElementById('toast');
   const targetDateInput = shadow.getElementById('target-date-input');
-  const fetchAvgToggle = shadow.getElementById('fetch-avg-toggle');
+  const fetchInternalAvgToggle = shadow.getElementById('fetch-internal-avg-toggle');
+  const fetchExternalAvgToggle = shadow.getElementById('fetch-external-avg-toggle');
   const hourlyExtremaToggle = shadow.getElementById('hourly-extrema-toggle');
 
-  // ── Avg-fetch toggle state (default OFF) ─────────────────────────────────
-  let fetchAvgEnabled = false;
-  fetchAvgToggle.addEventListener('click', () => {
-    fetchAvgEnabled = !fetchAvgEnabled;
-    fetchAvgToggle.classList.toggle('active', fetchAvgEnabled);
-    fetchAvgToggle.innerHTML = fetchAvgEnabled ? '获取均温<br>开' : '获取均温<br>关';
+  // ── Average-source toggles: external defaults ON; both may be OFF ──────────
+  let fetchInternalAvgEnabled = false;
+  let fetchExternalAvgEnabled = true;
+  const renderAvgToggles = () => {
+    fetchInternalAvgToggle.classList.toggle('active', fetchInternalAvgEnabled);
+    fetchInternalAvgToggle.setAttribute('aria-pressed', String(fetchInternalAvgEnabled));
+    fetchInternalAvgToggle.innerHTML = `获取页内均温<br>${fetchInternalAvgEnabled ? '开' : '关'}`;
+    fetchExternalAvgToggle.classList.toggle('active', fetchExternalAvgEnabled);
+    fetchExternalAvgToggle.setAttribute('aria-pressed', String(fetchExternalAvgEnabled));
+    fetchExternalAvgToggle.innerHTML = `获取页外均温<br>${fetchExternalAvgEnabled ? '开' : '关'}`;
+  };
+  fetchInternalAvgToggle.addEventListener('click', () => {
+    fetchInternalAvgEnabled = !fetchInternalAvgEnabled;
+    if (fetchInternalAvgEnabled) fetchExternalAvgEnabled = false;
+    renderAvgToggles();
+  });
+  fetchExternalAvgToggle.addEventListener('click', () => {
+    fetchExternalAvgEnabled = !fetchExternalAvgEnabled;
+    if (fetchExternalAvgEnabled) fetchInternalAvgEnabled = false;
+    renderAvgToggles();
   });
 
   let specialStationsOnly = true;
@@ -1417,6 +1434,7 @@
     }
 
     // Determine whether the target date had valid data
+    const internalAvg = targetCols ? clean(targetCols[4]) : ''; // daily average temp
     const max = targetCols ? clean(targetCols[5]) : '';  // daily max temp
     const min = targetCols ? clean(targetCols[6]) : '';  // daily min temp
     const dateFound = !!targetCols;
@@ -1449,14 +1467,16 @@
       return;
     }
 
-    // ── If basic station and has data, fetch the daily mean temperature ────────
-    // Only fetch the auxiliary page when the avg toggle is enabled (default OFF).
-    let avg = '';
+    // Keep one source choice for the full station lookup, even if the toggles
+    // are changed while an external request is still pending.
+    const useInternalAvg = fetchInternalAvgEnabled;
+    const useExternalAvg = fetchExternalAvgEnabled;
+    let avg = useInternalAvg && isValid(internalAvg) ? internalAvg : '';
     let hourlyMax = '';
     let hourlyMin = '';
     let hourlyPointCount = '';
     let showHourlyExtrema = false;
-    if (isBasicStation && hasData && currentBtn && fetchAvgEnabled) {
+    if (isBasicStation && hasData && currentBtn && useExternalAvg) {
       await specialStationsReady;
       const usafRaw = currentBtn.getAttribute('data-usaf') || '';
       const domesRaw = currentBtn.getAttribute('data-domesid') || '';
@@ -1471,7 +1491,7 @@
       });
       showHourlyExtrema = !specialStationsOnly || isSpecialStation;
 
-      if (fetchAvgEnabled) {
+      if (useExternalAvg) {
         // Build full YYYY-MM-DD date from the MM-DD input and current year
         const now = new Date();
         const yyyy = String(now.getFullYear());
@@ -1497,7 +1517,7 @@
           });
 
           if (avgResp && avgResp.ok) {
-            if (fetchAvgEnabled) avg = avgResp.avg || '';
+            avg = avgResp.avg || '';
             if (showHourlyExtrema) {
               hourlyMax = avgResp.hourlyMax || '';
               hourlyMin = avgResp.hourlyMin || '';
@@ -1525,8 +1545,9 @@
     }
 
     // ── Build final clip text ────────────────────────────────────────────────
-    // Include avg only when this selection actually used the auxiliary lookup.
-    const fetchedAvg = isBasicStation && hasData && !!currentBtn && fetchAvgEnabled;
+    // Include a valid average from the currently selected source.
+    const fetchedAvg = hasData && !!currentBtn && isValid(avg) &&
+      (useInternalAvg || (isBasicStation && useExternalAvg));
     clipText = fetchedAvg ? `${min}\t${max}\t${avg}` : `${min}\t${max}`;
     console.log(`[Tyarchive] Copying to clipboard: "${clipText}"`);
 
