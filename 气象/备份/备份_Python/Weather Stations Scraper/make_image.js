@@ -270,6 +270,17 @@ function loadDataToTable(sourceKey) {
 
     // Extreme highlighting
     highlightExtremes(whichSource, tbodyRows);
+
+    // Stations settled early always show the max cell with subdued styling.
+    for (let i = 0; i < tbodyRows.length; i++) {
+        if (whichSource[i]['note'] === '提前结算') {
+            const maxTd = tbodyRows[i].querySelector('.col-最高气温');
+            if (maxTd) {
+                maxTd.style.backgroundColor = '#000000';
+                maxTd.style.color = '#808080';
+            }
+        }
+    }
 }
 
 function highlightExtremes(whichSource, tbodyRows) {
@@ -356,7 +367,13 @@ function my_toFixed(arrOfObj) {
     arrOfObj.forEach((o) => {
         if (o['min'] !== '') { o['min'] = o['min'].toFixed(1); }
         if (o['max'] !== '') { o['max'] = o['max'].toFixed(1); }
-        if (o['avg'] !== '') { o['avg'] = o['avg'].toFixed(2); }
+        if (o['avg'] !== '' && o['avg'] != null) {
+            const isChineseAutomaticStation = o['country'] === '中国'
+                && String(o['domes_id'] ?? '').trim() !== ''
+                && String(o['USAF'] ?? '').trim() === ''
+                && o['source'] !== '中央气象台';
+            o['avg'] = o['avg'].toFixed(isChineseAutomaticStation ? 1 : 2);
+        }
         if (o['latitude'] !== '') { o['latitude'] = o['latitude'].toFixed(2); }
         if (o['elev'] !== '') { o['elev'] = o['elev'].toFixed(0); }
     });
