@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "controlPoints": [
+    {
+      "value": -55,
+      "color": "#ffffff"
+    },
+    {
+      "value": -50,
+      "color": "#f72585"
+    },
+    {
+      "value": -45,
+      "color": "#b5179e"
+    },
+    {
+      "value": -40,
+      "color": "#7209b7"
+    },
+    {
+      "value": -35,
+      "color": "#3a0ca3"
+    },
+    {
+      "value": -30,
+      "color": "#3f37c9"
+    },
+    {
+      "value": -25,
+      "color": "#4361ee"
+    },
+    {
+      "value": -20,
+      "color": "#4895ef"
+    },
+    {
+      "value": -15,
+      "color": "#4cc9f0"
+    },
+    {
+      "value": -10,
+      "color": "#f3e9d1"
+    }
+  ]
+}
