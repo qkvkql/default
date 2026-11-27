@@ -19,6 +19,7 @@ import json
 import re
 import calendar
 import uuid
+import time
 from pathlib import Path
 import shapely
 from shapely.geometry import Polygon, Point
@@ -381,7 +382,8 @@ def get_period_season_name(period_mode, hemisphere='north'):
 
 def fetch_and_clean_data(source, station_id, start_date, end_date,
                          valid_temperature_range=None, xlsx_dataset_id=_USE_REQUEST_CONTEXT,
-                         ssod_access_method='api', gsod_access_method='api'):
+                         ssod_access_method='api', gsod_access_method='api',
+                         raise_fetch_errors=False):
     # Resolve request-bound settings before entering any worker threads.
     if valid_temperature_range is None:
         valid_temperature_range = get_valid_temperature_range()
@@ -430,17 +432,33 @@ def fetch_and_clean_data(source, station_id, start_date, end_date,
             return pd.DataFrame()
     if source == 'GHCND':
         url = f'https://noaa-ghcn-pds.s3.amazonaws.com/csv/by_station/{station_id}.csv'
-        try:
-            resp = requests.get(url, timeout=15)
-            if resp.status_code == 200:
+        last_error = None
+        for attempt in range(3):
+            try:
+                resp = requests.get(url, timeout=(10, 60))
+                if resp.status_code != 200:
+                    error = requests.HTTPError(f'GHCND request returned HTTP {resp.status_code} for station {station_id}')
+                    if resp.status_code < 500 and resp.status_code != 429:
+                        if raise_fetch_errors:
+                            raise error
+                        return df
+                    raise error
                 df = pd.read_csv(io.StringIO(resp.text), parse_dates=['DATE'], usecols=['ID', 'DATE', 'ELEMENT', 'DATA_VALUE'])
-            else:
-                return df
-            if start_date: df = df[df['DATE'] >= start_date]
-            if end_date: df = df[df['DATE'] <= end_date]
-            df = df[df['ELEMENT'].isin(['TMIN', 'TAVG', 'TMAX'])].copy()
-            df['DATA_VALUE'] = df['DATA_VALUE'] / 10.0
-        except Exception:
+                if start_date: df = df[df['DATE'] >= start_date]
+                if end_date: df = df[df['DATE'] <= end_date]
+                df = df[df['ELEMENT'].isin(['TMIN', 'TAVG', 'TMAX'])].copy()
+                df['DATA_VALUE'] = df['DATA_VALUE'] / 10.0
+                last_error = None
+                break
+            except Exception as exc:
+                last_error = exc
+                if isinstance(exc, requests.HTTPError) and resp.status_code < 500 and resp.status_code != 429:
+                    break
+                if attempt < 2:
+                    time.sleep(0.5 * (2 ** attempt))
+        if last_error is not None:
+            if raise_fetch_errors:
+                raise RuntimeError(f'GHCND retrieval failed for station {station_id} after 3 attempts: {last_error}') from last_error
             return pd.DataFrame()
     elif source == 'GSOD':
         if gsod_access_method == 'local':
@@ -1843,7 +1861,8 @@ def get_multi_stats():
                     valid_temperature_range=valid_temperature_range,
                     xlsx_dataset_id=xlsx_dataset_id,
                     ssod_access_method=ssod_access_method,
-                    gsod_access_method=gsod_access_method
+                    gsod_access_method=gsod_access_method,
+                    raise_fetch_errors=(source == 'GHCND')
                 )
                 df = normalize_station_frame(df)
                 boundary_check_df = df.copy()

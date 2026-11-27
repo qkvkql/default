@@ -16,6 +16,8 @@ let rawMultiStatsResults = [];
 let rawMultiStatMetricOrder = [];
 let rawMultiStatSeason = 'winter';
 let multiStatsColumnVBounds = null;
+let multiStatsColumnVSubsetRows = null;
+let multiStatsColumnVSortDir = 'asc';
 let multiStatSortCol = 'val';
 let multiStatSortDir = 'desc';
 const MULTI_STAT_ALIASES = {
@@ -1100,10 +1102,17 @@ function renderMultiStatsColumnVStationSubset() {
     if (!tbody) return;
 
     if (countryHeader) {
-        countryHeader.textContent = 'V';
-        countryHeader.onclick = null;
+        countryHeader.textContent = `V \u21c5`;
+        countryHeader.onclick = sortMultiStatsColumnVSubset;
     }
-    const subset = multiStatsColumnVBounds ? getMultiStatsColumnVRows() : [];
+    const firstMetric = rawMultiStatMetricOrder.length
+        ? rawMultiStatMetricOrder[0]
+        : document.getElementById('multiStatSelect')?.value;
+    const subset = (multiStatsColumnVSubsetRows || []).slice().sort((a, b) => {
+        const valueA = Number(a.stats?.[firstMetric]?.val);
+        const valueB = Number(b.stats?.[firstMetric]?.val);
+        return multiStatsColumnVSortDir === 'asc' ? valueA - valueB : valueB - valueA;
+    });
     tbody.innerHTML = '';
     if (countEl) countEl.textContent = String(subset.length);
     if (subset.length === 0) {
@@ -1112,9 +1121,6 @@ function renderMultiStatsColumnVStationSubset() {
     }
 
     const columns = ['id', 'name', 'lat', 'lon', 'elev', 'dist'];
-    const firstMetric = rawMultiStatMetricOrder.length
-        ? rawMultiStatMetricOrder[0]
-        : document.getElementById('multiStatSelect')?.value;
     subset.forEach(row => {
         const tr = document.createElement('tr');
         columns.forEach(column => {
@@ -1132,12 +1138,18 @@ function renderMultiStatsColumnVStationSubset() {
     });
 }
 
+function sortMultiStatsColumnVSubset() {
+    multiStatsColumnVSortDir = multiStatsColumnVSortDir === 'asc' ? 'desc' : 'asc';
+    renderMultiStatsColumnVStationSubset();
+}
+
 function toggleMultiStatsColumnVFilter() {
     const enabled = document.getElementById('multiStatsColumnVFilterEnabled')?.checked;
     const inputs = document.getElementById('multiStatsColumnVFilterInputs');
     if (inputs) inputs.style.display = enabled ? 'flex' : 'none';
     if (!enabled) {
         multiStatsColumnVBounds = null;
+        multiStatsColumnVSubsetRows = null;
         renderCurrentMultiStations();
     }
 }
@@ -1160,6 +1172,8 @@ function getMultiStatsColumnVSubset() {
         return;
     }
     multiStatsColumnVBounds = { min, max };
+    multiStatsColumnVSubsetRows = getMultiStatsColumnVRows();
+    multiStatsColumnVSortDir = 'asc';
     renderMultiStatsColumnVStationSubset();
 }
 
@@ -1168,8 +1182,7 @@ async function calcMultiStats() {
     if (!validateValidTemperatureRange()) return;
     let stationsForStats = currentMultiStations.slice();
     if (multiStatsColumnVBounds && document.getElementById('multiStatsColumnVFilterEnabled')?.checked) {
-        const subsetIds = new Set(getMultiStatsColumnVRows().map(row => String(row.id)));
-        stationsForStats = currentMultiStations.filter(station => subsetIds.has(String(station.id)));
+        stationsForStats = (multiStatsColumnVSubsetRows || []).map(row => ({ id: row.id, dist: row.dist }));
     }
     const loading = document.getElementById('multiStatLoading');
     const tbody = document.querySelector('#multiStatResultTable tbody');
