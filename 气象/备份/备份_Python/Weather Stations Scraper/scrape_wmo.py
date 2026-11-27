@@ -812,7 +812,8 @@ def scrape_by_usaf(usaf_list):
 
     for e in results:
         print(f'{e['wmo']}\t{e['min']}\t{e['max']}\t{e['avg']}')
-    return {'scrapedArr': results, 'bad_list': bad_list} #返回对象数组，后面写入文件要用到
+    dict_results = {e['wmo']: {'min': e['min'], 'max': e['max'], 'avg': e['avg']} for e in results if e['wmo']}
+    return {'scrapedArr': dict_results, 'bad_list': bad_list} #返回对象数组，后面写入文件要用到
 
 # ******** ******** ******** ******** 结果导出 ******** ******** ******** ********
 def exportJSON(resultArr, bad_list): # 导出为JSON

@@ -49,26 +49,32 @@ def write_into_station_list():
     c1 = 15 # station_list: column of min=15, max=16, avg=17
     # temp_count = 0
     for i, o in enumerate(station_list): # index before element
+        if not o['USAF']:
+            continue
+        usaf = str(o['USAF']).strip()
+        station_data = scraped.get(usaf)
+        if station_data is None:
+            continue
         temp1 = 'min'
-        if str(scraped[i][temp1]) == '-999':
-            print(f'{scraped[i]['wmo']} bad value for {temp1}!')
-        if str(scraped[i][temp1]) != '-999' and str(scraped[i][temp1]) != '' and (str(o[temp1]) == 'None' or str(o[temp1]) == ''):
-            sheet.cell(row = i + 2, column = c1, value = scraped[i][temp1])
-            o[temp1] = scraped[i][temp1]
+        if str(station_data[temp1]) == '-999':
+            print(f'{o['USAF']} bad value for {temp1}!')
+        if str(station_data[temp1]) != '-999' and str(station_data[temp1]) != '' and (str(o[temp1]) == 'None' or str(o[temp1]) == ''):
+            sheet.cell(row = i + 2, column = c1, value = station_data[temp1])
+            o[temp1] = station_data[temp1]
 
         temp2 = 'max'
-        if str(scraped[i][temp2]) == '-999':
-            print(f'{scraped[i]['wmo']} bad value for {temp2}!')
-        if str(scraped[i][temp2]) != '-999' and str(scraped[i][temp2]) != '' and (str(o[temp2]) == 'None' or str(o[temp2]) == ''):
-            sheet.cell(row = i + 2, column = c1 + 1, value = scraped[i][temp2])
-            o[temp2] = scraped[i][temp2]
+        if str(station_data[temp2]) == '-999':
+            print(f'{o['USAF']} bad value for {temp2}!')
+        if str(station_data[temp2]) != '-999' and str(station_data[temp2]) != '' and (str(o[temp2]) == 'None' or str(o[temp2]) == ''):
+            sheet.cell(row = i + 2, column = c1 + 1, value = station_data[temp2])
+            o[temp2] = station_data[temp2]
 
         temp3 = 'avg'
-        if str(scraped[i][temp3]) == '-999':
-            print(f'{scraped[i]['wmo']} bad value for {temp3}!')
-        if str(scraped[i][temp3]) != '-999' and str(scraped[i][temp3]) != '' and (str(o[temp3]) == 'None' or str(o[temp3]) == ''):
-            sheet.cell(row = i + 2, column = c1 + 2, value = scraped[i][temp3])
-            o[temp3] = scraped[i][temp3]
+        if str(station_data[temp3]) == '-999':
+            print(f'{o['USAF']} bad value for {temp3}!')
+        if str(station_data[temp3]) != '-999' and str(station_data[temp3]) != '' and (str(o[temp3]) == 'None' or str(o[temp3]) == ''):
+            sheet.cell(row = i + 2, column = c1 + 2, value = station_data[temp3])
+            o[temp3] = station_data[temp3]
 
         """
         #超长判断语句
