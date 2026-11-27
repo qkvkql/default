@@ -5,7 +5,7 @@
 ## 启动
 
 1. 确保 Python 和 `openpyxl` 已安装。若缺少 `openpyxl`，在此文件夹打开命令行并运行 `python -m pip install -r requirements.txt`。
-2. 双击 `start_station_editor.bat`。浏览器会打开 `http://127.0.0.1:8765`。
+2. 双击 `start_station_editor.bat`。编辑器会在 Firefox 中打开 `http://127.0.0.1:8765`。
 3. 保持启动窗口运行；完成后按 `Ctrl+C` 关闭服务。
 
 页面顶部的“工作簿路径”输入框可修改文件位置；点击“载入此文件”后，编辑器会先验证文件。最近一次成功载入的路径会保存在 `station_editor_config.json`，下次启动继续使用。首次启动默认使用 `station_editor.py` 中的 `DEFAULT_WORKBOOK_PATH`。

@@ -4,9 +4,10 @@ import hashlib
 import json
 import math
 import os
+import shutil
+import subprocess
 import tempfile
 import threading
-import webbrowser
 from copy import copy
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -1138,6 +1139,58 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json(400, {"error": str(exc)})
 
 
+def find_firefox_executable():
+    candidates = []
+    path_match = shutil.which("firefox.exe") or shutil.which("firefox")
+    if path_match:
+        candidates.append(Path(path_match))
+    for env_name in ("PROGRAMFILES", "PROGRAMFILES(X86)", "LOCALAPPDATA"):
+        base = os.environ.get(env_name)
+        if base:
+            candidates.append(Path(base) / "Mozilla Firefox" / "firefox.exe")
+            candidates.append(Path(base) / "Programs" / "Mozilla Firefox" / "firefox.exe")
+
+    try:
+        import winreg
+
+        app_path_key = r"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\firefox.exe"
+        access_flags = [winreg.KEY_READ]
+        access_flags.extend(
+            winreg.KEY_READ | flag
+            for flag in (getattr(winreg, "KEY_WOW64_64KEY", 0), getattr(winreg, "KEY_WOW64_32KEY", 0))
+            if flag
+        )
+        for hive in (winreg.HKEY_CURRENT_USER, winreg.HKEY_LOCAL_MACHINE):
+            for access in access_flags:
+                try:
+                    with winreg.OpenKey(hive, app_path_key, 0, access) as key:
+                        registered_path = winreg.QueryValueEx(key, None)[0]
+                        if registered_path:
+                            candidates.append(Path(str(registered_path).strip('"')))
+                except OSError:
+                    continue
+    except ImportError:
+        pass
+
+    for candidate in candidates:
+        if candidate.is_file():
+            return str(candidate)
+    return None
+
+
+def open_firefox(url):
+    firefox = find_firefox_executable()
+    if not firefox:
+        print("Firefox was not found. Install Firefox, then open this URL manually:", url)
+        return
+    try:
+        subprocess.Popen([firefox, url], close_fds=True)
+        print("Opened the editor in Firefox.")
+    except OSError as exc:
+        print(f"Could not start Firefox: {exc}")
+        print("Open this URL in Firefox:", url)
+
+
 def main():
     server = ThreadingHTTPServer((HOST, PORT), Handler)
     server.daemon_threads = True
@@ -1145,7 +1198,7 @@ def main():
     print(f"气象站数据编辑器已启动：{url}")
     print(f"当前工作簿：{ACTIVE_WORKBOOK_PATH}")
     print("保持此窗口打开即可使用；按 Ctrl+C 停止服务。")
-    threading.Timer(0.8, lambda: webbrowser.open(url)).start()
+    threading.Timer(0.8, lambda: open_firefox(url)).start()
     try:
         server.serve_forever()
     except KeyboardInterrupt:

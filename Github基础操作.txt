@@ -36,7 +36,7 @@ git fetch origin master
 git restore --source=origin/master "目标文件名及后缀"
 
 *
-从本地git仓库德最近一次push恢复目标目录下的全部文件(慎用！对新添加的还未被追踪的文件不受影响，虽然方便但还是慎用！)
+从本地git仓库的最近一次push恢复目标目录下的全部文件(慎用！对新添加的还未被追踪的文件不受影响，虽然方便但还是慎用！)
 git restore .
 
 *
