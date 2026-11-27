@@ -821,6 +821,21 @@
                                 <button class="small-btn" onclick="addMultiStationSubset()">Add Subset</button>
                             </div>
                         </div>
+                        <div style="margin-bottom: 10px;">
+                            <label style="font-weight:normal; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+                                <input type="checkbox" id="multiStatsColumnVFilterEnabled" onchange="toggleMultiStatsColumnVFilter()">
+                                Get Subset from Multiple Stations Statistics Result Table only by Column V
+                            </label>
+                            <div id="multiStatsColumnVFilterInputs" class="record-controls" style="display:none; margin-top:8px;">
+                                <div class="control-group">
+                                    <label for="multiStatsColumnVMin">V &gt;=</label>
+                                    <input type="number" id="multiStatsColumnVMin" step="any" aria-label="Column V minimum value">
+                                    <label for="multiStatsColumnVMax">V &lt;=</label>
+                                    <input type="number" id="multiStatsColumnVMax" step="any" aria-label="Column V maximum value">
+                                    <button class="small-btn" onclick="getMultiStatsColumnVSubset()">Get Subset</button>
+                                </div>
+                            </div>
+                        </div>
                         
                         <div id="pogodaiklimatLinkArea" style="margin-bottom: 10px; border: 1px solid #ccc; padding: 5px; border-radius: 4px; background-color: #f9f9f9;">
                             <label style="font-weight: normal; cursor: pointer; display: flex; align-items: center;">
@@ -848,7 +863,7 @@
                                         </th>
                                         <th onclick="triggerMultiSort('dist')">{{ t('tables.distance_km') }} &#8645;
                                         </th>
-                                        <th onclick="triggerMultiSort('country')">{{ t('tables.country') }} &#8645;</th>
+                                        <th id="multiStationCountryHeader" data-country-label="{{ t('tables.country') }}" onclick="triggerMultiSort('country')">{{ t('tables.country') }} &#8645;</th>
                                     </tr>
                                 </thead>
                                 <tbody></tbody>

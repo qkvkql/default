@@ -15,6 +15,7 @@ let lastMultiSubsetCriteria = null;
 let rawMultiStatsResults = [];
 let rawMultiStatMetricOrder = [];
 let rawMultiStatSeason = 'winter';
+let multiStatsColumnVBounds = null;
 let multiStatSortCol = 'val';
 let multiStatSortDir = 'desc';
 const MULTI_STAT_ALIASES = {
@@ -726,6 +727,16 @@ function renderCurrentMultiStations() {
     const tbody = document.querySelector('#multiStationTable tbody');
     const countEl = document.getElementById('multiStationCount');
     if (!tbody) return;
+    if (multiStatsColumnVBounds && document.getElementById('multiStatsColumnVFilterEnabled')?.checked) {
+        renderMultiStatsColumnVStationSubset();
+        return;
+    }
+
+    const countryHeader = document.getElementById('multiStationCountryHeader');
+    if (countryHeader) {
+        countryHeader.textContent = `${countryHeader.dataset.countryLabel || 'Country'} \u21c5`;
+        countryHeader.onclick = () => triggerMultiSort('country');
+    }
 
     tbody.innerHTML = '';
     if (countEl) countEl.innerText = currentMultiStations.length;
@@ -982,8 +993,9 @@ function renderMultiStatTable() {
     }
 
     tbody.innerHTML = '';
-    if (rawMultiStatsResults.length === 0) { tbody.innerHTML = `<tr><td colspan="${getMultiStatsColumnCount()}">No stats available.</td></tr>`; return; }
-    rawMultiStatsResults.sort((a, b) => {
+    const visibleResults = rawMultiStatsResults.slice();
+    if (visibleResults.length === 0) { tbody.innerHTML = `<tr><td colspan="${getMultiStatsColumnCount()}">No stats available.</td></tr>`; return; }
+    visibleResults.sort((a, b) => {
         const isStatValue = multiStatSortCol.startsWith('stat-value:');
         const isStatDates = multiStatSortCol.startsWith('stat-dates:');
         const metric = isStatValue ? multiStatSortCol.slice('stat-value:'.length)
@@ -1016,7 +1028,7 @@ function renderMultiStatTable() {
         if (valA > valB) return multiStatSortDir === 'asc' ? 1 : -1;
         return 0;
     });
-    rawMultiStatsResults.forEach(row => {
+    visibleResults.forEach(row => {
         const tr = document.createElement('tr');
         const cls = (val) => (val && val !== '-' && val !== 'None') ? ' class="copy-cell"' : '';
         const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({
@@ -1066,9 +1078,99 @@ function renderMultiStatTable() {
     });
 }
 
+function getMultiStatsColumnVRows() {
+    if (!multiStatsColumnVBounds) return rawMultiStatsResults.slice();
+    const firstMetric = rawMultiStatMetricOrder.length
+        ? rawMultiStatMetricOrder[0]
+        : document.getElementById('multiStatSelect')?.value;
+    return rawMultiStatsResults.filter(row => {
+        const value = row.stats?.[firstMetric]?.val;
+        if (value === null || value === undefined || String(value).trim() === '') return false;
+        const numericValue = typeof value === 'number' ? value : Number(String(value).trim());
+        return Number.isFinite(numericValue) &&
+            (multiStatsColumnVBounds.min === null || numericValue >= multiStatsColumnVBounds.min) &&
+            (multiStatsColumnVBounds.max === null || numericValue <= multiStatsColumnVBounds.max);
+    });
+}
+
+function renderMultiStatsColumnVStationSubset() {
+    const tbody = document.querySelector('#multiStationTable tbody');
+    const countEl = document.getElementById('multiStationCount');
+    const countryHeader = document.getElementById('multiStationCountryHeader');
+    if (!tbody) return;
+
+    if (countryHeader) {
+        countryHeader.textContent = 'V';
+        countryHeader.onclick = null;
+    }
+    const subset = multiStatsColumnVBounds ? getMultiStatsColumnVRows() : [];
+    tbody.innerHTML = '';
+    if (countEl) countEl.textContent = String(subset.length);
+    if (subset.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">No matching stations found.</td></tr>';
+        return;
+    }
+
+    const columns = ['id', 'name', 'lat', 'lon', 'elev', 'dist'];
+    const firstMetric = rawMultiStatMetricOrder.length
+        ? rawMultiStatMetricOrder[0]
+        : document.getElementById('multiStatSelect')?.value;
+    subset.forEach(row => {
+        const tr = document.createElement('tr');
+        columns.forEach(column => {
+            const td = document.createElement('td');
+            td.className = 'copy-cell';
+            td.textContent = row[column] ?? '';
+            tr.appendChild(td);
+        });
+        const vCell = document.createElement('td');
+        const vValue = row.stats?.[firstMetric]?.val;
+        vCell.className = 'copy-cell';
+        vCell.textContent = vValue ?? '';
+        tr.appendChild(vCell);
+        tbody.appendChild(tr);
+    });
+}
+
+function toggleMultiStatsColumnVFilter() {
+    const enabled = document.getElementById('multiStatsColumnVFilterEnabled')?.checked;
+    const inputs = document.getElementById('multiStatsColumnVFilterInputs');
+    if (inputs) inputs.style.display = enabled ? 'flex' : 'none';
+    if (!enabled) {
+        multiStatsColumnVBounds = null;
+        renderCurrentMultiStations();
+    }
+}
+
+function getMultiStatsColumnVSubset() {
+    const minInput = document.getElementById('multiStatsColumnVMin');
+    const maxInput = document.getElementById('multiStatsColumnVMax');
+    if (!minInput || !maxInput || !minInput.checkValidity() || !maxInput.checkValidity()) {
+        alert('Enter a valid numeric value for each V condition you use.');
+        return;
+    }
+    const min = minInput.value.trim() === '' ? null : minInput.valueAsNumber;
+    const max = maxInput.value.trim() === '' ? null : maxInput.valueAsNumber;
+    if ((min !== null && !Number.isFinite(min)) || (max !== null && !Number.isFinite(max))) {
+        alert('Enter numeric values for the V conditions.');
+        return;
+    }
+    if (min !== null && max !== null && min > max) {
+        alert('The V >= value must be less than or equal to the V <= value.');
+        return;
+    }
+    multiStatsColumnVBounds = { min, max };
+    renderMultiStatsColumnVStationSubset();
+}
+
 async function calcMultiStats() {
     if (!validateDateRange()) return;
     if (!validateValidTemperatureRange()) return;
+    let stationsForStats = currentMultiStations.slice();
+    if (multiStatsColumnVBounds && document.getElementById('multiStatsColumnVFilterEnabled')?.checked) {
+        const subsetIds = new Set(getMultiStatsColumnVRows().map(row => String(row.id)));
+        stationsForStats = currentMultiStations.filter(station => subsetIds.has(String(station.id)));
+    }
     const loading = document.getElementById('multiStatLoading');
     const tbody = document.querySelector('#multiStatResultTable tbody');
     if (!tbody) return;
@@ -1077,7 +1179,7 @@ async function calcMultiStats() {
     if (timerResultArea) timerResultArea.innerText = '';
     rawMultiStatsResults = [];
     rawMultiStatMetricOrder = [];
-    if (currentMultiStations.length === 0) { alert("No stations in list. Update Part 4 first."); return; }
+    if (stationsForStats.length === 0) { alert("No stations in list. Update Part 4 first."); return; }
     loading.classList.remove('hidden');
 
     const selectedMetric = document.getElementById('multiStatSelect').value;
@@ -1092,7 +1194,7 @@ async function calcMultiStats() {
     }, 100);
 
     const distMap = {};
-    currentMultiStations.forEach(s => distMap[s.id] = s.dist);
+    stationsForStats.forEach(s => distMap[s.id] = s.dist);
 
     const seasonMode = document.querySelector('input[name="season"]:checked').value;
     rawMultiStatSeason = seasonMode;
@@ -1100,7 +1202,7 @@ async function calcMultiStats() {
     const periodMode = getPeriodModeFromSeason(seasonMode, hemisphere);
 
     const payload = {
-        station_ids: currentMultiStations.map(s => s.id),
+        station_ids: stationsForStats.map(s => s.id),
         source: document.getElementById('dataSource').value,
         ssod_access_method: getSsodAccessMethod(),
         gsod_access_method: getGsodAccessMethod(),
