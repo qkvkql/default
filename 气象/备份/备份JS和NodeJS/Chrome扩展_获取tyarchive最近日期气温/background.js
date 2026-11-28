@@ -36,7 +36,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   // and return it as TSV text for showTextDataView() to consume.
   if (request.action === 'triggerDataViewMain' && sender.tab && sender.tab.id) {
     chrome.scripting.executeScript({
-      target: { tabId: sender.tab.id },
+      target: { tabId: sender.tab.id, allFrames: true },
       world: 'MAIN',
       func: () => {
         // ── Find the ECharts instance ─────────────────────────────────────
@@ -91,7 +91,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         }
       }
     }).then((results) => {
-      const r = results && results[0] && results[0].result;
+      const r = results?.map(item => item.result).find(result => result?.ok);
       sendResponse(r || { ok: false, error: 'No result' });
     }).catch((e) => {
       console.error('[Tyarchive BG] triggerDataViewMain failed:', e);
@@ -106,7 +106,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   // for station number verification but don't have it from triggerDataViewMain.
   if (request.action === 'getChartTitle' && sender.tab && sender.tab.id) {
     chrome.scripting.executeScript({
-      target: { tabId: sender.tab.id },
+      target: { tabId: sender.tab.id, allFrames: true },
       world: 'MAIN',
       func: () => {
         let chartInst = null;
@@ -134,7 +134,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         }
       }
     }).then((results) => {
-      const r = results && results[0] && results[0].result;
+      const r = results?.map(item => item.result).find(result => result?.chartTitle);
       sendResponse(r || { chartTitle: '' });
     }).catch((e) => {
       console.warn('[Tyarchive BG] getChartTitle failed:', e);

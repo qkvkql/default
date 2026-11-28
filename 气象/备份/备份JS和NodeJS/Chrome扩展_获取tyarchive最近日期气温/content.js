@@ -4,6 +4,116 @@
 
   const WRAPPER_ID = 'tyarchive-extractor-root';
 
+  // The refreshed realtime page renders its controls and chart inside a
+  // same-origin realtime.html iframe. Resolve that document for page actions.
+  function getRealtimeDocument() {
+    const docs = [document];
+    for (const frame of document.querySelectorAll('iframe')) {
+      try {
+        if (frame.contentDocument) docs.push(frame.contentDocument);
+      } catch (_) {}
+    }
+    return docs.find(doc => doc.getElementById('search') ||
+      doc.querySelector('button.category-button[data-category="雨温曲线"]')) || document;
+  }
+
+  // Open the rain/temperature chart category after the realtime page and its
+  // embedded app finish loading, so the station search is ready immediately.
+  function autoOpenRainTempCategory() {
+    const path = window.location.pathname.replace(/\/+$/, '') || '/';
+    if (path !== '/realtime') return;
+
+    let attempts = 0;
+    let clickAttempts = 0;
+    let lastClickAt = 0;
+    const maxAttempts = 480; // allow up to two minutes for slow SPA/iframe startup
+    const poller = setInterval(() => {
+      attempts += 1;
+      const pageDoc = getRealtimeDocument();
+      if (document.readyState !== 'complete' || pageDoc.readyState !== 'complete') {
+        if (attempts >= maxAttempts) {
+          clearInterval(poller);
+          console.warn('[Tyarchive] 雨温曲线 button was not ready before timeout');
+        }
+        return;
+      }
+
+      const button = pageDoc.querySelector(
+        'button.rt-primary-tab.category-button[data-category="雨温曲线"]'
+      ) || Array.from(pageDoc.querySelectorAll('button.category-button'))
+        .find(el => (el.textContent || '').trim() === '雨温曲线');
+      if (!button) {
+        if (attempts >= maxAttempts) {
+          clearInterval(poller);
+          console.warn('[Tyarchive] 雨温曲线 button was not found before timeout');
+        }
+        return;
+      }
+
+      const isSelected = button.classList.contains('active') ||
+        button.classList.contains('category-button-active');
+      const search = pageDoc.getElementById('search');
+      const searchIsVisible = !!search && (() => {
+        const style = pageDoc.defaultView.getComputedStyle(search);
+        const rect = search.getBoundingClientRect();
+        return style.display !== 'none' && style.visibility !== 'hidden' &&
+          rect.width > 0 && rect.height > 0;
+      })();
+
+      // Click at least once even when the page adds an "active" class before
+      // the new view is actually mounted. Retry a few times if startup races
+      // with the page's event handlers or content initialization.
+      if (clickAttempts === 0 ||
+          (clickAttempts < 4 && Date.now() - lastClickAt >= 1200 && !(isSelected && searchIsVisible))) {
+        button.click();
+        clickAttempts += 1;
+        lastClickAt = Date.now();
+        console.log('[Tyarchive] Automatically opened 雨温曲线 after page load');
+      }
+
+      if (clickAttempts > 0 && isSelected && searchIsVisible && Date.now() - lastClickAt >= 700) {
+        clearInterval(poller);
+        return;
+      }
+
+      if (attempts >= maxAttempts) {
+        clearInterval(poller);
+        console.warn('[Tyarchive] 雨温曲线 did not become ready after retrying');
+      }
+    }, 250);
+  }
+
+  // The site can navigate from /index to /realtime without a full document
+  // reload. Keep watching the top-level route so that this transition starts
+  // the same category selection flow as a direct visit.
+  function watchRealtimeRoute() {
+    const watcherKey = '__tyarchiveRealtimeRouteWatcher';
+    if (document.documentElement[watcherKey]) return;
+    document.documentElement[watcherKey] = true;
+
+    const normalizePath = () => window.location.pathname.replace(/\/+$/, '') || '/';
+    let lastPath = normalizePath();
+    const checkRoute = () => {
+      const path = normalizePath();
+      if (path !== lastPath) {
+        lastPath = path;
+        if (path === '/realtime') {
+          console.log('[Tyarchive] Realtime route detected; opening 雨温曲线');
+          autoOpenRainTempCategory();
+        }
+      }
+    };
+
+    window.addEventListener('popstate', checkRoute);
+    window.addEventListener('hashchange', checkRoute);
+    setInterval(checkRoute, 300); // also catches history.pushState/replaceState
+  }
+
+  watchRealtimeRoute();
+  if ((window.location.pathname.replace(/\/+$/, '') || '/') === '/realtime') {
+    autoOpenRainTempCategory();
+  }
+
   // ── Toggle if already injected ──────────────────────────────────────────────
   const existingRoot = document.getElementById(WRAPPER_ID);
   if (existingRoot) {
@@ -200,6 +310,16 @@
       background: rgba(16,185,129,0.30);
       border-color: #34d399;
       color: #a7f3d0;
+    }
+    #fetch-internal-avg-toggle.active {
+      background: rgba(239,68,68,0.18);
+      border-color: #ef4444;
+      color: #fca5a5;
+    }
+    #fetch-internal-avg-toggle.active:hover {
+      background: rgba(239,68,68,0.30);
+      border-color: #f87171;
+      color: #fecaca;
     }
     #extrema-toggle-row { margin-top: 7px; }
     #hourly-extrema-toggle {
@@ -998,6 +1118,8 @@
 
   // ── triggerDataView: open ECharts 数据视图 after chart renders ───────────────
   function triggerDataView() {
+    const pageDoc = getRealtimeDocument();
+    const pageWindow = pageDoc.defaultView || window;
     let waited = 0;
     const INTERVAL = 300;
     const MAX_WAIT = 12000;  // chart may take several seconds to load data
@@ -1005,7 +1127,7 @@
     const poller = setInterval(() => {
       waited += INTERVAL;
 
-      const canvas = document.querySelector('canvas[data-zr-dom-id]');
+      const canvas = pageDoc.querySelector('canvas[data-zr-dom-id]');
       if (!canvas) {
         if (waited >= MAX_WAIT) { clearInterval(poller); console.warn('[Tyarchive] Chart canvas never appeared'); }
         return;
@@ -1030,7 +1152,7 @@
           '[alt*="数据视图"]',
         ];
         for (const sel of attrSelectors) {
-          const el = document.querySelector(sel);
+          const el = pageDoc.querySelector(sel);
           if (el) {
             el.click();
             console.log(`[Tyarchive] 数据视图 clicked via HTML attribute selector: ${sel}`);
@@ -1039,7 +1161,7 @@
         }
 
         // 0b: search by visible text content "数据视图" in small icon containers
-        const allClickables = document.querySelectorAll(
+        const allClickables = pageDoc.querySelectorAll(
           'button, [role="button"], [onclick], a, li, span, div'
         );
         for (const el of allClickables) {
@@ -1055,7 +1177,7 @@
         // 0c: ECharts renders toolbox icons as SVG <path> elements inside a
         // container that has a "title" child with text "数据视图".
         // Walk all SVG <title> elements to find the data-view icon group.
-        const svgTitles = document.querySelectorAll('svg title, svg text, svg tspan');
+        const svgTitles = pageDoc.querySelectorAll('svg title, svg text, svg tspan');
         for (const t of svgTitles) {
           if ((t.textContent || '').includes('数据视图')) {
             // click the closest parent SVG or <g> element
@@ -1083,7 +1205,7 @@
           '.rt-chart-toolbar',
         ];
         for (const sel of toolboxSelectors) {
-          const container = document.querySelector(sel);
+          const container = pageDoc.querySelector(sel);
           if (container) {
             // Try to find the first icon inside that might be data-view
             const icons = container.querySelectorAll('button, [role="button"], svg, i, span');
@@ -1112,7 +1234,7 @@
       chrome.runtime.sendMessage({ action: 'triggerDataViewMain' }, (resp) => {
         if (resp && resp.ok && resp.data) {
           console.log('[Tyarchive] Direct data extraction succeeded, feeding to showTextDataView');
-          showTextDataView(resp.data, resp.chartTitle || '');
+          showTextDataView(resp.data, resp.chartTitle || '', pageDoc);
         } else {
           console.warn('[Tyarchive] MAIN-world extraction failed:', resp && resp.error);
           // Last resort: try canvas fallback (ZRender / MouseEvent spray)
@@ -1167,10 +1289,10 @@
               clientY: rect.top   + yOff,
               bubbles: true, cancelable: true
             };
-            zrEl.dispatchEvent(new MouseEvent('mousemove', evOpts));
-            zrEl.dispatchEvent(new MouseEvent('mousedown', evOpts));
-            zrEl.dispatchEvent(new MouseEvent('mouseup',   evOpts));
-            zrEl.dispatchEvent(new MouseEvent('click',     evOpts));
+            zrEl.dispatchEvent(new pageWindow.MouseEvent('mousemove', evOpts));
+            zrEl.dispatchEvent(new pageWindow.MouseEvent('mousedown', evOpts));
+            zrEl.dispatchEvent(new pageWindow.MouseEvent('mouseup',   evOpts));
+            zrEl.dispatchEvent(new pageWindow.MouseEvent('click',     evOpts));
           });
         });
         console.log('[Tyarchive] 数据视图 attempted via zrContainer MouseEvent spray');
@@ -1184,6 +1306,8 @@
   // We observe DOM mutations, detect the textarea, read .value after a tick,
   // then hide the native panel and show our own styled overlay instead.
   function watchNativeDataView() {
+    const pageDoc = getRealtimeDocument();
+    const pageWindow = pageDoc.defaultView || window;
     const observer = new MutationObserver(mutations => {
       for (const mutation of mutations) {
         for (const node of mutation.addedNodes) {
@@ -1199,9 +1323,9 @@
               // Hide the native ECharts data-view container
               let nativeContainer = tbl.parentElement;
               while (nativeContainer &&
-                nativeContainer !== document.body &&
-                nativeContainer !== document.documentElement) {
-                const cs = window.getComputedStyle(nativeContainer);
+                nativeContainer !== pageDoc.body &&
+                nativeContainer !== pageDoc.documentElement) {
+                const cs = pageWindow.getComputedStyle(nativeContainer);
                 if (cs.position === 'absolute' && nativeContainer.style.zIndex) {
                   nativeContainer.style.display = 'none';
                   break;
@@ -1225,7 +1349,7 @@
               const syntheticText = tsvLines.join('\n');
               console.log('[Tyarchive] Converted table to TSV, rows:', rows.length);
               // Fetch chart title separately for native data-view path
-              fetchChartTitle().then(title => showTextDataView(syntheticText, title));
+              fetchChartTitle().then(title => showTextDataView(syntheticText, title, pageDoc));
             }, 60);
 
             return; // handled
@@ -1252,9 +1376,9 @@
             let nativeContainer = ta.parentElement;
             // Walk up to find the outermost injected container (usually 2–3 levels)
             while (nativeContainer &&
-              nativeContainer !== document.body &&
-              nativeContainer !== document.documentElement) {
-              const cs = window.getComputedStyle(nativeContainer);
+              nativeContainer !== pageDoc.body &&
+              nativeContainer !== pageDoc.documentElement) {
+              const cs = pageWindow.getComputedStyle(nativeContainer);
               // ECharts data-view uses a full-cover absolutely-positioned div
               if (cs.position === 'absolute' && nativeContainer.style.zIndex) {
                 nativeContainer.style.display = 'none';
@@ -1265,7 +1389,7 @@
 
             // Parse the raw text and show in our custom overlay
             // Fetch chart title separately for native data-view path
-            fetchChartTitle().then(title => showTextDataView(text, title));
+            fetchChartTitle().then(title => showTextDataView(text, title, pageDoc));
           }, 60);
 
           return; // handle only the first matching textarea per mutation batch
@@ -1273,7 +1397,7 @@
       }
     });
 
-    observer.observe(document.body, { childList: true, subtree: true });
+    observer.observe(pageDoc.body, { childList: true, subtree: true });
     console.log('[Tyarchive] MutationObserver watching for native 数据视图 textarea/table');
     return observer; // caller can disconnect() if needed
   }
@@ -1299,7 +1423,7 @@
   //   0: date | 1: rainfall | 2: climate avg (1991-2020) | 3: (unused) |
   //   4: daily avg temp | 5: daily max temp | 6: daily min temp | (7+: rest)
   // Target: row whose date column (format: MM月DD日) matches the user-specified MM-DD target.
-  async function showTextDataView(rawText, chartTitle = '') {
+  async function showTextDataView(rawText, chartTitle = '', pageDoc = getRealtimeDocument()) {
     // Helper: treat 'NaN' string as empty
     const clean = v => {
       const s = (v || '').trim();
@@ -1316,7 +1440,7 @@
 
     // Helper: close native ECharts data-view panel if present
     const closeNativeDataView = () => {
-      const closeBtn = Array.from(document.querySelectorAll('div')).find((el) => {
+      const closeBtn = Array.from(pageDoc.querySelectorAll('div')).find((el) => {
         if ((el.textContent || '').trim() !== '关闭') return false;
         const style = el.getAttribute('style') || '';
         return /float:\s*right/i.test(style) && /cursor:\s*pointer/i.test(style);
@@ -1898,7 +2022,9 @@
       const isBasic = !checkedRadio || checkedRadio.value === 'basic';
 
       // Read current mode from the host page's toggle button
-      const modeToggle = document.getElementById('toggleStationType');
+      const pageDoc = getRealtimeDocument();
+      const pageWindow = pageDoc.defaultView || window;
+      const modeToggle = pageDoc.getElementById('toggleStationType');
       const isAutoMode = modeToggle ? modeToggle.classList.contains('active') : false;
       const needsToggle = (isBasic && isAutoMode) || (!isBasic && !isAutoMode);
 
@@ -1909,7 +2035,7 @@
 
       (async () => {
         // ── Step 1: locate the page's search box ──────────────────────────
-        const pageSearch = document.getElementById('search');
+        const pageSearch = pageDoc.getElementById('search');
         if (!pageSearch) { fail('未找到页面搜索框！'); return; }
 
         // ── Step 2: auto-toggle station mode if it doesn't match ───────────
@@ -1924,11 +2050,11 @@
 
         // ── Step 4: fill the search box and fire input events ──────────────
         const nativeInputSetter = Object.getOwnPropertyDescriptor(
-          window.HTMLInputElement.prototype, 'value'
+          pageWindow.HTMLInputElement.prototype, 'value'
         ).set;
         nativeInputSetter.call(pageSearch, stationNum);
-        pageSearch.dispatchEvent(new Event('input', { bubbles: true }));
-        pageSearch.dispatchEvent(new Event('change', { bubbles: true }));
+        pageSearch.dispatchEvent(new pageWindow.Event('input', { bubbles: true }));
+        pageSearch.dispatchEvent(new pageWindow.Event('change', { bubbles: true }));
         pageSearch.focus();
         console.log(`[Tyarchive] Typed "${stationNum}" into search box`);
 
@@ -1938,7 +2064,7 @@
         // ── Step 6: poll for the dropdown result (up to 4 s) ──────────────
         let firstItem = null;
         for (let waited = 0; waited < 4000; waited += 150) {
-          const resultsList = document.getElementById('search-results');
+          const resultsList = pageDoc.getElementById('search-results');
           firstItem = resultsList && resultsList.querySelector('li');
           if (firstItem) break;
           await sleep(150);
@@ -1960,7 +2086,7 @@
         const searchForm = pageSearch.closest('form');
         const submitBtn = searchForm
           ? searchForm.querySelector('button[type="submit"]')
-          : document.querySelector('button[type="submit"] .fa-search')?.closest('button');
+          : pageDoc.querySelector('button[type="submit"] .fa-search')?.closest('button');
 
         if (!submitBtn) {
           fail('未找到提交按钮！');
